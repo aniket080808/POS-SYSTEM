@@ -2,6 +2,10 @@ spring:
   application:
     name: pos-system
 
+  jackson:
+    time-zone: Asia/Kolkata
+    locale: en_IN
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pos}
     driver-class-name: org.postgresql.Driver

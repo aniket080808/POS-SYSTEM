@@ -53,6 +53,11 @@ public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
         existing.setEnableMultiLocation(updatedPlan.getEnableMultiLocation());
 
         existing.setExtraFeatures(updatedPlan.getExtraFeatures());
+        
+        // Add active status to updates, fallback to true if null just in case
+        if (updatedPlan.getActive() != null) {
+            existing.setActive(updatedPlan.getActive());
+        }
 
         return subscriptionPlanRepository.save(existing);
     }

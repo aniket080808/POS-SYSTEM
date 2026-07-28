@@ -22,9 +22,7 @@ export default function Stores() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (store?.id) {
-      fetchStoreData();
-    }
+    fetchStoreData();
   }, [dispatch, user]);
   
   useEffect(() => {

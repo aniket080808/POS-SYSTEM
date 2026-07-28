@@ -11,6 +11,7 @@ import com.aniket.payload.dto.UserDTO;
 import com.aniket.payload.response.AuthResponse;
 import com.aniket.repository.PasswordResetTokenRepository;
 import com.aniket.repository.UserRepository;
+import com.aniket.service.ActivityLogService;
 import com.aniket.service.AuthService;
 
 import com.aniket.service.EmailService;
@@ -41,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
     private final CustomUserImplementation customUserImplementation;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
+    private final ActivityLogService activityLogService;
 
     @Value("${app.frontend.reset-url}")
     private String frontendResetUrl;
@@ -105,11 +107,26 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 
+        // Log admin login activity
+        if (user.getRole() == UserRole.ROLE_ADMIN) {
+            activityLogService.log(
+                    "ADMIN_LOGIN",
+                    "Admin \"" + user.getFullName() + "\" logged in",
+                    "User",
+                    user.getId(),
+                    user.getFullName(),
+                    "SUCCESS"
+            );
+        }
+
         AuthResponse response = new AuthResponse();
         response.setTitle("Login success");
         response.setMessage("Welcome Back" + username);
         response.setJwt(token);
         response.setUser(UserMapper.toDTO(user));
+        if (user.getStore() != null) {
+            response.setStore(com.aniket.mapper.StoreMapper.toDto(user.getStore()));
+        }
 
         return response;
     }
@@ -177,6 +194,14 @@ public class AuthServiceImpl implements AuthService {
         // delete token after successful reset
         passwordResetTokenRepository.delete(resetToken);
 
+        activityLogService.log(
+                "PASSWORD_CHANGED",
+                "Password changed for user \"" + user.getFullName() + "\"",
+                "User",
+                user.getId(),
+                user.getFullName(),
+                "SUCCESS"
+        );
     }
 
 

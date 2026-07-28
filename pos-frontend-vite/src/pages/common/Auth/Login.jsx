@@ -270,14 +270,6 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Demo Account Info */}
-            <div className="mt-6 p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground text-center">
-                <strong>Demo Account:</strong><br />
-                Email: demo@pospro.com<br />
-                Password: demo123
-              </p>
-            </div>
           </div>
         )}
 
@@ -365,15 +357,15 @@ const Login = () => {
           </div>
         )}
 
-        {/* Footer
+        {/* Footer */}
         <div className="text-center mt-8">
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Don't have an account?{' '}
-            <Link to="/register" className="text-primary hover:text-primary/80 font-medium">
+            <Link to="/auth/onboarding" className="text-primary hover:text-primary/80 font-medium">
               Sign up
             </Link>
           </p>
-        </div> */}
+        </div>
       </div>
     </div>
   )

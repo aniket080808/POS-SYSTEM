@@ -70,7 +70,8 @@ const SalesTrend = () => {
   const getChartData = () => {
     if (period === "daily" && dailySales) {
       return dailySales.map((item) => ({
-        date: new Date(item.date).toLocaleDateString("en-US", {
+        date: new Date(item.date).toLocaleDateString("en-IN", {
+          timeZone: "Asia/Kolkata",
           month: "short",
           day: "numeric",
         }),

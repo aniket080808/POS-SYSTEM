@@ -15,7 +15,10 @@ import java.util.List;
 import java.util.Set;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_user_email", columnList = "email"),
+    @Index(name = "idx_user_store_id", columnList = "store_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,7 +42,13 @@ public class User {
 
     private String phone;
 
+    @OneToOne(mappedBy = "storeAdmin")
+    @JsonIgnore
+    private Store ownedStore;
+
     @ManyToOne
+    @JoinColumn(name = "store_id")
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.SET_NULL)
     private Store store;
 
     @ManyToOne
@@ -62,6 +71,8 @@ public class User {
 
     private LocalDateTime lastLogin;
 
-
+    public Store getStore() {
+        return this.ownedStore != null ? this.ownedStore : this.store;
+    }
 }
 

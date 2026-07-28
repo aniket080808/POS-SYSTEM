@@ -26,9 +26,9 @@ export const transformApiToSettingsFormat = (apiData) => {
     storePhone: apiData.contact?.phone || "",
     storeAddress: apiData.contact?.address || "",
     storeDescription: apiData.description || "",
-    currency: apiData.currency || "USD",
+    currency: apiData.currency || "INR",
     taxRate: apiData.taxRate?.toString() || "0",
-    timezone: apiData.timezone || "America/New_York",
+    timezone: apiData.timezone || "Asia/Kolkata",
     dateFormat: apiData.dateFormat || "MM/DD/YYYY",
     receiptFooter: apiData.receiptFooter || "",
   };
@@ -43,9 +43,9 @@ export const getInitialValues = (storeData) => {
       storePhone: "",
       storeAddress: "",
       storeDescription: "",
-      currency: "USD",
+      currency: "INR",
       taxRate: "0",
-      timezone: "America/New_York",
+      timezone: "Asia/Kolkata",
       dateFormat: "MM/DD/YYYY",
       receiptFooter: "",
     };

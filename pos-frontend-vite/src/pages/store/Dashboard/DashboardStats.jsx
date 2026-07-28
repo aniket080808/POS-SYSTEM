@@ -93,7 +93,7 @@ const DashboardStats = () => {
                     stat.value
                   )}
                 </h3>
-                <p className={`text-xs font-medium mt-1 ${
+                <div className={`text-xs font-medium mt-1 ${
                   stat.change.startsWith('+') ? 'text-emerald-500' : 'text-red-500'
                 }`}>
                   {stat.loading ? (
@@ -101,7 +101,7 @@ const DashboardStats = () => {
                   ) : (
                     `${stat.change} from last month`
                   )}
-                </p>
+                </div>
               </div>
               <div className="p-3 bg-emerald-50 rounded-full">
                 {stat.icon}

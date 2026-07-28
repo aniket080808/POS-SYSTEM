@@ -3,9 +3,14 @@ import { useSelector } from "react-redux";
 import { Bell, User, Search } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import NotificationPanel from "./NotificationPanel";
+import { useWebSocket } from "../../../hooks/useWebSocket";
 
 export default function SuperAdminTopbar() {
   const { userProfile } = useSelector((state) => state.user);
+  const { unreadCount } = useSelector((state) => state.notification);
+  
+  useWebSocket();
 
   return (
     <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border px-6 py-4">
@@ -25,12 +30,16 @@ export default function SuperAdminTopbar() {
           </div>
           
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              3
-            </span>
-          </Button>
+          <NotificationPanel>
+            <Button variant="ghost" size="icon" className="relative cursor-pointer">
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </Button>
+          </NotificationPanel>
           
           {/* User Profile */}
           <div className="flex items-center gap-3">

@@ -19,9 +19,9 @@ export default function Settings() {
     storeAddress: "123 Main St, Anytown, USA 12345",
     storeLogo: "/logo.png",
     storeDescription: "A modern point of sale system for retail businesses.",
-    currency: "USD",
+    currency: "INR",
     taxRate: "7.5",
-    timezone: "America/New_York",
+    timezone: "Asia/Kolkata",
     dateFormat: "MM/DD/YYYY",
     receiptFooter: "Thank you for shopping with us!",
   });
@@ -81,9 +81,9 @@ export default function Settings() {
         storePhone: store.contact?.phone || "",
         storeAddress: store.contact?.address || "",
         storeDescription: store.description || "",
-        currency: store.currency || "USD",
+        currency: store.currency || "INR",
         taxRate: store.taxRate?.toString() || "0",
-        timezone: store.timezone || "America/New_York",
+        timezone: store.timezone || "Asia/Kolkata",
         dateFormat: store.dateFormat || "MM/DD/YYYY",
         receiptFooter: store.receiptFooter || "",
       });

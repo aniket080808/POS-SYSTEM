@@ -34,6 +34,7 @@ public class StoreMapper {
                     .updatedAt(dto.getUpdatedAt())
                     .storeType(dto.getStoreType())
                     .description(dto.getDescription())
+                    .contact(dto.getContact())
                     .build();
         }
     }

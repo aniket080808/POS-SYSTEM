@@ -26,7 +26,8 @@
         };
 
    export const formatDate = (date) => {
-    return new Date(date).toLocaleString('en-US', {
+    return new Date(date).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
       year: 'numeric',
       month: 'short',
       day: 'numeric',

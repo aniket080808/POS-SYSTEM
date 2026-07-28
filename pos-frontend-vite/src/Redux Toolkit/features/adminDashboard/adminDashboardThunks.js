@@ -111,4 +111,32 @@ export const getStoreStatusDistribution = createAsyncThunk(
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch store status distribution');
     }
   }
-); 
+);
+
+// 🕐 Get Recent Activities
+export const getRecentActivities = createAsyncThunk(
+  'adminDashboard/getRecentActivities',
+  async ({ page = 0, size = 10 } = {}, { rejectWithValue }) => {
+    try {
+      console.log('🔄 Fetching recent activities...');
+      
+      const headers = getAuthHeaders();
+      const res = await api.get(`/api/super-admin/dashboard/recent-activities?page=${page}&size=${size}`, { headers });
+      
+      console.log('✅ Recent activities fetched successfully:', {
+        count: res.data.length,
+        activities: res.data
+      });
+      
+      return res.data;
+    } catch (err) {
+      console.error('❌ Failed to fetch recent activities:', {
+        error: err.response?.data || err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText
+      });
+      
+      return rejectWithValue(err.response?.data?.message || 'Failed to fetch recent activities');
+    }
+  }
+);

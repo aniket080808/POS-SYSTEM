@@ -2,13 +2,17 @@ import { createSlice } from '@reduxjs/toolkit';
 import {
   getDashboardSummary,
   getStoreRegistrationStats,
-  getStoreStatusDistribution
+  getStoreStatusDistribution,
+  getRecentActivities
 } from './adminDashboardThunks';
 
 const initialState = {
   dashboardSummary: null,
   storeRegistrationStats: [],
   storeStatusDistribution: null,
+  recentActivities: [],
+  activitiesLoading: false,
+  activitiesError: null,
   loading: false,
   error: null,
 };
@@ -78,6 +82,21 @@ const adminDashboardSlice = createSlice({
       .addCase(getStoreStatusDistribution.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // Recent Activities
+      .addCase(getRecentActivities.pending, (state) => {
+        state.activitiesLoading = true;
+        state.activitiesError = null;
+      })
+      .addCase(getRecentActivities.fulfilled, (state, action) => {
+        state.activitiesLoading = false;
+        state.recentActivities = action.payload;
+        state.activitiesError = null;
+      })
+      .addCase(getRecentActivities.rejected, (state, action) => {
+        state.activitiesLoading = false;
+        state.activitiesError = action.payload;
       })
 
       // Global error handler for all adminDashboard actions

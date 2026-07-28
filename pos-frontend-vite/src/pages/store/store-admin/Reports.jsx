@@ -100,9 +100,8 @@ export default function Reports() {
     }).format(amount || 0);
   };
 
-  // Prepare chart data
   const salesData = monthlySales?.map(item => ({
-    name: new Date(item.date).toLocaleDateString('en-US', { month: 'short' }),
+    name: new Date(item.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' }),
     sales: item.totalAmount
   })) || [];
 

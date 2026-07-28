@@ -3,11 +3,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import OwnerDetailsForm from './OwnerDetailsForm';
 import StoreDetailsForm from './StoreDetailsForm';
-import { signup } from '../../Redux Toolkit/features/auth/authThunk';
-import { createStore, getStoreByAdmin } from '../../Redux Toolkit/features/store/storeThunks';
+import { completeOnboarding } from '../../Redux Toolkit/features/onboarding/onboardingThunk';
+import { getStoreByAdmin } from '../../Redux Toolkit/features/store/storeThunks';
 import { getUserProfile } from '../../Redux Toolkit/features/user/userThunks';
 import { useNavigate } from 'react-router';
-// import { completeOnboarding, resetOnboarding } from '../../Redux Toolkit/features/onboarding/onboardingSlice';
 
 const Onboarding = () => {
   const dispatch = useDispatch();
@@ -72,42 +71,29 @@ const Onboarding = () => {
     const updatedFormData = { ...formData, ...stepData };
     setFormData(updatedFormData);
     if (step === 1) {
-      // Signup step
+      // Step 1: Save owner details locally and advance to Step 2 without API call
+      setFadeIn(false);
+      setTimeout(() => {
+        setStep(2);
+        setFadeIn(true);
+      }, 150);
+    } else if (step === 2) {
+      // Step 2: Atomic onboarding request creating both Store Admin User and Store in one transaction
       setLocalLoading(true);
       try {
-        const signupRes = await dispatch(signup({
+        await dispatch(completeOnboarding({
           fullName: updatedFormData.fullName,
           email: updatedFormData.email,
           password: updatedFormData.password,
-          role: 'ROLE_STORE_ADMIN',
+          storeName: updatedFormData.storeName,
+          storeType: updatedFormData.storeType,
+          storeAddress: updatedFormData.storeAddress,
         })).unwrap();
-        if (signupRes && signupRes.jwt) {
-          localStorage.setItem('jwt', signupRes.data.jwt);
-        }
-        setFadeIn(false);
-        setTimeout(() => {
-          setStep(2);
-          setFadeIn(true);
-        }, 150);
-      } catch (err) {
-        setLocalError(err || 'Signup failed');
-      }
-      setLocalLoading(false);
-    } else if (step === 2) {
-      // Store creation step
-      setLocalLoading(true);
-      try {
-        await dispatch(createStore({
-         
-            brand: updatedFormData.storeName,
-            storeType: updatedFormData.storeType,
-            storeAddress: updatedFormData.storeAddress,
-          
-        })).unwrap();
-        // On success, redirect or show success
+        // On success, redirect to dashboard/store
         navigate('/store');
       } catch (err) {
-        setLocalError(err || 'Store creation failed');
+        const msg = typeof err === 'string' ? err : (err?.message || 'Onboarding failed');
+        setLocalError(msg);
       }
       setLocalLoading(false);
     }
@@ -278,7 +264,9 @@ const Onboarding = () => {
                   <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  {error || localError}
+                  {typeof (error || localError) === 'object'
+                    ? ((error || localError)?.message || String(error || localError))
+                    : (error || localError)}
                 </div>
               </div>
             )}

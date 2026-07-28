@@ -16,7 +16,8 @@ export default function BranchManagerTopbar() {
           {branch ? branch.name : "Branch Dashboard"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {new Date().toLocaleDateString("en-US", {
+          {new Date().toLocaleDateString("en-IN", {
+            timeZone: "Asia/Kolkata",
             weekday: "long",
             year: "numeric",
             month: "long",

@@ -13,7 +13,9 @@ import com.aniket.payload.response.ApiResponseBody;
 import com.aniket.payload.response.AuthResponse;
 import com.aniket.repository.UserRepository;
 
+import com.aniket.payload.request.OnboardingRequestDTO;
 import com.aniket.service.AuthService;
+import com.aniket.service.OnboardingService;
 import com.aniket.service.UserService;
 import com.aniket.service.impl.CustomUserImplementation;
 
@@ -33,8 +35,17 @@ public class AuthController {
 
 
     private final AuthService authService;
+    private final OnboardingService onboardingService;
 
+    @PostMapping("/onboarding")
+    public ResponseEntity<ApiResponseBody<AuthResponse>> onboardingHandler(
+            @RequestBody @Valid OnboardingRequestDTO req) throws UserException {
 
+        AuthResponse response = onboardingService.completeOnboarding(req);
+
+        return ResponseEntity.ok(new ApiResponseBody<>(true,
+                "Onboarding completed successfully", response));
+    }
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponseBody<AuthResponse>> signupHandler(

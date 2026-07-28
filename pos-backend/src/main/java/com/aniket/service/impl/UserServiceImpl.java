@@ -11,8 +11,9 @@ import com.aniket.modal.*;
 import com.aniket.repository.PasswordResetTokenRepository;
 import com.aniket.repository.UserRepository;
 
+import com.aniket.service.ActivityLogService;
 import com.aniket.service.UserService;
-import jakarta.persistence.EntityNotFoundException;
+
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -75,11 +76,11 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public User getCurrentUser() {
+	public User getCurrentUser() throws UserException {
 		String email = SecurityContextHolder.getContext().getAuthentication().getName();
 		User user= userRepository.findByEmail(email);
 		if(user == null) {
-			throw new EntityNotFoundException("User not found");
+			throw new UserException("User not found");
 		}
 		return user;
 	}
@@ -87,6 +88,39 @@ public class UserServiceImpl implements UserService {
 	@Override
 	public List<User> getUsers() throws UserException {
 		return userRepository.findAll();
+	}
+
+	@Override
+	@Transactional
+	public User updateProfile(User user, String fullName, String phone, String email) throws UserException {
+		if (email != null && !email.trim().isEmpty() && !email.equals(user.getEmail())) {
+			User existing = userRepository.findByEmail(email);
+			if (existing != null) {
+				throw new UserException("Email already in use");
+			}
+			user.setEmail(email);
+		}
+		
+		if (fullName != null && !fullName.trim().isEmpty()) user.setFullName(fullName);
+		if (phone != null && !phone.trim().isEmpty()) user.setPhone(phone);
+		
+		return userRepository.save(user);
+	}
+
+	@Override
+	@Transactional
+	public void changePassword(User user, String currentPassword, String newPassword) throws UserException {
+		if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+			throw new UserException("Incorrect current password");
+		}
+		
+		// Simple minimum password strength validation (e.g. 8 chars)
+		if (newPassword == null || newPassword.length() < 8) {
+			throw new UserException("Password must be at least 8 characters long");
+		}
+		
+		user.setPassword(passwordEncoder.encode(newPassword));
+		userRepository.save(user);
 	}
 
 

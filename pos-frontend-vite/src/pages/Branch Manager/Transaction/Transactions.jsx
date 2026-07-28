@@ -194,8 +194,8 @@ export default function Transactions() {
                     }`}
                   >
                     {selectedTransaction.totalAmount > 0
-                      ? `+$${selectedTransaction.totalAmount.toFixed(2)}`
-                      : `-$${Math.abs(selectedTransaction.totalAmount).toFixed(2)}`}
+                      ? `+₹${selectedTransaction.totalAmount.toFixed(2)}`
+                      : `-₹${Math.abs(selectedTransaction.totalAmount).toFixed(2)}`}
                   </p>
                 </div>
               </div>

@@ -68,9 +68,8 @@ export default function Sales() {
     return `${sign}${change.toFixed(1)}%`;
   };
 
-  // Prepare chart data
   const dailySalesData = dailySales?.map(item => ({
-    date: new Date(item.date)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: new Date(item.date)?.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric' }),
     sales: item.totalAmount
   })) || [];
 

@@ -2,11 +2,22 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useToast } from "@/components/ui/use-toast";
 import { getUserProfile } from "@/Redux Toolkit/features/user/userThunks";
+import {
+  fetchSystemSettings,
+  updateSystemSetting,
+  fetchNotificationPreferences,
+  updateNotificationPreferences,
+  updateProfile,
+  changePassword,
+} from "@/Redux Toolkit/features/settings/settingsThunks";
 
 export const useSettingsState = () => {
   const dispatch = useDispatch();
-  const { userProfile,loading } = useSelector((state) => state.user);
+  const { userProfile, loading: userLoading } = useSelector((state) => state.user);
+  const { systemSettings, notificationPreferences, loading: settingsLoading } = useSelector((state) => state.settings);
   const { toast } = useToast();
+
+  const loading = userLoading || settingsLoading;
 
   const [profileData, setProfileData] = useState({
     fullName: "",
@@ -18,6 +29,8 @@ export const useSettingsState = () => {
     const token = localStorage.getItem("jwt");
     if (token) {
       dispatch(getUserProfile(token));
+      dispatch(fetchSystemSettings());
+      dispatch(fetchNotificationPreferences());
     }
   }, [dispatch]);
 
@@ -26,10 +39,9 @@ export const useSettingsState = () => {
       setProfileData({
         fullName: userProfile.fullName || "",
         email: userProfile.email || "",
-        phone: userProfile.mobile || "",
+        phone: userProfile.phone || "",
       });
     }
-    console.log("User data loaded:", userProfile.email);
   }, [userProfile]);
 
   const [passwordData, setPasswordData] = useState({
@@ -44,29 +56,24 @@ export const useSettingsState = () => {
     confirm: false,
   });
 
-  const [notifications, setNotifications] = useState({
-    newStoreRequests: true,
-    storeApprovals: true,
-    commissionUpdates: false,
-    systemAlerts: true,
-    emailNotifications: true,
-  });
-
-  const [systemSettings, setSystemSettings] = useState({
-    autoApproveStores: false,
-    requireDocumentVerification: true,
-    commissionAutoCalculation: true,
-    maintenanceMode: false,
-  });
-
-  const handleProfileUpdate = () => {
-    toast({
-      title: "Profile Updated",
-      description: "Your profile information has been updated successfully.",
-    });
+  const handleProfileUpdate = async () => {
+    try {
+      await dispatch(updateProfile(profileData)).unwrap();
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been updated successfully.",
+      });
+      dispatch(getUserProfile(localStorage.getItem("jwt")));
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: error || "Failed to update profile.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
         title: "Password Mismatch",
@@ -85,30 +92,58 @@ export const useSettingsState = () => {
       return;
     }
 
-    toast({
-      title: "Password Changed",
-      description: "Your password has been changed successfully.",
-    });
+    try {
+      await dispatch(changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      })).unwrap();
 
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+      toast({
+        title: "Password Changed",
+        description: "Your password has been changed successfully.",
+      });
+
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: error || "Failed to change password.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleNotificationToggle = (key) => {
-    setNotifications((prev) => ({
-      ...prev,
-      [key]: !prev[key],
+    const newValue = !notificationPreferences[key];
+    dispatch(updateNotificationPreferences({
+      ...notificationPreferences,
+      [key]: newValue
     }));
   };
 
   const handleSystemSettingToggle = (key) => {
-    setSystemSettings((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    const isCurrentlyTrue = systemSettings[key] === "true";
+    const newValue = !isCurrentlyTrue;
+    
+    dispatch(updateSystemSetting({ key, value: newValue.toString() }))
+      .unwrap()
+      .then(() => {
+        toast({
+          title: "Setting Updated",
+          description: `System setting updated successfully.`,
+        });
+      })
+      .catch((error) => {
+        toast({
+          title: "Update Failed",
+          description: error || "Failed to update setting.",
+          variant: "destructive",
+        });
+      });
   };
 
   const handleProfileFieldChange = (field, value) => {
@@ -123,13 +158,20 @@ export const useSettingsState = () => {
     setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
   };
   
+  const formattedSystemSettings = {
+    autoApproveStores: systemSettings.autoApproveStores === "true",
+    requireDocumentVerification: systemSettings.requireDocumentVerification === "true",
+    commissionAutoCalculation: systemSettings.commissionAutoCalculation === "true",
+    maintenanceMode: systemSettings.maintenanceMode === "true",
+  };
+
   return {
     profileData,
     loading,
     passwordData,
     showPasswords,
-    notifications,
-    systemSettings,
+    notifications: notificationPreferences,
+    systemSettings: formattedSystemSettings,
     handleProfileUpdate,
     handlePasswordChange,
     handleNotificationToggle,

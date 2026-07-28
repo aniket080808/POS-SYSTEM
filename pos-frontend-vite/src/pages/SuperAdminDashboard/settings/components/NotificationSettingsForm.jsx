@@ -61,7 +61,7 @@ const NotificationSettingsForm = ({ notifications, onToggle }) => {
               id={item.id}
               title={item.title}
               description={item.description}
-              checked={notifications[item.id]}
+              checked={!!notifications[item.id]}
               onToggle={() => onToggle(item.id)}
             />
             {index === notificationItems.length - 2 && <Separator />}

@@ -2,10 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const RecentSales = () => {
   const recentSales = [
-    { branch: "Main Store", amount: "$1,234", date: "Today" },
-    { branch: "Downtown Branch", amount: "$891", date: "Today" },
-    { branch: "West Side Location", amount: "$654", date: "Yesterday" },
-    { branch: "East End Shop", amount: "$1,021", date: "Yesterday" },
+    { branch: "Main Store", amount: "₹1,234", date: "Today" },
+    { branch: "Downtown Branch", amount: "₹891", date: "Today" },
+    { branch: "West Side Location", amount: "₹654", date: "Yesterday" },
+    { branch: "East End Shop", amount: "₹1,021", date: "Yesterday" },
   ];
 
   return (

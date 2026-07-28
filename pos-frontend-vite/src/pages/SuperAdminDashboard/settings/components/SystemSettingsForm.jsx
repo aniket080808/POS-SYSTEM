@@ -55,7 +55,7 @@ const SystemSettingsForm = ({ systemSettings, onToggle }) => {
               id={item.id}
               title={item.title}
               description={item.description}
-              checked={systemSettings[item.id]}
+              checked={!!systemSettings[item.id]}
               onToggle={() => onToggle(item.id)}
             />
             {index === systemSettingItems.length - 2 && <Separator />}

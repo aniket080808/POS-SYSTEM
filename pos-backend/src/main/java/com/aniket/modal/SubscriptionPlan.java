@@ -55,6 +55,9 @@ public class SubscriptionPlan {
     // Optional extra
     private Boolean enableMultiLocation;     // Existing field
 
+    @Builder.Default
+    private Boolean active = true;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 

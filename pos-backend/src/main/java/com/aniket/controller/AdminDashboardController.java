@@ -3,12 +3,17 @@ package com.aniket.controller;
 import com.aniket.domain.StoreStatus;
 import com.aniket.exception.ResourceNotFoundException;
 import com.aniket.payload.AdminAnalysis.DashboardSummaryDTO;
+import com.aniket.payload.AdminAnalysis.RecentActivityDTO;
 import com.aniket.payload.AdminAnalysis.StoreRegistrationStatDTO;
 import com.aniket.payload.AdminAnalysis.StoreStatusDistributionDTO;
 import com.aniket.payload.dto.StoreDTO;
 import com.aniket.service.AdminDashboardService;
 import com.aniket.service.StoreService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -54,5 +59,17 @@ public class AdminDashboardController {
         return adminDashboardService.getStoreStatusDistribution();
     }
 
+    /**
+     * 🕐 Get recent activities
+     * Returns the latest activity logs with pagination
+     */
+    @GetMapping("/dashboard/recent-activities")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<RecentActivityDTO> getRecentActivities(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return adminDashboardService.getRecentActivities(page, size);
+    }
 
 }

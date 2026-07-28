@@ -2,6 +2,7 @@ package com.aniket.payload.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.aniket.domain.UserRole;
+import com.aniket.payload.dto.StoreDTO;
 import com.aniket.payload.dto.UserDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,5 +17,5 @@ public class AuthResponse {
 	private String message;
 	private String title;
 	private UserDTO user;
-	
+	private StoreDTO store;
 }

@@ -16,8 +16,10 @@ import com.aniket.payload.dto.UserDTO;
 import com.aniket.repository.BranchRepository;
 import com.aniket.repository.StoreRepository;
 import com.aniket.repository.UserRepository;
+import com.aniket.service.ActivityLogService;
+import com.aniket.service.NotificationService;
 import com.aniket.service.StoreService;
-
+import com.aniket.service.SystemSettingService;
 import com.aniket.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -37,17 +39,54 @@ public class StoreServiceImpl implements StoreService {
     private final BranchRepository branchRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-
-
+    private final ActivityLogService activityLogService;
+    private final SystemSettingService systemSettingService;
+    private final NotificationService notificationService;
     @Override
     public StoreDTO createStore(StoreDTO storeDto, User user) {
+        if (storeRepository.findByStoreAdminId(user.getId()) != null) {
+            throw new IllegalArgumentException("User already owns a store");
+        }
 
         System.out.println(storeDto);
 
         Store store = StoreMapper.toEntity(storeDto, user);
 
+        boolean autoApprove = systemSettingService.getBooleanSetting("autoApproveStores", false);
+        if (autoApprove) {
+            store.setStatus(StoreStatus.ACTIVE);
+        }
+        
+        Store savedStoreEntity = storeRepository.save(store);
+        user.setOwnedStore(savedStoreEntity);
+        user.setStore(savedStoreEntity);
+        userRepository.save(user);
 
-        return StoreMapper.toDto(storeRepository.save(store));
+        StoreDTO savedStore = StoreMapper.toDto(savedStoreEntity);
+
+        activityLogService.log(
+                "STORE_REGISTERED",
+                "New store \"" + savedStore.getBrand() + "\" registered",
+                "Store",
+                savedStore.getId(),
+                user.getFullName(),
+                store.getStatus().name()
+        );
+
+        userRepository.findByRole(UserRole.ROLE_ADMIN).forEach(admin -> {
+            notificationService.createNotification(
+                    com.aniket.domain.NotificationType.STORE_REGISTERED,
+                    com.aniket.domain.Priority.INFO,
+                    "New Store Registered",
+                    "Store \"" + savedStore.getBrand() + "\" has registered.",
+                    "Store",
+                    savedStore.getId(),
+                    "/super-admin/stores",
+                    admin.getId()
+            );
+        });
+
+        return savedStore;
     }
 
     @Override
@@ -76,6 +115,9 @@ public class StoreServiceImpl implements StoreService {
     @Override
     public Store getStoreByAdminId() throws UserException {
         User currentUser=userService.getCurrentUser();
+        if (currentUser.getStore() != null) {
+            return currentUser.getStore();
+        }
         return storeRepository.findByStoreAdminId(
                 currentUser.getId()
         );
@@ -119,17 +161,41 @@ public class StoreServiceImpl implements StoreService {
             existing.setContact(contact);
         }
 
-        return StoreMapper.toDto(storeRepository.save(existing));
+        StoreDTO updatedStore = StoreMapper.toDto(storeRepository.save(existing));
+
+        activityLogService.log(
+                "STORE_UPDATED",
+                "Store \"" + updatedStore.getBrand() + "\" was updated",
+                "Store",
+                updatedStore.getId(),
+                currentUser.getFullName(),
+                updatedStore.getStatus() != null ? updatedStore.getStatus().name() : "UPDATED"
+        );
+
+        return updatedStore;
     }
 
     @Override
     public void deleteStore() throws ResourceNotFoundException, UserException {
-        Store store= getStoreByAdminId();
+        User currentUser = userService.getCurrentUser();
+        Store store = getStoreByAdminId();
 
         if (store==null) {
             throw new ResourceNotFoundException("Store not found");
         }
-        storeRepository.deleteById(store.getId());
+
+        String storeName = store.getBrand();
+        Long storeId = store.getId();
+        storeRepository.deleteById(storeId);
+
+        activityLogService.log(
+                "STORE_DELETED",
+                "Store \"" + storeName + "\" was deleted",
+                "Store",
+                storeId,
+                currentUser.getFullName(),
+                "DELETED"
+        );
     }
 
     @Override
@@ -177,6 +243,49 @@ public class StoreServiceImpl implements StoreService {
 
       store.setStatus(action);
         Store updatedStore = storeRepository.save(store);
+
+        String actionLabel;
+        switch (action) {
+            case ACTIVE:
+                actionLabel = "STORE_APPROVED";
+                break;
+            case BLOCKED:
+                actionLabel = "STORE_BLOCKED";
+                break;
+            case PENDING:
+                actionLabel = "STORE_PENDING";
+                break;
+            default:
+                actionLabel = "STORE_MODERATED";
+        }
+
+        activityLogService.log(
+                actionLabel,
+                "Store \"" + updatedStore.getBrand() + "\" " + action.name().toLowerCase(),
+                "Store",
+                updatedStore.getId(),
+                "Super Admin",
+                action.name()
+        );
+
+        com.aniket.domain.NotificationType type = com.aniket.domain.NotificationType.STORE_APPROVED;
+        if (action == StoreStatus.BLOCKED) type = com.aniket.domain.NotificationType.STORE_BLOCKED;
+        else if (action == StoreStatus.PENDING) type = com.aniket.domain.NotificationType.STORE_REJECTED;
+
+        com.aniket.domain.NotificationType finalType = type;
+        userRepository.findByRole(UserRole.ROLE_ADMIN).forEach(admin -> {
+            notificationService.createNotification(
+                    finalType,
+                    com.aniket.domain.Priority.INFO,
+                    "Store Status Updated",
+                    "Store \"" + updatedStore.getBrand() + "\" is now " + action.name(),
+                    "Store",
+                    updatedStore.getId(),
+                    "/super-admin/stores",
+                    admin.getId()
+            );
+        });
+
         return StoreMapper.toDto(updatedStore);
     }
 

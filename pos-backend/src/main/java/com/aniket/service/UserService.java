@@ -17,8 +17,8 @@ public interface UserService {
 	Set<User> getUserByRole(UserRole role) throws UserException;
 	List<User> getUsers() throws UserException;
 	User getCurrentUser() throws UserException;
-
-
+	User updateProfile(User user, String fullName, String phone, String email) throws UserException;
+	void changePassword(User user, String currentPassword, String newPassword) throws UserException;
 
 //	User updateUser(UpdateUserDto updateData, User user);
 //	String sendForgotPasswordOtp(String email) throws UserException, MessagingException;

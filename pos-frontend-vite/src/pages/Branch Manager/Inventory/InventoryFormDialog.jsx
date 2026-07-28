@@ -51,6 +51,7 @@ const InventoryFormDialog = ({
                 id="product"
                 value={selectedProduct?.name || ""}
                 disabled
+                readOnly
                 className="col-span-3"
               />
             ) : (
