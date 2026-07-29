@@ -17,6 +17,7 @@ public class StoreDTO {
     private UserDTO storeAdmin;
     private String storeType;
     private StoreStatus status;
+    private String registrationRejectionReason;
     private String description;
     private StoreContact contact;
     private LocalDateTime createdAt;

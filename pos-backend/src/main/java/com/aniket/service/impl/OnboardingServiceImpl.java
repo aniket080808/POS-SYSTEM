@@ -17,8 +17,10 @@ import com.aniket.payload.response.AuthResponse;
 import com.aniket.repository.StoreRepository;
 import com.aniket.repository.UserRepository;
 import com.aniket.service.ActivityLogService;
+import com.aniket.service.ApprovalRequestService;
 import com.aniket.service.NotificationService;
 import com.aniket.service.OnboardingService;
+import com.aniket.service.StoreSubscriptionService;
 import com.aniket.service.SystemSettingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -43,6 +45,8 @@ public class OnboardingServiceImpl implements OnboardingService {
     private final SystemSettingService systemSettingService;
     private final ActivityLogService activityLogService;
     private final NotificationService notificationService;
+    private final ApprovalRequestService approvalRequestService;
+    private final StoreSubscriptionService storeSubscriptionService;
 
     @Override
     public AuthResponse completeOnboarding(OnboardingRequestDTO dto) throws UserException {
@@ -147,6 +151,13 @@ public class OnboardingServiceImpl implements OnboardingService {
         savedUser.setOwnedStore(savedStore);
         savedUser.setStore(savedStore);
         userRepository.save(savedUser);
+
+        // 5. Initialize StoreSubscription and create registration ApprovalRequest
+        storeSubscriptionService.getOrCreateForStore(savedStore);
+
+        if (!autoApprove) {
+            approvalRequestService.createRegistrationRequest(savedStore, savedUser);
+        }
 
         return savedStore;
     }

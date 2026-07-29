@@ -37,6 +37,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     private final SubscriptionPlanRepository planRepository;
     private final PaymentService paymentService;
+    private final com.aniket.service.ApprovalRequestService approvalRequestService;
+    private final com.aniket.service.StoreSubscriptionService storeSubscriptionService;
 
     @Override
     @Transactional
@@ -56,17 +58,21 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .store(store)
                 .plan(plan)
                 .startDate(LocalDate.now())
-                .endDate(LocalDate.now().plusMonths(1)) // 🔁 use plan billing cycle in future
-                .status(SubscriptionStatus.ACTIVE)
+                .endDate(LocalDate.now().plusMonths(1))
+                .status(SubscriptionStatus.TRIAL)
                 .paymentStatus(PaymentStatus.PENDING)
                 .paymentGateway(gateway)
                 .transactionId(transactionId)
                 .build();
-        Subscription savedSub=subscriptionRepository.save(sub);
-        PaymentInitiateRequest paymentInitiateRequest=PaymentInitiateRequest.builder()
+        Subscription savedSub = subscriptionRepository.save(sub);
+
+        // Create pending subscription ApprovalRequest & set StoreSubscription status PENDING
+        approvalRequestService.createSubscriptionRequest(store, store.getStoreAdmin(), plan, com.aniket.domain.SubscriptionAction.NEW, transactionId);
+
+        PaymentInitiateRequest paymentInitiateRequest = PaymentInitiateRequest.builder()
                 .amount(plan.getPrice())
                 .subscriptionId(savedSub.getId())
-                .description("subscribe "+plan.getName())
+                .description("subscribe " + plan.getName())
                 .storeId(storeId)
                 .gateway(gateway)
                 .build();
@@ -76,6 +82,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
+    @Transactional
     public PaymentInitiateResponse upgradeSubscription(Long storeId,
                                             Long planId, PaymentGateway gateway,
                                             String transactionId) throws PaymentException {
@@ -87,31 +94,31 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                         "Subscription Plan not found"
                 ));
 
-        List<Subscription> activeSub=subscriptionRepository.findByStoreAndStatus(store,
-                SubscriptionStatus.ACTIVE);
-
-        for (Subscription sub : activeSub) {
-            sub.setStatus(SubscriptionStatus.CANCELLED);
-            subscriptionRepository.save(sub);
+        com.aniket.modal.StoreSubscription currentStoreSub = storeSubscriptionService.getOrCreateForStore(store);
+        com.aniket.domain.SubscriptionAction action = com.aniket.domain.SubscriptionAction.UPGRADE;
+        if (currentStoreSub.getCurrentPlan() != null && currentStoreSub.getCurrentPlan().getPrice() > plan.getPrice()) {
+            action = com.aniket.domain.SubscriptionAction.DOWNGRADE;
         }
-
 
         Subscription sub = Subscription.builder()
                 .store(store)
                 .plan(plan)
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(1))
-                .status(SubscriptionStatus.ACTIVE)
-                .paymentStatus(PaymentStatus.SUCCESS)
+                .status(SubscriptionStatus.TRIAL)
+                .paymentStatus(PaymentStatus.PENDING)
                 .paymentGateway(gateway)
                 .transactionId(transactionId)
                 .build();
-        Subscription updatedSubscription= subscriptionRepository.save(sub);
+        Subscription updatedSubscription = subscriptionRepository.save(sub);
 
-        PaymentInitiateRequest paymentInitiateRequest=PaymentInitiateRequest.builder()
+        // Create pending subscription ApprovalRequest & set StoreSubscription status PENDING
+        approvalRequestService.createSubscriptionRequest(store, store.getStoreAdmin(), plan, action, transactionId);
+
+        PaymentInitiateRequest paymentInitiateRequest = PaymentInitiateRequest.builder()
                 .amount(plan.getPrice())
                 .subscriptionId(updatedSubscription.getId())
-                .description("subscribe "+plan.getName())
+                .description("upgrade " + plan.getName())
                 .storeId(storeId)
                 .gateway(gateway)
                 .build();

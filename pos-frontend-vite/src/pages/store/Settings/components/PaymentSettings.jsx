@@ -26,11 +26,6 @@ const PaymentSettings = ({ settings, onChange }) => {
       description: "Allow mobile payment methods"
     },
     {
-      name: "stripeEnabled",
-      title: "Stripe Integration",
-      description: "Enable Stripe payment gateway"
-    },
-    {
       name: "paypalEnabled",
       title: "PayPal Integration",
       description: "Enable PayPal payment gateway"

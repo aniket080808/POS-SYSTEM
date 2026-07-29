@@ -27,7 +27,6 @@ import com.aniket.repository.SubscriptionRepository;
 import com.aniket.service.PaymentService;
 import com.aniket.service.UserService;
 import com.aniket.service.gateway.RazorpayService;
-import com.aniket.service.gateway.StripeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -54,7 +53,6 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final RazorpayService razorpayService;
     private final UserService userService;
-    private final StripeService stripeService;
     private final PaymentEventPublisher paymentEventPublisher;
     private final StoreRepository storeRepository;
     private final SubscriptionRepository subscriptionRepository;
@@ -108,18 +106,12 @@ public class PaymentServiceImpl implements PaymentService {
                     .message("Payment initiated successfully")
                     .build();
 
-            if (request.getGateway() == PaymentGateway.RAZORPAY) {
-                // In a real implementation, you would call Razorpay API to create order
-                String razorpayOrderId = "order_" + UUID.randomUUID().toString().substring(0, 14);
-                response.setRazorpayOrderId(razorpayOrderId);
-                PaymentLinkResponse paymentLinkResponse= razorpayService.createPaymentLink(currentUser,payment);
-                response.setCheckoutUrl(paymentLinkResponse.getPayment_link_url());
-                response.setRazorpayOrderId(paymentLinkResponse.getPayment_link_id());
-            } else if (request.getGateway() == PaymentGateway.STRIPE) {
-                // In a real implementation, you would call Stripe API to create payment intent
-                String checkoutUrl = "https://checkout.stripe.com/pay/" + payment.getTransactionId();
-                response.setCheckoutUrl(checkoutUrl);
-            }
+            // Razorpay payment order initiation
+            String razorpayOrderId = "order_" + UUID.randomUUID().toString().substring(0, 14);
+            response.setRazorpayOrderId(razorpayOrderId);
+            PaymentLinkResponse paymentLinkResponse = razorpayService.createPaymentLink(currentUser, payment);
+            response.setCheckoutUrl(paymentLinkResponse.getPayment_link_url());
+            response.setRazorpayOrderId(paymentLinkResponse.getPayment_link_id());
 
             // Publish payment initiated event
             publishPaymentInitiatedEvent(payment, response.getCheckoutUrl());
@@ -166,18 +158,8 @@ public class PaymentServiceImpl implements PaymentService {
         boolean isValid = razorpayService.isValidPayment(
                 request.getRazorpayPaymentId());
 
-        if (payment.getProvider() == PaymentGateway.RAZORPAY) {
-
-            if (isValid) {
-                payment.setProviderPaymentId(request.getRazorpayPaymentId());
-
-            }
-        } else if (payment.getProvider() == PaymentGateway.STRIPE) {
-            isValid = stripeService.verifyPayment(request.getStripePaymentIntentId());
-
-            if (isValid) {
-                payment.setProviderPaymentId(request.getStripePaymentIntentId());
-            }
+        if (isValid) {
+            payment.setProviderPaymentId(request.getRazorpayPaymentId());
         }
 
         if (isValid) {

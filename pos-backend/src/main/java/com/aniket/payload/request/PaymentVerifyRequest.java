@@ -21,8 +21,5 @@ public class PaymentVerifyRequest {
     private String razorpayOrderId;
     private String razorpaySignature;
 
-    // Stripe specific fields
-    private String stripePaymentIntentId;
-    private String stripePaymentIntentStatus;
 
 }

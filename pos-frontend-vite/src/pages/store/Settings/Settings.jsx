@@ -10,7 +10,12 @@ import {
 
 export default function Settings() {
   const dispatch = useDispatch();
-  const { store} = useSelector((state) => state.store);
+  const { store } = useSelector((state) => state.store);
+  const { statusResponse } = useSelector((state) => state.storeSubscription);
+
+  const regStatus = statusResponse?.registrationStatus || store?.status || 'PENDING';
+  const subStatus = statusResponse?.subscriptionStatus || 'NONE';
+  const isSubscriptionActive = regStatus === 'ACTIVE' && subStatus === 'ACTIVE';
   // Sample store settings data - in a real app, this would come from Redux
   const [storeSettings, setStoreSettings] = useState({
     storeName: "My POS Store",
@@ -49,7 +54,6 @@ export default function Settings() {
     acceptCredit: true,
     acceptDebit: true,
     acceptMobile: true,
-    stripeEnabled: false,
     paypalEnabled: false,
   });
 
@@ -139,6 +143,7 @@ export default function Settings() {
             onNotificationSettingsChange={handleNotificationSettingsChange}
             onSecuritySettingsChange={handleSecuritySettingsChange}
             onPaymentSettingsChange={handlePaymentSettingsChange}
+            isSubscriptionActive={isSubscriptionActive}
           />
         </div>
       </div>

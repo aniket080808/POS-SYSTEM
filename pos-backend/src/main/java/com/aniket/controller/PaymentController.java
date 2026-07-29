@@ -1,7 +1,6 @@
 package com.aniket.controller;
 
 import com.razorpay.RazorpayException;
-import com.stripe.exception.StripeException;
 import com.aniket.domain.PaymentGateway;
 import com.aniket.exception.UserException;
 import com.aniket.modal.PaymentOrder;
@@ -26,7 +25,7 @@ public class PaymentController {
 //    public ResponseEntity<PaymentLinkResponse> createPaymentLink(
 //            @RequestHeader("Authorization") String jwt,
 //            @RequestParam Long planId,
-//            @RequestParam PaymentGateway paymentMethod) throws UserException, RazorpayException, StripeException {
+//            @RequestParam PaymentGateway paymentMethod) throws UserException, RazorpayException {
 //
 //
 //            User user = userService.getUserFromJwtToken(jwt);

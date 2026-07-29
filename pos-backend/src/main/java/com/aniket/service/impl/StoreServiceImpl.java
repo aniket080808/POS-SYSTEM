@@ -17,8 +17,10 @@ import com.aniket.repository.BranchRepository;
 import com.aniket.repository.StoreRepository;
 import com.aniket.repository.UserRepository;
 import com.aniket.service.ActivityLogService;
+import com.aniket.service.ApprovalRequestService;
 import com.aniket.service.NotificationService;
 import com.aniket.service.StoreService;
+import com.aniket.service.StoreSubscriptionService;
 import com.aniket.service.SystemSettingService;
 import com.aniket.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -42,6 +44,8 @@ public class StoreServiceImpl implements StoreService {
     private final ActivityLogService activityLogService;
     private final SystemSettingService systemSettingService;
     private final NotificationService notificationService;
+    private final ApprovalRequestService approvalRequestService;
+    private final StoreSubscriptionService storeSubscriptionService;
     @Override
     public StoreDTO createStore(StoreDTO storeDto, User user) {
         if (storeRepository.findByStoreAdminId(user.getId()) != null) {
@@ -61,6 +65,11 @@ public class StoreServiceImpl implements StoreService {
         user.setOwnedStore(savedStoreEntity);
         user.setStore(savedStoreEntity);
         userRepository.save(user);
+
+        storeSubscriptionService.getOrCreateForStore(savedStoreEntity);
+        if (!autoApprove) {
+            approvalRequestService.createRegistrationRequest(savedStoreEntity, user);
+        }
 
         StoreDTO savedStore = StoreMapper.toDto(savedStoreEntity);
 

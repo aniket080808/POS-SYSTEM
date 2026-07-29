@@ -3,6 +3,7 @@ import { Outlet } from "react-router";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
 import { getStoreByAdmin } from "../../../Redux Toolkit/features/store/storeThunks";
+import { fetchStoreSubscriptionStatus } from "../../../Redux Toolkit/features/storeSubscription/storeSubscriptionThunks";
 import StoreSidebar from "./StoreSidebar";
 import StoreTopbar from "./StoreTopbar";
 
@@ -11,6 +12,7 @@ export default function StoreDashboard({ children }) {
   useEffect(() => {
     if (localStorage.getItem("jwt")) {
       dispatch(getStoreByAdmin(localStorage.getItem("jwt")));
+      dispatch(fetchStoreSubscriptionStatus());
     }
   }, []);
 

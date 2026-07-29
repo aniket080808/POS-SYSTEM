@@ -38,7 +38,7 @@ public class Subscription {
     private SubscriptionStatus status; // TRIAL, ACTIVE, EXPIRED, CANCELLED
 
     @Enumerated(EnumType.STRING)
-    private PaymentGateway paymentGateway; // RAZORPAY, STRIPE, etc.
+    private PaymentGateway paymentGateway; // RAZORPAY
     private String transactionId;
 
     @Column(nullable = false)

@@ -23,6 +23,12 @@ public class SecurityConfig {
 	
 	@Autowired
 	private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+	@Autowired
+	private MaintenanceModeFilter maintenanceModeFilter;
+
+	@Autowired
+	private SubscriptionGuardFilter subscriptionGuardFilter;
 	
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -33,6 +39,8 @@ public class SecurityConfig {
 						.requestMatchers("/api/super-admin/**").hasRole("ADMIN")
 						.anyRequest().permitAll())
 			.addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class)
+			.addFilterAfter(maintenanceModeFilter, JwtValidator.class)
+			.addFilterAfter(subscriptionGuardFilter, MaintenanceModeFilter.class)
 			.csrf(AbstractHttpConfigurer::disable)
 			.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 			.exceptionHandling(

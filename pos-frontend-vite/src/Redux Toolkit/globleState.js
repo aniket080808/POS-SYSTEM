@@ -23,6 +23,8 @@ import subscriptionReducer from "./features/subscription/subscriptionSlice.js";
 import paymentReducer from "./features/payment/paymentSlice.js";
 import notificationReducer from "./features/notification/notificationSlice.js";
 import settingsReducer from "./features/settings/settingsSlice.js";
+import storeSubscriptionReducer from "./features/storeSubscription/storeSubscriptionSlice.js";
+import approvalRequestReducer from "./features/approvalRequest/approvalRequestSlice.js";
 
 const globleState = configureStore({
   reducer: {
@@ -51,6 +53,8 @@ const globleState = configureStore({
     payment: paymentReducer,
     notification: notificationReducer,
     settings: settingsReducer,
+    storeSubscription: storeSubscriptionReducer,
+    approvalRequest: approvalRequestReducer,
   },
 });
 

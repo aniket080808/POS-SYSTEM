@@ -44,6 +44,8 @@ public class Store {
 
     private StoreStatus status;
 
+    private String registrationRejectionReason;
+
     // Contact Information
     @Embedded
     private StoreContact contact=new StoreContact();

@@ -252,7 +252,7 @@ SubscriptionStatus: TRIAL, ACTIVE, EXPIRED, CANCELLED
 
 BillingCycle: MONTHLY, YEARLY
 
-PaymentMethod: RAZORPAY, STRIPE
+PaymentMethod: RAZORPAY
 
 PaymentOrderStatus: PENDING, COMPLETED, FAILED
 ```
@@ -442,7 +442,7 @@ public class OrderServiceImpl implements OrderService {
 **Financial:**
 - `RefundService` - Refund creation, retrieval by various filters
 - `ShiftReportService` - Shift start/end, sales calculation
-- `PaymentService` - Payment gateway integration (Razorpay/Stripe)
+- `PaymentService` - Payment gateway integration (Razorpay)
 - `SubscriptionService` - Subscription CRUD, upgrade/cancel
 
 **Analytics:**
@@ -774,11 +774,7 @@ public class OrderServiceImpl {
 
 **7. Strategy Pattern (Payment Gateway)**
 ```java
-if (paymentMethod == PaymentMethod.RAZORPAY) {
-    // Razorpay implementation
-} else if (paymentMethod == PaymentMethod.STRIPE) {
-    // Stripe implementation
-}
+// Razorpay payment integration
 ```
 
 **8. Builder Pattern**
@@ -898,16 +894,6 @@ options.put("currency", "INR");
 com.razorpay.Order razorpayOrder = razorpay.orders.create(options);
 ```
 
-**Stripe SDK:**
-```java
-Stripe.apiKey = stripeApiKey;
-
-SessionCreateParams params = SessionCreateParams.builder()
-    .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
-    .addLineItem(...)
-    .setMode(SessionCreateParams.Mode.PAYMENT)
-    .setSuccessUrl(successUrl)
-    .setCancelUrl(cancelUrl)
     .build();
 
 Session session = Session.create(params);
@@ -993,9 +979,6 @@ razorpay:
     id: ${RAZORPAY_KEY_ID}
     secret: ${RAZORPAY_KEY_SECRET}
 
-stripe:
-  api:
-    key: ${STRIPE_API_KEY}
 ```
 
 ### 12.2 CORS Configuration
@@ -1408,7 +1391,7 @@ MAIL_APP_PASSWORD=app-specific-password
 # Payment Gateways
 RAZORPAY_KEY_ID=rzp_test_xxxx
 RAZORPAY_KEY_SECRET=secret_xxxx
-STRIPE_API_KEY=sk_test_xxxx
+
 ```
 
 ---
@@ -1549,7 +1532,7 @@ public class AuditLog {
 | ORM | Hibernate JPA |
 | Security | Spring Security + JWT |
 | Build Tool | Maven |
-| Payment | Razorpay, Stripe |
+| Payment | Razorpay |
 | Email | Spring Mail (Gmail SMTP) |
 | Utilities | Lombok |
 
@@ -1598,11 +1581,7 @@ public class AuditLog {
         <artifactId>razorpay-java</artifactId>
         <version>1.4.8</version>
     </dependency>
-    <dependency>
-        <groupId>com.stripe</groupId>
-        <artifactId>stripe-java</artifactId>
-        <version>28.3.1</version>
-    </dependency>
+
 
     <!-- Utilities -->
     <dependency>

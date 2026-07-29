@@ -22,6 +22,7 @@ public class StoreMapper {
                     .createdAt(store.getCreatedAt())
                     .updatedAt(store.getUpdatedAt())
                     .status(store.getStatus())
+                    .registrationRejectionReason(store.getRegistrationRejectionReason())
                     .build();
         }
 
@@ -35,6 +36,7 @@ public class StoreMapper {
                     .storeType(dto.getStoreType())
                     .description(dto.getDescription())
                     .contact(dto.getContact())
+                    .registrationRejectionReason(dto.getRegistrationRejectionReason())
                     .build();
         }
     }

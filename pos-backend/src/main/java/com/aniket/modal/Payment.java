@@ -33,7 +33,7 @@ public class Payment {
     // Amount paid
     private Double amount;
 
-    // Payment provider (Stripe, Razorpay, PayPal, etc.)
+    // Payment provider (Razorpay, etc.)
     private PaymentGateway provider;
 
     private String providerPaymentId;
