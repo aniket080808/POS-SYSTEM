@@ -1,0 +1,14 @@
+package com.aniket.domain;
+
+public enum NotificationType {
+    STORE_REGISTERED,
+    STORE_APPROVED,
+    STORE_REJECTED,
+    STORE_BLOCKED,
+    STORE_UNBLOCKED,
+    STORE_DELETED,
+    SUBSCRIPTION_APPROVED,
+    SUBSCRIPTION_REJECTED,
+    PROFILE_UPDATED,
+    SYSTEM_ALERT
+}

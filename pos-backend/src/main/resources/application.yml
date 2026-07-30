@@ -1,0 +1,83 @@
+spring:
+  application:
+    name: pos-system
+
+  jackson:
+    time-zone: Asia/Kolkata
+    locale: en_IN
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pos}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: ${JPA_SHOW_SQL:true}
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  devtools:
+    livereload:
+      enabled: true
+
+server:
+  port: ${SERVER_PORT:5000}
+
+razorpay:
+  api:
+    key: ${RAZORPAY_KEY_ID}
+    secret: ${RAZORPAY_KEY_SECRET}
+
+gemini:
+  api:
+    key: ${GEMINI_API_KEY}
+
+app:
+  frontend:
+    reset-url: ${FRONTEND_RESET_URL}
+  admin:
+    email: ${ADMIN_EMAIL_ANIKET:aniketmeshram445@gmail.com}
+    password: ${ADMIN_PASSWORD_ANIKET:Admin123@}
+    full-name: ${ADMIN_FULL_NAME_ANIKET:Aniket Meshram}
+  alerts:
+    # Inactive Cashiers: flag cashiers who haven't logged in for N days (or never logged in)
+    inactive-cashier-days: ${ALERTS_INACTIVE_CASHIER_DAYS:7}
+    # Low Stock: flag products with branch_inventory.stock below this threshold
+    low-stock-threshold: ${ALERTS_LOW_STOCK_THRESHOLD:10}
+    # Refund Spike - Rule 1: flag individual refunds with amount > this value
+    refund-high-value-threshold: ${ALERTS_REFUND_HIGH_VALUE:5000}
+    # Refund Spike - Rule 2: flag cashiers with >= this many refunds in a single day
+    refund-frequency-threshold: ${ALERTS_REFUND_FREQUENCY:3}
+    # Refund Spike - Rule 3: flag days where total refunds > this % of rolling average
+    refund-spike-percentage: ${ALERTS_REFUND_SPIKE_PCT:200}
+    # Refund Spike - Rule 3: number of days to use for rolling average baseline
+    refund-baseline-days: ${ALERTS_REFUND_BASELINE_DAYS:7}
+    # Refund Spike - Rule 3: minimum days of refund history needed to apply rule 3
+    refund-min-baseline-days: ${ALERTS_REFUND_MIN_BASELINE:2}
+
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: ${LOGGING_LEVEL_HIBERNATE_SQL:DEBUG}
+        type:
+          descriptor:
+            sql: TRACE

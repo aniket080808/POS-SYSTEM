@@ -1,0 +1,43 @@
+package com.aniket.payload.response;
+
+import com.aniket.domain.PaymentGateway;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Response DTO for payment initiation
+ * Contains gateway-specific data needed by frontend to complete payment
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class PaymentInitiateResponse {
+
+    private Long paymentId;
+
+    private PaymentGateway gateway;
+
+    private String transactionId;
+
+    // Razorpay specific fields
+    private String razorpayOrderId;
+    
+    // Razorpay key ID for frontend checkout
+    private String razorpayKeyId;
+
+    private Double amount;
+
+    private String currency;
+
+    private String description;
+
+    // Frontend should redirect user to this URL for payment
+    private String checkoutUrl;
+
+    private String message;
+
+    private Boolean success;
+}
