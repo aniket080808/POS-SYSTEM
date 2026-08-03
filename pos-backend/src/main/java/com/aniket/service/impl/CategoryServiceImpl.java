@@ -2,6 +2,7 @@
 package com.aniket.service.impl;
 
 import com.aniket.domain.UserRole;
+import com.aniket.exception.AccessDeniedException;
 import com.aniket.exception.UserException;
 import com.aniket.mapper.CategoryMapper;
 import com.aniket.modal.*;
@@ -42,13 +43,6 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public List<CategoryDTO> getCategoriesByStore(Long storeId) {
-        return categoryRepository.findByStoreId(storeId).stream()
-                .map(CategoryMapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public CategoryDTO updateCategory(Long id, CategoryDTO dto) throws UserException {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
@@ -58,6 +52,22 @@ public class CategoryServiceImpl implements CategoryService {
 
         category.setName(dto.getName());
         return CategoryMapper.toDto(categoryRepository.save(category));
+    }
+
+    @Override
+    public List<CategoryDTO> getCategoriesByStore(Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("Store not found"));
+        User user;
+        try {
+            user = userService.getCurrentUser();
+        } catch (UserException e) {
+            throw new AccessDeniedException("You are not authorized to view this store's categories.", e);
+        }
+        checkAuthority(user, store);
+        return categoryRepository.findByStoreId(storeId).stream()
+                .map(CategoryMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -74,11 +84,15 @@ public class CategoryServiceImpl implements CategoryService {
     private void checkAuthority(User user, Store store) {
         boolean isAdmin = user.getRole().equals(UserRole.ROLE_STORE_ADMIN);
         boolean isManager = user.getRole().equals(UserRole.ROLE_STORE_MANAGER);
-        boolean isSameStore = user.equals(store.getStoreAdmin()); // or check based on employee-store relation
+        boolean isSameStore = user.getStore() != null && user.getStore().getId().equals(store.getId());
 
-        if (!(isAdmin && isSameStore) && !isManager) {
-            throw new SecurityException("You do not have permission to manage this category.");
+        if (isAdmin && isSameStore) {
+            return;
         }
+        if (isManager && isSameStore) {
+            return;
+        }
+        throw new AccessDeniedException("You do not have permission to manage this category.");
     }
 }
 

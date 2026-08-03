@@ -16,6 +16,7 @@ import org.springframework.web.context.request.WebRequest;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -55,7 +56,7 @@ public class GlobalExceptionHandler {
                 req.getDescription(false),
                 LocalDateTime.now()
         );
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -108,6 +109,25 @@ public class GlobalExceptionHandler {
         response.put("message", sanitizedMessage);
         response.put("timestamp", LocalDateTime.now());
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(PlanLimitExceededException.class)
+    public ResponseEntity<Map<String, Object>> handlePlanLimitExceeded(
+            PlanLimitExceededException ex, WebRequest req) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(FeatureNotEnabledException.class)
+    public ResponseEntity<Map<String, Object>> handleFeatureNotEnabled(
+            FeatureNotEnabledException ex, WebRequest req) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "ADVANCED_REPORTS_NOT_AVAILABLE");
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(Exception.class)

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +39,26 @@ public class OrderServiceImpl implements OrderService {
 
         if(branch==null){
             throw new UserException("cashier's branch is null");
+        }
+
+        // ✅ Validate payment method against store's acceptedPaymentMethods
+        Store store = branch.getStore();
+        if (store != null && dto.getPaymentType() != null) {
+            String acceptedStr = store.getAcceptedPaymentMethods();
+            // If null/empty, treat as all methods accepted (matches frontend fallback)
+            if (acceptedStr != null && !acceptedStr.trim().isEmpty()) {
+                List<String> acceptedMethods = Arrays.stream(acceptedStr.split(","))
+                        .map(String::trim)
+                        .map(String::toUpperCase)
+                        .collect(Collectors.toList());
+                String requestedMethod = dto.getPaymentType().name().toUpperCase();
+                if (!acceptedMethods.contains(requestedMethod)) {
+                    throw new UserException(
+                        "Payment method '" + dto.getPaymentType() + "' is not accepted by this store. " +
+                        "Accepted methods: " + String.join(", ", acceptedMethods)
+                    );
+                }
+            }
         }
 
         Order order = Order.builder()

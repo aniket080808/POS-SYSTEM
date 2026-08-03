@@ -4,6 +4,7 @@ package com.aniket.service.impl;
 import com.aniket.domain.PaymentGateway;
 import com.aniket.domain.PaymentStatus;
 import com.aniket.domain.SubscriptionStatus;
+import com.aniket.exception.AccessDeniedException;
 import com.aniket.exception.PaymentException;
 import com.aniket.mapper.SubscriptionMapper;
 import com.aniket.modal.Payment;
@@ -18,6 +19,7 @@ import com.aniket.repository.SubscriptionPlanRepository;
 import com.aniket.repository.SubscriptionRepository;
 import com.aniket.service.PaymentService;
 import com.aniket.service.SubscriptionService;
+import com.aniket.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final StoreRepository storeRepository;
+    private final UserService userService;
 
     private final SubscriptionPlanRepository planRepository;
     private final PaymentService paymentService;
@@ -46,8 +49,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                                       Long planId,
                                       PaymentGateway gateway,
                                       String transactionId) throws PaymentException {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new EntityNotFoundException("Store not found"));
+        Store store = resolveAndVerifyStore(storeId);
 
         SubscriptionPlan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -86,8 +88,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public PaymentInitiateResponse upgradeSubscription(Long storeId,
                                             Long planId, PaymentGateway gateway,
                                             String transactionId) throws PaymentException {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new EntityNotFoundException("Store not found"));
+        Store store = resolveAndVerifyStore(storeId);
 
         SubscriptionPlan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -124,6 +125,32 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .build();
         PaymentInitiateResponse payment = paymentService.initiatePayment(paymentInitiateRequest);
         return payment;
+    }
+
+    private Store resolveAndVerifyStore(Long requestedStoreId) throws PaymentException {
+        try {
+            com.aniket.modal.User currentUser = userService.getCurrentUser();
+
+            // Super Admin bypass — allow access to any store
+            if (currentUser.getRole() == com.aniket.domain.UserRole.ROLE_ADMIN) {
+                if (requestedStoreId != null) {
+                    return storeRepository.findById(requestedStoreId)
+                            .orElseThrow(() -> new EntityNotFoundException("Store not found with ID: " + requestedStoreId));
+                }
+                return null;
+            }
+
+            Store userStore = currentUser.getStore();
+            if (userStore == null) {
+                throw new AccessDeniedException("No store is linked to this account.");
+            }
+            if (requestedStoreId != null && !requestedStoreId.equals(userStore.getId())) {
+                throw new AccessDeniedException("You are not authorized to manage this store's subscription.");
+            }
+            return userStore;
+        } catch (com.aniket.exception.UserException e) {
+            throw new PaymentException("Failed to resolve authenticated user's store: " + e.getMessage());
+        }
     }
 
     @Override
@@ -166,13 +193,15 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public List<Subscription> getSubscriptionsByStore(
             Long storeId,
             SubscriptionStatus status) {
-        Store store = storeRepository.findById(storeId).orElseThrow(
-                () -> new EntityNotFoundException("Store not found")
-        );
-        if (status != null) {
-            return subscriptionRepository.findByStoreAndStatus(store, status);
+        try {
+            Store store = resolveAndVerifyStore(storeId);
+            if (status != null) {
+                return subscriptionRepository.findByStoreAndStatus(store, status);
+            }
+            return subscriptionRepository.findByStore(store);
+        } catch (PaymentException e) {
+            throw new RuntimeException(e);
         }
-        return subscriptionRepository.findByStore(store);
     }
 
     @Override

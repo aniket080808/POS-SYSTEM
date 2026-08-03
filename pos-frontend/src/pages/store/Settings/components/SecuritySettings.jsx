@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Save, Loader2, Clock, AlertTriangle, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const SecuritySettingsForm = ({ settings, onChange, onSave, isSubmitting, isSubscriptionActive }) => {
   const [errors, setErrors] = useState({});
@@ -62,33 +63,47 @@ const SecuritySettingsForm = ({ settings, onChange, onSave, isSubmitting, isSubs
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Two-Factor Authentication - Coming Soon */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-medium">Two-Factor Authentication</h4>
-              <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
-                Coming Soon
-              </Badge>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center justify-between opacity-60">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium">Two-Factor Authentication</h4>
+                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                    Coming Soon
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
+              </div>
+              <Switch checked={false} disabled={true} />
             </div>
-            <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
-          </div>
-          <Switch checked={false} disabled={true} />
-        </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="start" className="max-w-xs">
+            <p>Two-Factor Authentication is not yet available. This feature is coming soon and will be enabled in a future release.</p>
+          </TooltipContent>
+        </Tooltip>
         <Separator />
 
         {/* IP Restriction - Coming Soon */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-medium">IP Restriction</h4>
-              <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
-                Coming Soon
-              </Badge>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center justify-between opacity-60">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium">IP Restriction</h4>
+                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                    Coming Soon
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">Limit access to specific IP addresses</p>
+              </div>
+              <Switch checked={false} disabled={true} />
             </div>
-            <p className="text-sm text-muted-foreground">Limit access to specific IP addresses</p>
-          </div>
-          <Switch checked={false} disabled={true} />
-        </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="start" className="max-w-xs">
+            <p>IP Restriction is not yet available. This feature is coming soon and will be enabled in a future release.</p>
+          </TooltipContent>
+        </Tooltip>
         <Separator />
 
         {/* Password Expiry */}

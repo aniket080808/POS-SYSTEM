@@ -116,7 +116,7 @@ const Onboarding = () => {
   useEffect(() => {
     if (isCompleted) {
       alert('Onboarding completed successfully!');
-      // TODO: Redirect to dashboard or login
+      navigate('/store');
     }
   }, [isCompleted]);
 

@@ -61,7 +61,11 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
         settings.setTwoFactorAuth(dto.isTwoFactorAuth());
         settings.setIpRestriction(dto.isIpRestriction());
         settings.setPasswordExpiry(dto.getPasswordExpiry());
-        settings.setSessionTimeout(dto.getSessionTimeout());
+        int timeout = dto.getSessionTimeout();
+        if (timeout < 10) {
+            timeout = 10; // Enforce minimum to avoid throttle conflicts
+        }
+        settings.setSessionTimeout(timeout);
 
         StoreSettings saved = storeSettingsRepository.save(settings);
         return toDto(saved);

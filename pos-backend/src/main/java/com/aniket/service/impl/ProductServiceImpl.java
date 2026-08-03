@@ -2,6 +2,7 @@ package com.aniket.service.impl;
 
 import com.aniket.domain.UserRole;
 import com.aniket.exception.AccessDeniedException;
+import com.aniket.exception.UserException;
 import com.aniket.mapper.BranchInventoryMapper;
 import com.aniket.mapper.ProductMapper;
 import com.aniket.modal.BranchInventory;
@@ -15,6 +16,9 @@ import com.aniket.repository.CategoryRepository;
 import com.aniket.repository.ProductRepository;
 import com.aniket.repository.StoreRepository;
 import com.aniket.service.ProductService;
+import com.aniket.service.StoreSubscriptionService;
+import com.aniket.service.UserService;
+import com.aniket.exception.PlanLimitExceededException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,12 +38,16 @@ public class ProductServiceImpl implements ProductService {
     private final StoreRepository storeRepository;
     private final CategoryRepository categoryRepository;
     private final BranchInventoryRepository branchInventoryRepository;
+    private final StoreSubscriptionService storeSubscriptionService;
+    private final UserService userService;
 
     @Override
     @Transactional
     public ProductDTO createProduct(ProductDTO dto, User user) throws AccessDeniedException {
         Store store = storeRepository.findById(dto.getStoreId())
                 .orElseThrow(() -> new EntityNotFoundException("Store not found"));
+
+        enforceProductLimit(store);
 
         checkAuthority(store, user);
 
@@ -70,16 +78,91 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional
+    public List<ProductDTO> bulkCreateProducts(List<ProductDTO> dtos, User user) throws AccessDeniedException {
+        if (dtos == null || dtos.isEmpty()) {
+            throw new IllegalArgumentException("Product list cannot be empty");
+        }
+
+        // Resolve the store strictly from the authenticated user — never trust storeId from the request body.
+        Store store = user.getStore() != null
+                ? user.getStore()
+                : storeRepository.findByStoreAdminId(user.getId());
+        if (store == null) {
+            throw new AccessDeniedException("No store is linked to this account.");
+        }
+
+        // Validate that EVERY DTO in the batch belongs to the resolved store.
+        // Reject the entire batch if any mismatch (IDOR protection).
+        for (ProductDTO dto : dtos) {
+            if (dto.getStoreId() != null && !dto.getStoreId().equals(store.getId())) {
+                throw new AccessDeniedException(
+                    "Product with SKU '" + dto.getSku() + "' belongs to a different store. " +
+                    "All products in a bulk import must belong to your store."
+                );
+            }
+        }
+
+        // Atomic pre-check: current count + batch size must not exceed the plan's maxProducts.
+        // Runs inside the same @Transactional boundary as the inserts, so no other request
+        // can slip in between the count-check and the row creations.
+        var storeSub = storeSubscriptionService.getOrCreateForStore(store);
+        var plan = storeSub.getCurrentPlan();
+        if (plan != null && plan.getMaxProducts() != null && plan.getMaxProducts() > 0) {
+            int currentCount = (int) branchInventoryRepository.countByStoreId(store.getId());
+            if (currentCount + dtos.size() > plan.getMaxProducts()) {
+                throw new PlanLimitExceededException(
+                    "This import would exceed your plan's limit of " + plan.getMaxProducts() +
+                    " products (you currently have " + currentCount + ", importing " + dtos.size() +
+                    " more). Please upgrade your plan or reduce the file size."
+                );
+            }
+        }
+
+        // Create each product. createProduct() keeps enforceProductLimit() as a
+        // defense-in-depth backstop, but the atomic pre-check above should catch
+        // over-limit imports before any row is processed.
+        List<ProductDTO> created = new java.util.ArrayList<>();
+        for (ProductDTO dto : dtos) {
+            // Force the storeId to the resolved store (ignore any client-supplied value)
+            dto.setStoreId(store.getId());
+            created.add(createProduct(dto, user));
+        }
+        return created;
+    }
+
+    private void enforceProductLimit(Store store) throws PlanLimitExceededException {
+        if (store == null) return;
+        var storeSub = storeSubscriptionService.getOrCreateForStore(store);
+        var plan = storeSub.getCurrentPlan();
+        if (plan == null || plan.getMaxProducts() == null || plan.getMaxProducts() <= 0) return;
+
+        int current = (int) branchInventoryRepository.countByStoreId(store.getId());
+        if (current >= plan.getMaxProducts()) {
+            throw new PlanLimitExceededException(
+                "Your plan allows a maximum of " + plan.getMaxProducts() + " products.");
+        }
+    }
+
+    @Override
     public ProductDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-        
+
         BranchInventory inventory = branchInventoryRepository
                 .findByProductId(id)
                 .stream()
                 .findFirst()
-                .orElse(null);
-        
+                .orElseThrow(() -> new EntityNotFoundException("Product inventory not found"));
+
+        User currentUser;
+        try {
+            currentUser = userService.getCurrentUser();
+        } catch (UserException e) {
+            throw new AccessDeniedException("You are not authorized to view this product.", e);
+        }
+        checkAuthority(inventory.getStore(), currentUser);
+
         return ProductMapper.toDto(product, inventory);
     }
 

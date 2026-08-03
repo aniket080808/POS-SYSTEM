@@ -48,32 +48,36 @@ const DashboardStats = () => {
   };
 
   const stats = [
-    { 
-      title: "Total Sales", 
-      value: formatCurrency(storeOverview?.totalSales || 0), 
-      icon: <DollarSign className="w-8 h-8 text-emerald-500" />, 
-      change: formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales),
+    {
+      title: "Total Sales",
+      value: formatCurrency(storeOverview?.totalSales || 0),
+      icon: <DollarSign className="w-8 h-8 text-emerald-500" />,
+      subText: formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales) + " from last week",
+      subTextClass: formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales).startsWith('+') ? 'text-emerald-500' : 'text-red-500',
       loading: loading
     },
-    { 
-      title: "Total Branches", 
-      value: storeOverview?.totalBranches || 0, 
-      icon: <Store className="w-8 h-8 text-emerald-500" />, 
-      change: formatChange(storeOverview?.totalBranches, storeOverview?.previousPeriodBranches),
+    {
+      title: "Total Branches",
+      value: storeOverview?.totalBranches || 0,
+      icon: <Store className="w-8 h-8 text-emerald-500" />,
+      subText: "All-time total",
+      subTextClass: "text-gray-500",
       loading: loading
     },
-    { 
-      title: "Total Products", 
-      value: storeOverview?.totalProducts || 0, 
-      icon: <ShoppingCart className="w-8 h-8 text-emerald-500" />, 
-      change: formatChange(storeOverview?.totalProducts, storeOverview?.previousPeriodProducts),
+    {
+      title: "Total Products",
+      value: storeOverview?.totalProducts || 0,
+      icon: <ShoppingCart className="w-8 h-8 text-emerald-500" />,
+      subText: "All-time total",
+      subTextClass: "text-gray-500",
       loading: loading
     },
-    { 
-      title: "Total Employees", 
-      value: storeOverview?.totalEmployees || 0, 
-      icon: <Users className="w-8 h-8 text-emerald-500" />, 
-      change: formatChange(storeOverview?.totalEmployees, storeOverview?.previousPeriodEmployees),
+    {
+      title: "Total Employees",
+      value: storeOverview?.totalEmployees || 0,
+      icon: <Users className="w-8 h-8 text-emerald-500" />,
+      subText: "All-time total",
+      subTextClass: "text-gray-500",
       loading: loading
     },
   ];
@@ -93,13 +97,11 @@ const DashboardStats = () => {
                     stat.value
                   )}
                 </h3>
-                <div className={`text-xs font-medium mt-1 ${
-                  stat.change.startsWith('+') ? 'text-emerald-500' : 'text-red-500'
-                }`}>
+                <div className={`text-xs font-medium mt-1 ${stat.subTextClass}`}>
                   {stat.loading ? (
                     <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
-                    `${stat.change} from last month`
+                    stat.subText
                   )}
                 </div>
               </div>

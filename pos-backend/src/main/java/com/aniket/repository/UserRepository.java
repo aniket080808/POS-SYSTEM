@@ -34,10 +34,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 //	analysis
 @Query("""
         SELECT COUNT(u)
-        FROM User u
-        WHERE u.id IN (
-            SELECT s.storeAdmin.id FROM Store s WHERE s.storeAdmin.id = :storeAdminId
-        )
+        FROM User u LEFT JOIN u.branch b
+        WHERE (u.store.storeAdmin.id = :storeAdminId OR b.store.storeAdmin.id = :storeAdminId)
         AND u.role IN (:roles)
     """)
 int countByStoreAdminIdAndRoles(@Param("storeAdminId") Long storeAdminId,
@@ -67,6 +65,18 @@ int countByStoreAdminIdAndRoles(@Param("storeAdminId") Long storeAdminId,
     """)
     int countActiveCashiersByStoreAdmin(@Param("storeAdminId") Long storeAdminId,
                                         @Param("startOfToday") LocalDateTime startOfToday);
+
+    @Query("""
+        SELECT COUNT(u)
+        FROM User u
+        WHERE u.lastLogin BETWEEN :start AND :end
+        AND u.branch.store.storeAdmin.id = :storeAdminId
+        AND u.role = com.aniket.domain.UserRole.ROLE_BRANCH_CASHIER
+    """)
+    int countActiveCashiersBetweenByStoreAdmin(@Param("storeAdminId") Long storeAdminId,
+                                               @Param("start") LocalDateTime start,
+                                               @Param("end") LocalDateTime end);
+
 
 
 

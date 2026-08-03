@@ -1,6 +1,7 @@
 package com.aniket.service;
 
 import com.aniket.payload.StoreAnalysis.*;
+import com.aniket.payload.dto.StoreUsageDTO;
 
 import java.util.List;
 
@@ -45,6 +46,9 @@ import java.util.List;
         // ⚠️ 7. Alerts & Health Monitoring: Important notifications
         // ⚠️ Alerts for low stock, no sales, refund spikes, and inactive employees
         StoreAlertDTO getStoreAlerts(Long storeAdminId);
+
+        // 🛡️ Super Admin: Get store plan usage for a specific store by storeId
+        StoreUsageDTO getStoreUsageForAdmin(Long storeId);
     }
 
 

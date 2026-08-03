@@ -117,6 +117,45 @@ export const getAllStores = createAsyncThunk(
   }
 );
 
+// 🔹 Super Admin: Search stores with pagination + status + search term
+export const searchStores = createAsyncThunk(
+  "store/search",
+  async ({ status, search, page = 0, size = 10 }, { rejectWithValue }) => {
+    try {
+      console.log('🔄 Searching stores...', { status, search, page, size });
+      
+      const headers = getAuthHeaders();
+      const params = {};
+      if (status) params.status = status;
+      if (search) params.search = search;
+      params.page = page;
+      params.size = size;
+      
+      const res = await api.get("/api/stores/search", { headers, params });
+      
+      console.log('✅ Stores search completed:', {
+        totalElements: res.data.totalElements,
+        totalPages: res.data.totalPages,
+        currentPage: res.data.number,
+        content: res.data.content
+      });
+      
+      return res.data;
+    } catch (err) {
+      console.error('❌ Failed to search stores:', {
+        error: err.response?.data || err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        params: { status, search, page, size }
+      });
+      
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to search stores"
+      );
+    }
+  }
+);
+
 // 🔹 Update store
 export const updateStore = createAsyncThunk(
   "store/update",
@@ -137,6 +176,39 @@ export const updateStore = createAsyncThunk(
       return res.data;
     } catch (err) {
       console.error('❌ Failed to update store:', {
+        storeId: id,
+        error: err.response?.data || err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        requestData: storeData
+      });
+      
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to update store"
+      );
+    }
+  }
+);
+
+// 🔹 Super Admin: Update any store by ID (resolves store by path param, not owner JWT)
+export const updateStoreAsSuperAdmin = createAsyncThunk(
+  "store/updateAsSuperAdmin",
+  async ({ id, storeData }, { rejectWithValue }) => {
+    try {
+      console.log('🔄 Super admin updating store...', { storeId: id, storeData });
+      
+      const headers = getAuthHeaders();
+      const res = await api.put(`/api/stores/super-admin/${id}`, storeData, { headers });
+      
+      console.log('✅ Store updated by super admin successfully:', {
+        storeId: res.data.id,
+        brand: res.data.brand,
+        response: res.data
+      });
+      
+      return res.data;
+    } catch (err) {
+      console.error('❌ Failed to update store as super admin:', {
         storeId: id,
         error: err.response?.data || err.message,
         status: err.response?.status,

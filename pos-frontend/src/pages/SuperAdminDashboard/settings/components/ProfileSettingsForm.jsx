@@ -45,9 +45,8 @@ const ProfileSettingsForm = ({
             id="email"
             label="Email Address"
             value={profileData.email}
-            // onChange={(e) => onFieldChange("email", e.target.value)}
+            readOnly
             disabled={false}
-            
           />
           <ProfileInput
             id="phone"

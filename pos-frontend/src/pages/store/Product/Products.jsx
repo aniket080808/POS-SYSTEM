@@ -11,6 +11,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { getProductsByStore } from "@/Redux Toolkit/features/product/productThunks";
+import { getStoreOverview } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
 import ProductTable from "./ProductTable";
 import ProductForm from "./ProductForm";
@@ -24,6 +26,9 @@ export default function Products() {
     (state) => state.product
   );
   const { store } = useSelector((state) => state.store);
+  const { storeOverview } = useSelector((state) => state.storeAnalytics);
+  const { statusResponse } = useSelector((state) => state.storeSubscription);
+  const { userProfile } = useSelector((state) => state.user);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -40,6 +45,17 @@ export default function Products() {
       fetchProducts();
     }
   }, [dispatch, store]);
+
+  // Fetch store overview for usage-vs-limit badge if not already loaded
+  useEffect(() => {
+    if (userProfile?.id && !storeOverview) {
+      dispatch(getStoreOverview(userProfile.id));
+    }
+  }, [dispatch, userProfile, storeOverview]);
+
+  const maxProducts = statusResponse?.currentPlan?.maxProducts;
+  const totalProducts = storeOverview?.totalProducts;
+  const showProductLimit = storeOverview && maxProducts != null && maxProducts > 0;
 
   // Update displayed products when products or search results change
   useEffect(() => {
@@ -104,6 +120,11 @@ export default function Products() {
           Product Management
         </h1>
         <div className="flex gap-2">
+          {showProductLimit && (
+            <Badge variant="outline" className="text-xs">
+              {totalProducts}/{maxProducts} products
+            </Badge>
+          )}
           <Button
             variant="outline"
             onClick={() => setIsImportDialogOpen(true)}

@@ -6,6 +6,8 @@ import { CheckCircle, Store, Users, ShoppingCart, Info, Star, AlertCircle, Clock
 import { getAllSubscriptionPlans } from '../../../Redux Toolkit/features/subscriptionPlan/subscriptionPlanThunks';
 import { subscribeToPlan, upgradeSubscription } from '../../../Redux Toolkit/features/subscription/subscriptionThunks';
 import { fetchStoreSubscriptionStatus, resubmitRegistration, resubmitSubscriptionRequest } from '../../../Redux Toolkit/features/storeSubscription/storeSubscriptionThunks';
+import { getStoreOverview } from '@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks';
+import { Progress } from '@/components/ui/progress';
 
 const Upgrade = () => {
   const dispatch = useDispatch();
@@ -13,6 +15,8 @@ const Upgrade = () => {
   const { plans, loading: plansLoading, error: plansError } = useSelector((state) => state.subscriptionPlan);
   const { statusResponse, loading: subLoading, error: subError } = useSelector((state) => state.storeSubscription);
   const { store } = useSelector((state) => state.store);
+  const { userProfile } = useSelector((state) => state.user);
+  const { storeOverview } = useSelector((state) => state.storeAnalytics);
 
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
@@ -22,6 +26,9 @@ const Upgrade = () => {
   useEffect(() => {
     dispatch(getAllSubscriptionPlans());
     dispatch(fetchStoreSubscriptionStatus());
+    if (userProfile?.id) {
+      dispatch(getStoreOverview(userProfile.id));
+    }
 
     // Payment callback check
     const paymentStatus = searchParams.get('payment');
@@ -158,6 +165,69 @@ const Upgrade = () => {
                 </div>
               </div>
               <span className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-semibold">ACTIVE</span>
+            </div>
+          )}
+
+          {/* Usage vs Limit Indicators */}
+          {subStatus === 'ACTIVE' && currentPlan && storeOverview && (
+            <div className="p-6 bg-card border rounded-xl space-y-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Info className="w-5 h-5 text-blue-500" />
+                Plan Usage
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {currentPlan.maxProducts != null && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <ShoppingCart className="w-4 h-4 text-green-500" />
+                        Products
+                      </span>
+                      <span className="font-medium">
+                        {storeOverview.totalProducts ?? 0}/{currentPlan.maxProducts}
+                      </span>
+                    </div>
+                    <Progress
+                      value={Math.min(((storeOverview.totalProducts ?? 0) / currentPlan.maxProducts) * 100, 100)}
+                      className="h-2"
+                    />
+                  </div>
+                )}
+                {currentPlan.maxBranches != null && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Store className="w-4 h-4 text-purple-500" />
+                        Branches
+                      </span>
+                      <span className="font-medium">
+                        {storeOverview.totalBranches ?? 0}/{currentPlan.maxBranches}
+                      </span>
+                    </div>
+                    <Progress
+                      value={Math.min(((storeOverview.totalBranches ?? 0) / currentPlan.maxBranches) * 100, 100)}
+                      className="h-2"
+                    />
+                  </div>
+                )}
+                {currentPlan.maxUsers != null && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Users className="w-4 h-4 text-orange-500" />
+                        Employees
+                      </span>
+                      <span className="font-medium">
+                        {storeOverview.totalEmployees ?? 0}/{currentPlan.maxUsers}
+                      </span>
+                    </div>
+                    <Progress
+                      value={Math.min(((storeOverview.totalEmployees ?? 0) / currentPlan.maxUsers) * 100, 100)}
+                      className="h-2"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

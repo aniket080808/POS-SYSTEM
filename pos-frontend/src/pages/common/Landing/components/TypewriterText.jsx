@@ -53,16 +53,20 @@ const TypewriterText = ({
           }}
         />
       )}
-      <style jsx>{`
-        @keyframes blink {
-          0%, 50% {
-            opacity: 1;
-          }
-          51%, 100% {
-            opacity: 0;
-          }
-        }
-      `}</style>
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes blink {
+              0%, 50% {
+                opacity: 1;
+              }
+              51%, 100% {
+                opacity: 0;
+              }
+            }
+          `,
+        }}
+      />
     </span>
   );
 };

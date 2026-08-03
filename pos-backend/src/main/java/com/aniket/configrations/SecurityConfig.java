@@ -1,9 +1,13 @@
 package com.aniket.configrations;
 
+import com.aniket.configrations.CustomAuthenticationEntryPoint;
+import com.aniket.configrations.MaintenanceModeFilter;
+import com.aniket.configrations.SubscriptionGuardFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -29,21 +33,46 @@ public class SecurityConfig {
 
 	@Autowired
 	private SubscriptionGuardFilter subscriptionGuardFilter;
+
+	@Autowired
+	private JwtValidator jwtValidator;
+
+	@Autowired
+	private LastActivityFilter lastActivityFilter;
 	
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		
 		return http.sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(Authorize -> Authorize
-						.requestMatchers("/api/**").authenticated()
+						// Role-specific rules MUST be declared BEFORE the generic /api/** rule,
+						// because Spring Security evaluates rules in order and stops at the first match.
 						.requestMatchers("/api/super-admin/notifications/**").hasAnyRole("ADMIN", "STORE_ADMIN", "STORE_MANAGER")
 						.requestMatchers("/api/super-admin/**").hasRole("ADMIN")
+						.requestMatchers("/api/**").authenticated()
 						.anyRequest().permitAll())
-			.addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class)
+		.addFilterBefore(jwtValidator, BasicAuthenticationFilter.class)
+			.addFilterAfter(lastActivityFilter, JwtValidator.class)
 			.addFilterAfter(maintenanceModeFilter, JwtValidator.class)
 			.addFilterAfter(subscriptionGuardFilter, MaintenanceModeFilter.class)
 			.csrf(AbstractHttpConfigurer::disable)
 			.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+			.headers(headers -> headers
+					.contentTypeOptions(Customizer.withDefaults())
+					.frameOptions(frame -> frame.deny())
+					.httpStrictTransportSecurity(hsts -> hsts
+							.includeSubDomains(true)
+							.maxAgeInSeconds(31536000))
+					.contentSecurityPolicy(csp -> csp
+							.policyDirectives(
+								"default-src 'self'; " +
+								"script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+								"style-src 'self' 'unsafe-inline'; " +
+								"img-src 'self' data: https:; " +
+								"font-src 'self' data:; " +
+								"connect-src 'self' https:; " +
+								"frame-ancestors 'none'"))
+			)
 			.exceptionHandling(
 					exceptionHandler -> exceptionHandler
 							.authenticationEntryPoint(customAuthenticationEntryPoint))

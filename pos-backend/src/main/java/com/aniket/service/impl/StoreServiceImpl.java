@@ -5,6 +5,7 @@ import com.aniket.domain.StoreStatus;
 import com.aniket.domain.StoreSubscriptionStatus;
 import com.aniket.domain.SubscriptionStatus;
 import com.aniket.domain.UserRole;
+import com.aniket.exception.AccessDeniedException;
 import com.aniket.exception.ResourceNotFoundException;
 import com.aniket.exception.UserException;
 import com.aniket.mapper.StoreMapper;
@@ -28,6 +29,7 @@ import com.aniket.repository.SubscriptionRepository;
 import com.aniket.repository.UserRepository;
 import com.aniket.service.ActivityLogService;
 import com.aniket.service.ApprovalRequestService;
+import com.aniket.service.EmailService;
 import com.aniket.service.NotificationService;
 import com.aniket.service.StoreService;
 import com.aniket.service.StoreSettingsService;
@@ -36,6 +38,7 @@ import com.aniket.service.SystemSettingService;
 import com.aniket.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -43,9 +46,12 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
@@ -62,11 +68,15 @@ public class StoreServiceImpl implements StoreService {
     private final SubscriptionRepository subscriptionRepository;
     private final ApprovalRequestRepository approvalRequestRepository;
     private final StoreSettingsService storeSettingsService;
+    private final EmailService emailService;
     @Override
-    public StoreDTO createStore(StoreDTO storeDto, User user) {
+    public StoreDTO createStore(StoreDTO storeDto, User user) throws UserException {
         if (storeRepository.findByStoreAdminId(user.getId()) != null) {
             throw new IllegalArgumentException("User already owns a store");
         }
+
+        // Check for duplicate store contact email/phone
+        validateStoreContactUniqueness(storeDto.getContact(), null);
 
         System.out.println(storeDto);
 
@@ -122,7 +132,28 @@ public class StoreServiceImpl implements StoreService {
     public StoreDTO getStoreById(Long id) throws ResourceNotFoundException {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found"));
+
+        User currentUser;
+        try {
+            currentUser = userService.getCurrentUser();
+        } catch (UserException e) {
+            throw new AccessDeniedException("You are not authorized to view this store.", e);
+        }
+        Store userStore = storeRepository.findByStoreAdminId(currentUser.getId());
+        if (userStore == null || !userStore.getId().equals(store.getId())) {
+            throw new AccessDeniedException("You are not authorized to view this store.");
+        }
+
         return StoreMapper.toDto(store);
+    }
+
+    @Override
+    public Page<StoreDTO> searchStores(StoreStatus status, String search, Pageable pageable) {
+        String searchPattern = (search != null && !search.trim().isEmpty())
+                ? "%" + search.trim().toLowerCase() + "%"
+                : null;
+        Page<Store> page = storeRepository.searchStores(status, searchPattern, pageable);
+        return page.map(StoreMapper::toDto);
     }
 
     @Override
@@ -172,6 +203,56 @@ public class StoreServiceImpl implements StoreService {
             throw new ResourceNotFoundException("store not found");
         }
 
+        applyStoreUpdateFields(existing, storeDto);
+
+        StoreDTO updatedStore = StoreMapper.toDto(storeRepository.save(existing));
+
+        activityLogService.log(
+                "STORE_UPDATED",
+                "Store \"" + updatedStore.getBrand() + "\" was updated",
+                "Store",
+                updatedStore.getId(),
+                currentUser.getFullName(),
+                updatedStore.getStatus() != null ? updatedStore.getStatus().name() : "UPDATED"
+        );
+
+        return updatedStore;
+    }
+
+    /**
+     * Super-admin variant of updateStore: resolves the store by its ID path param
+     * (instead of the current user's ownership) so an admin can edit any store.
+     * Reuses the exact same field-update logic.
+     */
+    @Override
+    public StoreDTO updateStoreAsSuperAdmin(Long id, StoreDTO storeDto) throws ResourceNotFoundException, UserException {
+        Store existing = storeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+
+        // Check for duplicate store contact email/phone, excluding current store
+        validateStoreContactUniqueness(storeDto.getContact(), id);
+
+        applyStoreUpdateFields(existing, storeDto);
+
+        StoreDTO updatedStore = StoreMapper.toDto(storeRepository.save(existing));
+
+        activityLogService.log(
+                "STORE_UPDATED",
+                "Store \"" + updatedStore.getBrand() + "\" was updated by Super Admin",
+                "Store",
+                updatedStore.getId(),
+                "Super Admin",
+                updatedStore.getStatus() != null ? updatedStore.getStatus().name() : "UPDATED"
+        );
+
+        return updatedStore;
+    }
+
+    /**
+     * Shared field-update logic used by both updateStore (owner-scoped) and
+     * updateStoreAsSuperAdmin (admin-scoped). Includes GST/PAN format validation.
+     */
+    private void applyStoreUpdateFields(Store existing, StoreDTO storeDto) throws UserException {
         existing.setBrand(storeDto.getBrand());
         existing.setDescription(storeDto.getDescription());
 
@@ -230,19 +311,6 @@ public class StoreServiceImpl implements StoreService {
         if (storeDto.getAcceptedPaymentMethods() != null) {
             existing.setAcceptedPaymentMethods(storeDto.getAcceptedPaymentMethods());
         }
-
-        StoreDTO updatedStore = StoreMapper.toDto(storeRepository.save(existing));
-
-        activityLogService.log(
-                "STORE_UPDATED",
-                "Store \"" + updatedStore.getBrand() + "\" was updated",
-                "Store",
-                updatedStore.getId(),
-                currentUser.getFullName(),
-                updatedStore.getStatus() != null ? updatedStore.getStatus().name() : "UPDATED"
-        );
-
-        return updatedStore;
     }
 
     @Override
@@ -456,6 +524,22 @@ public class StoreServiceImpl implements StoreService {
                     storeAdminActionUrl,
                     updatedStore.getStoreAdmin().getId()
             );
+
+            // Send fail-safe email notification to the store admin
+            if (updatedStore.getStoreAdmin().getEmail() != null) {
+                try {
+                    String emailSubject = storeAdminTitle;
+                    String emailBody = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto'>"
+                        + "<h2 style='color:#333'>" + storeAdminTitle + "</h2>"
+                        + "<p style='font-size:16px;color:#555'>" + storeAdminMessage + "</p>"
+                        + "<hr style='border:none;border-top:1px solid #eee;margin:20px 0'/>"
+                        + "<p style='font-size:14px;color:#999'>This is an automated message from the POS System.</p>"
+                        + "</div>";
+                    emailService.sendEmail(updatedStore.getStoreAdmin().getEmail(), emailSubject, emailBody);
+                } catch (Exception emailEx) {
+                    log.warn("Failed to send store status email to {}: {}", updatedStore.getStoreAdmin().getEmail(), emailEx.getMessage());
+                }
+            }
         }
 
         return StoreMapper.toDto(updatedStore);
@@ -483,6 +567,41 @@ public class StoreServiceImpl implements StoreService {
             approvalRequestService.approveRequest(requestId, adminUser, "Store re-activated via status update");
         } else {
             approvalRequestService.rejectRequest(requestId, adminUser, reason);
+        }
+    }
+
+    /**
+     * Validates that store contact email and phone are unique across all stores.
+     * 
+     * @param contact the StoreContact DTO to validate
+     * @param excludeStoreId the store ID to exclude from the check (for updates), or null for new stores
+     * @throws UserException if duplicate email or phone is found
+     */
+    private void validateStoreContactUniqueness(StoreContact contact, Long excludeStoreId) throws UserException {
+        if (contact == null) return;
+
+        // Check for duplicate email
+        if (contact.getEmail() != null && !contact.getEmail().trim().isEmpty()) {
+            List<Store> storesWithEmail = storeRepository.findByContact_Email(contact.getEmail());
+            boolean hasEmailDuplicate = excludeStoreId == null 
+                ? !storesWithEmail.isEmpty()
+                : storesWithEmail.stream().anyMatch(s -> !s.getId().equals(excludeStoreId));
+            
+            if (hasEmailDuplicate) {
+                throw new UserException("A store with this email or phone is already registered");
+            }
+        }
+
+        // Check for duplicate phone
+        if (contact.getPhone() != null && !contact.getPhone().trim().isEmpty()) {
+            List<Store> storesWithPhone = storeRepository.findByContact_Phone(contact.getPhone());
+            boolean hasPhoneDuplicate = excludeStoreId == null
+                ? !storesWithPhone.isEmpty()
+                : storesWithPhone.stream().anyMatch(s -> !s.getId().equals(excludeStoreId));
+            
+            if (hasPhoneDuplicate) {
+                throw new UserException("A store with this email or phone is already registered");
+            }
         }
     }
 

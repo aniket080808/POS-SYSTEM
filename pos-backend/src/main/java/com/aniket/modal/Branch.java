@@ -52,6 +52,9 @@ public class Branch {
     @JsonIgnore
     private User manager;
 
+    @Column(nullable = false)
+    private Boolean isActive = true;
+
     @PrePersist
     protected void onCreate() {
         createdAt = updatedAt = LocalDateTime.now();

@@ -11,37 +11,45 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
-import { Eye, MoreHorizontal, Ban, CheckCircle } from "lucide-react";
+import { Eye, MoreHorizontal, Ban, CheckCircle, Edit } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "../../../components/ui/pagination";
 import StoreStatusBadge from "./StoreStatusBadge";
-import { getAllStores, moderateStore } from "../../../Redux Toolkit/features/store/storeThunks";
+import { searchStores, getAllStores, moderateStore } from "../../../Redux Toolkit/features/store/storeThunks";
 import { formatDateTime } from "../../../utils/formateDate";
 
-export default function StoreTable({ onViewDetails, onBlockStore, onActivateStore }) {
+export default function StoreTable({ onViewDetails, onBlockStore, onActivateStore, onEditStore, actionLoadingId }) {
   const dispatch = useDispatch();
-  const { stores, loading, error } = useSelector((state) => state.store);
+  const { searchPage, loading, error } = useSelector((state) => state.store);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [updatingId, setUpdatingId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
 
   useEffect(() => {
-    // Fetch stores, optionally filtered by status
-    dispatch(getAllStores(statusFilter === "all" ? undefined : statusFilter));
-  }, [dispatch, statusFilter]);
+    // Use server-side search for paginated + filtered data
+    dispatch(searchStores({
+      status: statusFilter === "all" ? undefined : statusFilter,
+      search: searchTerm || undefined,
+      page: currentPage,
+      size: 10,
+    }));
+  }, [dispatch, statusFilter, searchTerm, currentPage]);
 
-  // Filtering by search term (client-side)
-  const filteredStores = (stores || []).filter((store) => {
-    const matchesSearch =
-      (store.brand?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (store?.owner?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (store?.email?.toLowerCase() || "").includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+  const stores = searchPage.content || [];
+  const totalPages = searchPage.totalPages || 0;
 
   const handleStatusChange = async (storeId, newStatus) => {
     setUpdatingId(storeId);
@@ -142,6 +150,10 @@ export default function StoreTable({ onViewDetails, onBlockStore, onActivateStor
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEditStore?.(store)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Store
+                        </DropdownMenuItem>
                         {store.status === "active" && (
                           <DropdownMenuItem onClick={() => onBlockStore?.(store.id)}>
                             <Ban className="mr-2 h-4 w-4" />
@@ -176,11 +188,52 @@ export default function StoreTable({ onViewDetails, onBlockStore, onActivateStor
         )}
       </div>
 
-      {filteredStores.length === 0 && !loading && !error && (
+      {stores.length === 0 && !loading && !error && (
         <div className="text-center py-8 text-muted-foreground">
           No stores found matching your criteria.
         </div>
       )}
+
+      {totalPages > 1 && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage > 0) setCurrentPage((p) => p - 1);
+                }}
+                className={currentPage === 0 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }).map((_, idx) => (
+              <PaginationItem key={idx}>
+                <PaginationLink
+                  href="#"
+                  isActive={currentPage === idx}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCurrentPage(idx);
+                  }}
+                >
+                  {idx + 1}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage < totalPages - 1) setCurrentPage((p) => p + 1);
+                }}
+                className={currentPage === totalPages - 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
     </div>
   );
-} 
+}

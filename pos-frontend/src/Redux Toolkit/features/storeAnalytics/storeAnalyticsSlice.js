@@ -10,7 +10,8 @@ import {
   getPaymentBreakdown,
   getBranchPerformance,
   getRecentSales,
-  getStoreAlerts
+  getStoreAlerts,
+  getStoreUsageForAdmin
 } from './storeAnalyticsThunks';
 
 const initialState = {
@@ -36,6 +37,9 @@ const initialState = {
 
   // Alerts
   storeAlerts: null,
+
+  // Super Admin: Store Usage
+  storeUsage: null,
   
   // Loading and Error States
   loading: false,
@@ -214,6 +218,19 @@ const storeAnalyticsSlice = createSlice({
         state.storeAlerts = action.payload;
       })
       .addCase(getStoreAlerts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Super Admin: Store Usage
+      .addCase(getStoreUsageForAdmin.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(getStoreUsageForAdmin.fulfilled, (state, action) => {
+        state.loading = false;
+        state.storeUsage = action.payload;
+      })
+      .addCase(getStoreUsageForAdmin.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

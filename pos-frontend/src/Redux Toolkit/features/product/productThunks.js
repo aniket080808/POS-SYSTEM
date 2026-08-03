@@ -219,3 +219,32 @@ export const searchProducts = createAsyncThunk(
     }
   }
 );
+
+// 🔹 Bulk create products (atomic import with plan-limit pre-check on backend)
+export const bulkCreateProducts = createAsyncThunk(
+  "product/bulkCreate",
+  async (dtos, { rejectWithValue }) => {
+    try {
+      console.log('🔄 Bulk creating products...', { count: dtos?.length });
+      
+      const headers = getAuthHeaders();
+      const res = await api.post("/api/products/bulk", dtos, { headers });
+      
+      console.log('✅ Bulk products created successfully:', {
+        createdCount: res.data?.length
+      });
+      
+      return res.data;
+    } catch (err) {
+      console.error('❌ Failed to bulk create products:', {
+        error: err.response?.data || err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText
+      });
+      
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to import products"
+      );
+    }
+  }
+);

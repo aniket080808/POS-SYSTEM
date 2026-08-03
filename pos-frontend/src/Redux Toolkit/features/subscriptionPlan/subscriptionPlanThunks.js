@@ -59,13 +59,13 @@ export const updateSubscriptionPlan = createAsyncThunk(
   }
 );
 
-// 📦 Get All Subscription Plans
+// 📦 Get All Subscription Plans (public read-only for store admins)
 export const getAllSubscriptionPlans = createAsyncThunk(
   "subscriptionPlan/getAll",
   async (_, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get("/api/super-admin/subscription-plans", {
+      const res = await api.get("/api/subscription-plans", {
         headers,
       });
       console.log("get all subscription plans - ",res.data);

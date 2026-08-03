@@ -19,14 +19,20 @@ import com.aniket.service.OnboardingService;
 import com.aniket.service.UserService;
 import com.aniket.service.impl.CustomUserImplementation;
 
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/auth")
@@ -36,6 +42,11 @@ public class AuthController {
 
     private final AuthService authService;
     private final OnboardingService onboardingService;
+
+    // Rate limit: 5 login attempts per minute (brute-force protection)
+    private final Bucket loginBucket = Bucket.builder()
+            .addLimit(Bandwidth.classic(5, Refill.greedy(5, Duration.ofMinutes(1))))
+            .build();
 
     @PostMapping("/onboarding")
     public ResponseEntity<ApiResponseBody<AuthResponse>> onboardingHandler(
@@ -62,6 +73,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponseBody<AuthResponse>> loginHandler(
             @RequestBody LoginDto req) throws UserException {
+
+        if (!loginBucket.tryConsume(1)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(new ApiResponseBody<>(false,
+                            "Too many login attempts. Please try again later.", null));
+        }
 
         AuthResponse response=authService.login(req.getEmail(), req.getPassword());
 

@@ -6,6 +6,7 @@ import com.aniket.service.SubscriptionPlanService;
 
 import com.aniket.exception.ResourceNotFoundException;
 import com.aniket.modal.SubscriptionPlan;
+import com.aniket.repository.StoreSubscriptionRepository;
 import com.aniket.repository.SubscriptionPlanRepository;
 import com.aniket.service.SubscriptionPlanService;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.List;
 public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
 
     private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final StoreSubscriptionRepository storeSubscriptionRepository;
 
     /**
      * ➕ Create new plan
@@ -76,7 +78,7 @@ public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
      */
     @Override
     public List<SubscriptionPlan> getAllPlans() {
-        return subscriptionPlanRepository.findAll();
+        return subscriptionPlanRepository.findAllByActiveTrue();
     }
 
     /**
@@ -87,6 +89,13 @@ public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
         if (!subscriptionPlanRepository.existsById(id)) {
             throw new ResourceNotFoundException("Subscription plan not found with id: " + id);
         }
+
+        long storesUsing = storeSubscriptionRepository.countByCurrentPlanId(id);
+        if (storesUsing > 0) {
+            throw new IllegalArgumentException(
+                "Cannot delete plan — " + storesUsing + " store(s) are currently on it. Reassign them first.");
+        }
+
         subscriptionPlanRepository.deleteById(id);
     }
 }

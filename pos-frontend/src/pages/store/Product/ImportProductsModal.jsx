@@ -27,7 +27,7 @@ import {
   Loader2,
 } from "lucide-react";
 import {
-  createProduct,
+  bulkCreateProducts,
   getProductsByStore,
 } from "@/Redux Toolkit/features/product/productThunks";
 import { getCategoriesByStore } from "../../../Redux Toolkit/features/category/categoryThunks";
@@ -368,30 +368,36 @@ export default function ImportProductsModal({ open, onOpenChange }) {
     setImportTotal(validRows.length);
     setResults(null);
 
-    const failures = [];
+    // Build the batch of DTOs (backend resolves store from authenticated user,
+    // and validates every DTO's storeId against it — a mismatch rejects the whole batch).
+    const batch = validRows.map((row) => ({ ...row.dto, storeId: store.id }));
+
     let successCount = 0;
+    let failures = [];
 
-    const taskFn = async (row) => {
-      try {
-        const dto = { ...row.dto, storeId: store.id };
-        await dispatch(createProduct(dto)).unwrap();
-        successCount++;
-      } catch (err) {
-        failures.push({
-          row: row.rowIndex,
-          sku: row.sku,
-          name: row.name,
-          reason: normalizeApiError(err),
-        });
-      }
-    };
+    try {
+      // Single atomic backend call: pre-checks plan limit, rejects whole batch
+      // if it would exceed maxProducts, and creates all rows in one transaction.
+      const created = await dispatch(bulkCreateProducts(batch)).unwrap();
+      successCount = created?.length || 0;
 
-    await runWithConcurrency(validRows, 3, taskFn, (completed) => {
-      setImportProgress(completed);
-    });
-
-    setResults({ successCount, failures });
-    setImporting(false);
+      setResults({ successCount, failures: [] });
+      setImportProgress(successCount);
+    } catch (err) {
+      // Whole batch rejected (e.g. plan limit exceeded, IDOR mismatch, or
+      // any row-level failure inside the transaction → atomic rollback).
+      const reason = normalizeApiError(err);
+      failures = validRows.map((row) => ({
+        row: row.rowIndex,
+        sku: row.sku,
+        name: row.name,
+        reason,
+      }));
+      setResults({ successCount: 0, failures });
+      setImportProgress(0);
+    } finally {
+      setImporting(false);
+    }
 
     // Refresh product list
     try {
@@ -475,7 +481,7 @@ export default function ImportProductsModal({ open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1100px] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Products</DialogTitle>
         </DialogHeader>
@@ -603,7 +609,7 @@ export default function ImportProductsModal({ open, onOpenChange }) {
                 </div>
               </div>
 
-              <div className="border rounded-md max-h-[400px] overflow-auto">
+              <div className="border rounded-md max-h-[600px] overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

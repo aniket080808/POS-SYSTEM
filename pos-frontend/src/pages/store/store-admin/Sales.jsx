@@ -68,10 +68,23 @@ export default function Sales() {
 
   // Format percentage change
   const formatChange = (current, previous) => {
-    if (!previous || previous === 0) return "+0%";
+    if (current === undefined || current === null) return "+0%";
+    if (!previous || previous === 0) {
+      return current > 0 ? "+100%" : "+0%";
+    }
     const change = ((current - previous) / previous) * 100;
     const sign = change >= 0 ? "+" : "";
     return `${sign}${change.toFixed(1)}%`;
+  };
+
+  // Format cashier comparison vs yesterday
+  const formatCashierChange = (today, yesterday) => {
+    if (today === undefined || yesterday === undefined || today === null || yesterday === null) {
+      return "Same as yesterday";
+    }
+    if (today === yesterday) return "Same as yesterday";
+    const diff = today - yesterday;
+    return diff > 0 ? `+${diff} from yesterday` : `${diff} from yesterday`;
   };
 
   const dailySalesData = dailySales?.map(item => ({
@@ -124,8 +137,8 @@ export default function Sales() {
                   {loading ? (
                     <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
-                    formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales)
-                  )} from last week
+                    formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales) + " from last week"
+                  )}
                 </div>
               </div>
               <div className="p-3 bg-emerald-100 rounded-full">
@@ -138,52 +151,25 @@ export default function Sales() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Orders Today</p>
-                  <h3 className="text-2xl font-bold mt-1">
-                    {loading ? (
-                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
-                    ) : (
-                      storeOverview?.todayOrders || 0
-                    )}
-                  </h3>
-                  <div className="text-xs text-emerald-500 mt-1">
-                    {loading ? (
-                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
-                    ) : (
-                      formatChange(storeOverview?.todayOrders, storeOverview?.yesterdayOrders) + " from yesterday"
-                    )}
-                  </div>
-                </div>
-              <div className="p-3 bg-blue-100 rounded-full">
-                <Store className="w-8 h-8 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Total Sales</p>
+                <p className="text-sm font-medium text-gray-500">Orders Today</p>
                 <h3 className="text-2xl font-bold mt-1">
                   {loading ? (
-                    <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
-                    formatCurrency(storeOverview?.totalSales || 0)
+                    storeOverview?.todayOrders || 0
                   )}
                 </h3>
                 <div className="text-xs text-emerald-500 mt-1">
                   {loading ? (
                     <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
-                    formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales) + " from last week"
+                    formatChange(storeOverview?.todayOrders, storeOverview?.yesterdayOrders) + " from yesterday"
                   )}
                 </div>
               </div>
-              <div className="p-3 bg-purple-100 rounded-full">
-                <User className="w-8 h-8 text-purple-600" />
+              <div className="p-3 bg-blue-100 rounded-full">
+                <Store className="w-8 h-8 text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -205,15 +191,27 @@ export default function Sales() {
                   {loading ? (
                     <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
-                    "Same as yesterday"
+                    formatCashierChange(storeOverview?.activeCashiers, storeOverview?.yesterdayActiveCashiers)
                   )}
                 </div>
               </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <User className="w-8 h-8 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">Avg. Order Value</p>
                 <h3 className="text-2xl font-bold mt-1">
                   {loading ? (
                     <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+                  ) : storeOverview?.todayOrders === 0 ? (
+                    "₹0"
                   ) : (
                     formatCurrency(storeOverview?.averageOrderValue || 0)
                   )}

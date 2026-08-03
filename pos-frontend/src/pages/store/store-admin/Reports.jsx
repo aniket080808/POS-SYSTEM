@@ -1,74 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
-import { FileText, Download, Filter, Calendar, RefreshCw } from "lucide-react";
 import { 
   getMonthlySales, 
   getSalesByCategory 
 } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
 import { useToast } from "@/components/ui/use-toast";
+import { BadgeDollarSign, Lock } from "lucide-react";
+import { useNavigate } from "react-router";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
-
-// Mock data for reports table
-const reportData = [
-  {
-    id: 1,
-    name: "Monthly Sales Report",
-    type: "Sales",
-    period: "July 2023",
-    generatedOn: "2023-08-01",
-    status: "Completed",
-  },
-  {
-    id: 2,
-    name: "Inventory Status Report",
-    type: "Inventory",
-    period: "Q2 2023",
-    generatedOn: "2023-07-15",
-    status: "Completed",
-  },
-  {
-    id: 3,
-    name: "Employee Performance",
-    type: "HR",
-    period: "June 2023",
-    generatedOn: "2023-07-10",
-    status: "Completed",
-  },
-  {
-    id: 4,
-    name: "Top Selling Products",
-    type: "Products",
-    period: "Q2 2023",
-    generatedOn: "2023-07-05",
-    status: "Completed",
-  },
-  {
-    id: 5,
-    name: "Customer Demographics",
-    type: "Customers",
-    period: "H1 2023",
-    generatedOn: "2023-07-01",
-    status: "Completed",
-  },
-];
 
 export default function Reports() {
   const dispatch = useDispatch();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { userProfile } = useSelector((state) => state.user);
   const { monthlySales, salesByCategory, loading } = useSelector((state) => state.storeAnalytics);
-  
-  const [reportType, setReportType] = useState("all");
-  const [dateRange, setDateRange] = useState("last30");
-  
+  const { statusResponse } = useSelector((state) => state.storeSubscription);
+
+  const currentPlan = statusResponse?.currentPlan;
+  const isAdvancedReportsEnabled = Boolean(currentPlan?.enableAdvancedReports);
+
   useEffect(() => {
     if (userProfile?.id) {
       fetchReportsData();
@@ -83,6 +39,15 @@ export default function Reports() {
       ]);
     } catch (err) {
       console.error("Reports data fetch error:", err);
+      // Check if it's the feature-not-enabled error from backend
+      if (err && typeof err === 'object' && err.error === 'ADVANCED_REPORTS_NOT_AVAILABLE') {
+        // Frontend gating should already prevent this, but handle gracefully
+        toast({
+          description: "Advanced reports require a plan upgrade.",
+          duration: 5000,
+        });
+        return;
+      }
       toast({
         description: err || "Failed to load reports data.",
         duration: 5000,
@@ -101,7 +66,7 @@ export default function Reports() {
   };
 
   const salesData = monthlySales?.map(item => ({
-    name: new Date(item.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' }),
+    name: new Date(item.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', year: '2-digit' }),
     sales: item.totalAmount
   })) || [];
 
@@ -109,11 +74,6 @@ export default function Reports() {
     name: item.categoryName,
     value: item.totalSales
   })) || [];
-
-  // Filter reports based on type
-  const filteredReports = reportType === "all" 
-    ? reportData 
-    : reportData.filter(report => report.type.toLowerCase() === reportType.toLowerCase());
 
   const salesConfig = {
     sales: {
@@ -130,13 +90,37 @@ export default function Reports() {
     return config;
   }, {});
 
+  // Show locked state if advanced reports are not enabled on the plan
+  if (!isAdvancedReportsEnabled) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
+        <Card className="border-amber-200 bg-gradient-to-br from-amber-50/50 via-background to-amber-100/30 p-8 shadow-md">
+          <CardContent className="flex flex-col items-center justify-center text-center space-y-4 py-8">
+            <div className="p-4 bg-amber-100 rounded-full text-amber-600">
+              <Lock className="w-10 h-10" />
+            </div>
+            <div className="max-w-md space-y-2">
+              <h2 className="text-2xl font-bold tracking-tight">Advanced Reports Locked</h2>
+              <p className="text-muted-foreground text-sm">
+                Your current plan does not include advanced reports. Upgrade your subscription to unlock detailed sales trends, category breakdowns, and more.
+              </p>
+            </div>
+            <Button onClick={() => navigate('/store/upgrade')} className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">
+              <BadgeDollarSign className="w-4 h-4 mr-2" /> Upgrade Plan
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
         
       </div>
-
 
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

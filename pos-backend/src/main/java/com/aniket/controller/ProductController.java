@@ -33,6 +33,15 @@ public class ProductController {
         return ResponseEntity.ok(productService.createProduct(dto, user));
     }
 
+    @PostMapping("/bulk")
+    public ResponseEntity<List<ProductDTO>> bulkCreate(
+            @Valid @RequestBody List<ProductDTO> dtos,
+            @RequestHeader("Authorization") String jwt
+    ) throws UserException, AccessDeniedException {
+        User user = userService.getUserFromJwtToken(jwt);
+        return ResponseEntity.ok(productService.bulkCreateProducts(dtos, user));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ProductDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductById(id));

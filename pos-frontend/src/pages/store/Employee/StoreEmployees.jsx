@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { EmployeeForm, EmployeeTable } from ".";
-import { useDispatch, useSelector } from "react-redux";
 import {
   createStoreEmployee,
   findStoreEmployees,
@@ -25,6 +25,7 @@ import {
   deleteEmployee,
 } from "@/Redux Toolkit/features/employee/employeeThunks";
 import { getAllBranchesByStore } from "@/Redux Toolkit/features/branch/branchThunks";
+import { getStoreOverview } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
 import { storeAdminRole, STORE_LEVEL_ROLES, BRANCH_LEVEL_ROLES } from "../../../utils/userRole";
 import { toast } from "sonner";
 
@@ -33,7 +34,10 @@ export default function StoreEmployees() {
   const { employees, loading, error } = useSelector((state) => state.employee);
   const { branches } = useSelector((state) => state.branch);
   const { store } = useSelector((state) => state.store);
+  const { storeOverview } = useSelector((state) => state.storeAnalytics);
+  const { statusResponse } = useSelector((state) => state.storeSubscription);
   const { user } = useSelector((state) => state.user);
+  const { userProfile } = useSelector((state) => state.user);
 
   // Fetch employees + branches when component mounts or store/user changes
   useEffect(() => {
@@ -45,6 +49,17 @@ export default function StoreEmployees() {
       }
     }
   }, [dispatch, store, user]);
+
+  // Fetch store overview for usage-vs-limit badge if not already loaded
+  useEffect(() => {
+    if (userProfile?.id && !storeOverview) {
+      dispatch(getStoreOverview(userProfile.id));
+    }
+  }, [dispatch, userProfile, storeOverview]);
+
+  const maxEmployees = statusResponse?.currentPlan?.maxUsers;
+  const totalEmployees = storeOverview?.totalEmployees;
+  const showEmployeeLimit = storeOverview && maxEmployees != null && maxEmployees > 0;
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -184,30 +199,37 @@ export default function StoreEmployees() {
         <h1 className="text-3xl font-bold tracking-tight">
           Employee Management
         </h1>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="mr-2 h-4 w-4" /> Add Employee
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Employee</DialogTitle>
-            </DialogHeader>
-            <EmployeeForm
-              onSubmit={handleAddEmployee}
-              initialData={{
-                fullName: "",
-                email: "",
-                password: "",
-                phone: "",
-                role: "",
-                branchId: "",
-              }}
-              roles={storeAdminRole}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-3">
+          {showEmployeeLimit && (
+            <Badge variant="outline" className="text-xs">
+              {totalEmployees}/{maxEmployees} employees
+            </Badge>
+          )}
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" /> Add Employee
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add New Employee</DialogTitle>
+              </DialogHeader>
+              <EmployeeForm
+                onSubmit={handleAddEmployee}
+                initialData={{
+                  fullName: "",
+                  email: "",
+                  password: "",
+                  phone: "",
+                  role: "",
+                  branchId: "",
+                }}
+                roles={storeAdminRole}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">

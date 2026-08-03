@@ -1,10 +1,22 @@
 package com.aniket.service.impl;
 
 import com.aniket.domain.UserRole;
+import com.aniket.exception.AccessDeniedException;
+import com.aniket.exception.FeatureNotEnabledException;
+import com.aniket.exception.UserException;
 import com.aniket.modal.Order;
+import com.aniket.modal.Store;
+import com.aniket.modal.StoreSubscription;
+import com.aniket.modal.Subscription;
+import com.aniket.modal.SubscriptionPlan;
+import com.aniket.modal.User;
 import com.aniket.payload.StoreAnalysis.*;
+import com.aniket.payload.dto.StoreUsageDTO;
 import com.aniket.repository.*;
 import com.aniket.service.StoreAnalyticsService;
+import com.aniket.service.StoreSubscriptionService;
+import com.aniket.service.UserService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -28,6 +40,12 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
     private final RefundRepository refundRepository;
     private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
+    private final StoreRepository storeRepository;
+    private final StoreSubscriptionRepository storeSubscriptionRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final StoreSubscriptionService storeSubscriptionService;
+    private final UserService userService;
 
     @org.springframework.beans.factory.annotation.Value("${app.alerts.inactive-cashier-days:7}")
     private int inactiveCashierDays;
@@ -67,10 +85,11 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
 
         // Dashboard fields (all-time totals, no status filter - keep existing behavior)
         List<UserRole> roles = new ArrayList<>();
+        roles.add(UserRole.ROLE_STORE_ADMIN);
         roles.add(UserRole.ROLE_STORE_MANAGER);
-        roles.add(UserRole.ROLE_CUSTOMER);
-        roles.add(UserRole.ROLE_BRANCH_CASHIER);
+        roles.add(UserRole.ROLE_BRANCH_ADMIN);
         roles.add(UserRole.ROLE_BRANCH_MANAGER);
+        roles.add(UserRole.ROLE_BRANCH_CASHIER);
 
         // Sales Management fields (COMPLETED orders only)
         int todayOrders = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
@@ -94,6 +113,7 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
 
         // Active cashiers: logged in today (Asia/Kolkata boundaries)
         int activeCashiers = userRepository.countActiveCashiersByStoreAdmin(storeAdminId, startOfToday);
+        int yesterdayActiveCashiers = userRepository.countActiveCashiersBetweenByStoreAdmin(storeAdminId, startOfYesterday, endOfYesterday);
 
         return StoreOverviewDTO.builder()
                 // Dashboard fields
@@ -109,6 +129,7 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                 .todayOrders(todayOrders)
                 .yesterdayOrders(yesterdayOrders)
                 .activeCashiers(activeCashiers)
+                .yesterdayActiveCashiers(yesterdayActiveCashiers)
                 .averageOrderValue(averageOrderValue)
                 .previousPeriodSales(lastWeekSales)
                 .previousPeriodAverageOrderValue(previousPeriodAverageOrderValue)
@@ -117,59 +138,114 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
 
     @Override
     public TimeSeriesDataDTO getSalesTrends(Long storeAdminId, String period) {
-    //        // Dummy data, replace with actual queries later
-    ////        List<TimeSeriesPointDTO> points = List.of(
-    ////                new TimeSeriesPointDTO("Week 1", BigDecimal.valueOf(4000)),
-    ////                new TimeSeriesPointDTO("Week 2", BigDecimal.valueOf(6200))
-    ////        );
-        return null;
+        java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Kolkata");
+        LocalDateTime nowInIst = LocalDateTime.now(zoneId);
+        int days = "weekly".equalsIgnoreCase(period) ? 7 : 30;
+        LocalDateTime start = nowInIst.minusDays(days - 1).toLocalDate().atStartOfDay();
+        LocalDateTime end = nowInIst;
+
+        List<Object[]> rawResults = orderRepository.getDailySales(storeAdminId, start, end);
+        java.util.Map<java.time.LocalDate, Double> salesMap = new java.util.HashMap<>();
+        for (Object[] row : rawResults) {
+            java.time.LocalDate date = row[0] instanceof java.sql.Date
+                    ? ((java.sql.Date) row[0]).toLocalDate()
+                    : (java.time.LocalDate) row[0];
+            Double totalAmount = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+            salesMap.put(date, totalAmount);
+        }
+
+        List<TimeSeriesPointDTO> points = new java.util.ArrayList<>();
+        java.time.LocalDate startDate = start.toLocalDate();
+        java.time.LocalDate endDate = nowInIst.toLocalDate();
+        for (java.time.LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            points.add(new TimeSeriesPointDTO(date, salesMap.getOrDefault(date, 0.0)));
+        }
+        return TimeSeriesDataDTO.builder()
+                .points(points)
+                .period(period.toUpperCase())
+                .build();
+    }
+
+    private void checkAdvancedReportsEnabled() {
+        try {
+            User user = userService.getCurrentUser();
+            Store store = user.getStore() != null
+                    ? user.getStore()
+                    : storeRepository.findByStoreAdminId(user.getId());
+            if (store == null) return;
+
+            StoreSubscription storeSub = storeSubscriptionService.getOrCreateForStore(store);
+            if (storeSub.getCurrentPlan() != null &&
+                !Boolean.TRUE.equals(storeSub.getCurrentPlan().getEnableAdvancedReports())) {
+                throw new FeatureNotEnabledException(
+                    "Advanced reports are not available on your current plan. Please upgrade to access detailed analytics.");
+            }
+        } catch (UserException e) {
+            return;
+        }
     }
 
     @Override
     public List<TimeSeriesPointDTO> getMonthlySalesGraph(Long storeAdminId) {
-        LocalDateTime end = LocalDateTime.now();
-        LocalDateTime start = end.minusDays(365);
+        checkAdvancedReportsEnabled();
+        java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Kolkata");
+        YearMonth currentMonth = YearMonth.now(zoneId);
+        YearMonth startMonth = currentMonth.minusMonths(11); // 12-month rolling window
+
+        LocalDateTime start = startMonth.atDay(1).atStartOfDay();
+        LocalDateTime end = currentMonth.atEndOfMonth().atTime(23, 59, 59);
 
         List<Order> orders = orderRepository.findAllByStoreAdminAndCreatedAtBetween(storeAdminId, start, end);
 
         Map<YearMonth, Double> grouped = orders.stream()
+                .filter(o -> o.getStatus() == com.aniket.domain.OrderStatus.COMPLETED)
                 .collect(Collectors.groupingBy(
-                        order -> YearMonth.from(order.getCreatedAt()),  // Group by Year-Month
+                        order -> YearMonth.from(order.getCreatedAt().atZone(zoneId)),
                         Collectors.summingDouble(order ->
                                 order.getTotalAmount() != null ? order.getTotalAmount().doubleValue() : 0.0
                         )
                 ));
 
-        return grouped.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new TimeSeriesPointDTO(
-                        entry.getKey().atDay(1), // Convert YearMonth to LocalDate
-                        entry.getValue()
-                ))
-                .collect(Collectors.toList());
+        List<TimeSeriesPointDTO> result = new ArrayList<>();
+        for (YearMonth ym = startMonth; !ym.isAfter(currentMonth); ym = ym.plusMonths(1)) {
+            result.add(new TimeSeriesPointDTO(
+                    ym.atDay(1),
+                    grouped.getOrDefault(ym, 0.0)
+            ));
+        }
+        return result;
     }
 
     @Override
     public List<TimeSeriesPointDTO> getDailySalesGraph(Long storeAdminId) {
         // Use Asia/Kolkata timezone for consistency with Alerts page
         java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Kolkata");
-        LocalDateTime end = LocalDateTime.now(zoneId);
-        LocalDateTime start = end.minusDays(6);
+        LocalDateTime nowInIst = LocalDateTime.now(zoneId);
+        LocalDateTime start = nowInIst.minusDays(6).toLocalDate().atStartOfDay();
+        LocalDateTime end = nowInIst;
         
         List<Object[]> rawResults = orderRepository.getDailySales(storeAdminId, start, end);
-        return rawResults.stream()
-                .map(row -> {
-                    java.time.LocalDate date = row[0] instanceof java.sql.Date 
-                            ? ((java.sql.Date) row[0]).toLocalDate() 
-                            : (java.time.LocalDate) row[0];
-                    Double totalAmount = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
-                    return new TimeSeriesPointDTO(date, totalAmount);
-                })
-                .collect(Collectors.toList());
+        java.util.Map<java.time.LocalDate, Double> salesMap = new java.util.HashMap<>();
+        for (Object[] row : rawResults) {
+            java.time.LocalDate date = row[0] instanceof java.sql.Date 
+                    ? ((java.sql.Date) row[0]).toLocalDate() 
+                    : (java.time.LocalDate) row[0];
+            Double totalAmount = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+            salesMap.put(date, totalAmount);
+        }
+
+        List<TimeSeriesPointDTO> points = new java.util.ArrayList<>();
+        java.time.LocalDate startDate = start.toLocalDate();
+        java.time.LocalDate endDate = nowInIst.toLocalDate();
+        for (java.time.LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            points.add(new TimeSeriesPointDTO(date, salesMap.getOrDefault(date, 0.0)));
+        }
+        return points;
     }
 
     @Override
     public List<CategorySalesDTO> getSalesByCategory(Long storeAdminId) {
+        checkAdvancedReportsEnabled();
         return productRepository.getSalesGroupedByCategory(storeAdminId);
     }
 
@@ -230,6 +306,77 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                 .noSalesToday(noSalesToday)
                 .refundSpikeAlerts(refundSpikeAlerts)
                 .build();
+    }
+
+    @Override
+    public StoreUsageDTO getStoreUsageForAdmin(Long storeId) {
+        // Super Admin guard — only ROLE_ADMIN can call this with an arbitrary storeId
+        User currentUser;
+        try {
+            currentUser = userService.getCurrentUser();
+        } catch (UserException e) {
+            throw new AccessDeniedException("You are not authorized to view store usage.", e);
+        }
+
+        if (currentUser.getRole() != com.aniket.domain.UserRole.ROLE_ADMIN) {
+            throw new AccessDeniedException("You are not authorized to view store usage.");
+        }
+
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("Store not found with ID: " + storeId));
+
+        // Read-only lookup: do NOT use getOrCreateForStore (it writes). Use getByStoreId.
+        StoreSubscription storeSub = storeSubscriptionService.getByStoreId(storeId);
+        SubscriptionPlan currentPlan = (storeSub != null) ? storeSub.getCurrentPlan() : null;
+
+        // Reuse existing aggregation logic, scoped via the store's storeAdmin
+        Long storeAdminId = store.getStoreAdmin().getId();
+        List<UserRole> roles = new ArrayList<>();
+        roles.add(UserRole.ROLE_STORE_ADMIN);
+        roles.add(UserRole.ROLE_STORE_MANAGER);
+        roles.add(UserRole.ROLE_BRANCH_ADMIN);
+        roles.add(UserRole.ROLE_BRANCH_MANAGER);
+        roles.add(UserRole.ROLE_BRANCH_CASHIER);
+
+        Integer totalBranches = branchRepository.countByStoreAdminId(storeAdminId);
+        Integer totalProducts = (int) branchInventoryRepository.countByStoreAdminId(storeAdminId);
+        Integer totalEmployees = userRepository.countByStoreAdminIdAndRoles(storeAdminId, roles);
+
+        StoreUsageDTO.StoreUsageDTOBuilder builder = StoreUsageDTO.builder()
+                .storeId(store.getId())
+                .totalBranchesUsed(totalBranches)
+                .totalProductsUsed(totalProducts)
+                .totalEmployeesUsed(totalEmployees);
+
+        if (currentPlan != null) {
+            builder.planId(currentPlan.getId())
+                    .planName(currentPlan.getName())
+                    .planPrice(currentPlan.getPrice())
+                    .billingCycle(currentPlan.getBillingCycle())
+                    .maxProducts(currentPlan.getMaxProducts())
+                    .maxBranches(currentPlan.getMaxBranches())
+                    .maxUsers(currentPlan.getMaxUsers());
+        }
+
+        if (storeSub != null) {
+            builder.subscriptionStatus(storeSub.getStatus());
+        }
+
+        // Find latest ACTIVE/TRIAL subscription for start/end dates
+        List<Subscription> subs = subscriptionRepository.findByStore(store);
+        Subscription latestActiveSub = subs.stream()
+                .filter(s -> s.getStatus() == com.aniket.domain.SubscriptionStatus.ACTIVE
+                        || s.getStatus() == com.aniket.domain.SubscriptionStatus.TRIAL)
+                .max(java.util.Comparator.comparing(Subscription::getStartDate))
+                .orElse(null);
+
+        if (latestActiveSub != null) {
+            builder.status(latestActiveSub.getStatus())
+                    .startDate(latestActiveSub.getStartDate())
+                    .endDate(latestActiveSub.getEndDate());
+        }
+
+        return builder.build();
     }
 
     private List<com.aniket.payload.dto.RefundDTO> detectRefundSpikes(Long storeAdminId, LocalDateTime startOfToday) {

@@ -61,6 +61,17 @@ public class StoreController {
         return ResponseEntity.ok(storeService.updateStore(id, storeDto));
     }
 
+    // 🔹 Super Admin: Update any store by ID (resolves store by path param, not owner JWT)
+    @PutMapping("/super-admin/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<StoreDTO> updateStoreAsSuperAdmin(
+            @PathVariable Long id,
+            @RequestBody StoreDTO storeDto)
+            throws ResourceNotFoundException,
+            UserException {
+        return ResponseEntity.ok(storeService.updateStoreAsSuperAdmin(id, storeDto));
+    }
+
     // 🔹 Delete Store
     @DeleteMapping()
     public ResponseEntity<ApiResponse> deleteStore()
@@ -104,10 +115,25 @@ public class StoreController {
 
     // 🔹 Get All Stores (without pagination)
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<StoreDTO>> getAllStores(
             @RequestParam(required = false)StoreStatus status
     ) {
         return ResponseEntity.ok(storeService.getAllStores(status));
+    }
+
+    // 🔹 Super Admin: Search stores with pagination, status filter, and search term
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Page<StoreDTO>> searchStores(
+            @RequestParam(required = false) StoreStatus status,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String sort
+    ) {
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        return ResponseEntity.ok(storeService.searchStores(status, search, pageable));
     }
 
     /**
@@ -117,6 +143,7 @@ public class StoreController {
      * @return updated StoreDTO
      */
     @PutMapping("/{storeId}/moderate")
+    @PreAuthorize("hasRole('ADMIN')")
     public StoreDTO moderateStore(
             @PathVariable Long storeId,
             @RequestParam StoreStatus action
@@ -126,6 +153,7 @@ public class StoreController {
 
     // 🔹 Get Store Subscription Details (for super-admin store detail panel)
     @GetMapping("/{storeId}/subscription")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<StoreSubscriptionDetailDTO> getStoreSubscription(
             @PathVariable Long storeId
     ) {

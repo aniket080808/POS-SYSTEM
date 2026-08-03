@@ -9,6 +9,7 @@ import com.aniket.payload.dto.ApprovalRequestDTO;
 import com.aniket.payload.response.ResubmitResponse;
 import com.aniket.repository.*;
 import com.aniket.service.ApprovalRequestService;
+import com.aniket.service.EmailService;
 import com.aniket.service.NotificationService;
 import com.aniket.service.StoreSubscriptionService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
     private final SubscriptionRepository subscriptionRepository;
     private final StoreSubscriptionService storeSubscriptionService;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -163,6 +165,13 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
                     "/store/dashboard",
                     store.getStoreAdmin().getId()
             );
+
+            // Send fail-safe email notification
+            sendFailSafeEmail(
+                store.getStoreAdmin(),
+                "Store Registration Approved",
+                "Your store \"" + store.getBrand() + "\" has been approved and is now active."
+            );
         } else if (request.getType() == ApprovalRequestType.SUBSCRIPTION_CHANGE) {
             StoreSubscription storeSub = storeSubscriptionService.getOrCreateForStore(store);
             storeSub.setStatus(StoreSubscriptionStatus.ACTIVE);
@@ -195,6 +204,13 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
                     storeSub.getId(),
                     "/store/upgrade",
                     store.getStoreAdmin().getId()
+            );
+
+            // Send fail-safe email notification
+            sendFailSafeEmail(
+                store.getStoreAdmin(),
+                "Subscription Approved",
+                "Your subscription to \"" + request.getRequestedPlan().getName() + "\" has been approved."
             );
         }
 
@@ -243,6 +259,13 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
                     "/store/upgrade",
                     store.getStoreAdmin().getId()
             );
+
+            // Send fail-safe email notification
+            sendFailSafeEmail(
+                store.getStoreAdmin(),
+                "Store Registration Rejected",
+                "Your store \"" + store.getBrand() + "\" registration was rejected. Reason: " + reason
+            );
         } else if (request.getType() == ApprovalRequestType.SUBSCRIPTION_CHANGE) {
             StoreSubscription storeSub = storeSubscriptionService.getOrCreateForStore(store);
             // Keep status as REJECTED so the store admin's upgrade page can show the rejection banner.
@@ -264,9 +287,35 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
                     "/store/upgrade",
                     store.getStoreAdmin().getId()
             );
+
+            // Send fail-safe email notification
+            sendFailSafeEmail(
+                store.getStoreAdmin(),
+                "Subscription Rejected",
+                "Your subscription change request was rejected. Reason: " + reason
+            );
         }
 
         return approvalRequestRepository.save(request);
+    }
+
+    /**
+     * Sends an email notification to the store admin in a fail-safe manner.
+     * If the email fails to send (SMTP down, bad address), the transaction is NOT rolled back.
+     */
+    private void sendFailSafeEmail(User storeAdmin, String subject, String message) {
+        if (storeAdmin == null || storeAdmin.getEmail() == null) return;
+        try {
+            String emailBody = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto'>"
+                + "<h2 style='color:#333'>" + subject + "</h2>"
+                + "<p style='font-size:16px;color:#555'>" + message + "</p>"
+                + "<hr style='border:none;border-top:1px solid #eee;margin:20px 0'/>"
+                + "<p style='font-size:14px;color:#999'>This is an automated message from the POS System.</p>"
+                + "</div>";
+            emailService.sendEmail(storeAdmin.getEmail(), subject, emailBody);
+        } catch (Exception e) {
+            log.warn("Failed to send email to {}: {}", storeAdmin.getEmail(), e.getMessage());
+        }
     }
 
     @Override

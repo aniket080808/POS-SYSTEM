@@ -6,6 +6,7 @@ import com.aniket.domain.UserRole;
 import com.aniket.modal.Branch;
 import com.aniket.modal.Store;
 import com.aniket.modal.StoreSubscription;
+import com.aniket.modal.SubscriptionPlan;
 import com.aniket.modal.User;
 import com.aniket.repository.BranchRepository;
 import com.aniket.repository.StoreRepository;
@@ -43,6 +44,13 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
+    // Premium feature path-prefix → plan flag field name
+    // Only endpoints that correspond to a plan feature flag are mapped here.
+    private static final Map<String, String> FEATURE_FLAG_PATHS = Map.of(
+            "/api/store/analytics/*/sales/monthly", "enableAdvancedReports",
+            "/api/store/analytics/*/sales/category", "enableAdvancedReports"
+    );
+
     // Whitelisted routes accessible without active subscription
     private static final List<String> WHITELIST = List.of(
             "/auth/**",
@@ -55,6 +63,7 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
             "/api/subscriptions/store/*",
             "/api/super-admin/subscription-plans",
             "/api/super-admin/subscription-plans/**",
+            "/api/subscription-plans",
             "/api/approval-requests/**",
             "/api/store-subscription/**",
             "/api/super-admin/**",
@@ -137,6 +146,29 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
             return;
         }
 
+        // 3. Check feature flags for premium endpoints
+        SubscriptionPlan plan = storeSubOpt.map(StoreSubscription::getCurrentPlan).orElse(null);
+        if (plan != null) {
+            for (Map.Entry<String, String> entry : FEATURE_FLAG_PATHS.entrySet()) {
+                if (pathMatcher.match(entry.getKey(), path)) {
+                    Boolean flag = switch (entry.getValue()) {
+                        case "enableAdvancedReports" -> plan.getEnableAdvancedReports();
+                        case "enableInventory" -> plan.getEnableInventory();
+                        case "enableIntegrations" -> plan.getEnableIntegrations();
+                        case "enableEcommerce" -> plan.getEnableEcommerce();
+                        case "enableInvoiceBranding" -> plan.getEnableInvoiceBranding();
+                        case "enableMultiLocation" -> plan.getEnableMultiLocation();
+                        default -> null;
+                    };
+                    if (flag == null || !flag) {
+                        writeForbiddenResponse(response,
+                                "This feature requires an upgraded plan.", "FEATURE_NOT_ENABLED");
+                        return;
+                    }
+                }
+            }
+        }
+
         filterChain.doFilter(request, response);
     }
 
@@ -144,13 +176,17 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
         if (user.getRole() == UserRole.ROLE_STORE_ADMIN || user.getRole() == UserRole.ROLE_STORE_MANAGER) {
             return storeRepository.findByStoreAdminId(user.getId());
         } else if (user.getRole() == UserRole.ROLE_BRANCH_MANAGER || user.getRole() == UserRole.ROLE_BRANCH_ADMIN || user.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
-            // Find branch by employee
-            List<Branch> branches = branchRepository.findByStoreId(null); // search branches
-            // Alternatively, find store directly if branch is linked to user or store
-            // Query store by employee if user belongs to a branch
-            return storeRepository.findAll().stream()
-                    .filter(s -> s.getStoreAdmin() != null)
-                    .findFirst().orElse(null);
+            // Resolve store via the user's own FK relationships instead of a global findFirst().
+            // 1) Direct store link (User.store / User.ownedStore)
+            if (user.getStore() != null) {
+                return user.getStore();
+            }
+            // 2) Via the user's linked branch
+            if (user.getBranch() != null && user.getBranch().getStore() != null) {
+                return user.getBranch().getStore();
+            }
+            // No store linked — pass through; controllers enforce their own scoping
+            return null;
         }
         return storeRepository.findByStoreAdminId(user.getId());
     }

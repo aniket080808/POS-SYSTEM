@@ -58,9 +58,18 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         }
 
         for (Object[] row : rawStats) {
-            LocalDateTime date = (LocalDateTime) row[0];
+            String dateStr;
+            if (row[0] instanceof java.sql.Date sqlDate) {
+                dateStr = sqlDate.toLocalDate().format(formatter);
+            } else if (row[0] instanceof java.time.LocalDate localDate) {
+                dateStr = localDate.format(formatter);
+            } else if (row[0] instanceof LocalDateTime localDateTime) {
+                dateStr = localDateTime.format(formatter);
+            } else {
+                dateStr = String.valueOf(row[0]);
+            }
             Long count = (Long) row[1];
-            dataMap.put(date.format(formatter), count);
+            dataMap.put(dateStr, count);
         }
 
         List<StoreRegistrationStatDTO> result = new ArrayList<>();

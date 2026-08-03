@@ -12,12 +12,13 @@ import java.util.List;
 public interface BranchRepository extends JpaRepository<Branch, Long> {
 
     List<Branch> findByStoreId(Long storeId);
+    List<Branch> findByStoreIdAndIsActiveTrue(Long storeId);
 
 
 
 
 
-    @Query("SELECT COUNT(b) FROM Branch b WHERE b.store.storeAdmin.id = :storeAdminId")
+    @Query("SELECT COUNT(b) FROM Branch b WHERE b.store.storeAdmin.id = :storeAdminId AND b.isActive = true")
     int countByStoreAdminId(@Param("storeAdminId") Long storeAdminId);
 
     @Query("""
@@ -33,6 +34,7 @@ public interface BranchRepository extends JpaRepository<Branch, Long> {
         FROM Branch b
         JOIN Order o ON o.branch.id = b.id
         WHERE b.store.storeAdmin.id = :storeAdminId
+        AND b.isActive = true
         GROUP BY b.id
         ORDER BY SUM(o.totalAmount) DESC
     """)
@@ -44,6 +46,7 @@ public interface BranchRepository extends JpaRepository<Branch, Long> {
         )
         FROM Branch b
         WHERE b.store.storeAdmin.id = :storeAdminId
+        AND b.isActive = true
         AND (
             SIZE(b.workingDays) = 0
             OR :dayOfWeek MEMBER OF b.workingDays

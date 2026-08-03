@@ -34,6 +34,7 @@ public class AdminDashboardController {
      * - ⛔ blockedStores
      */
     @GetMapping("/dashboard/summary")
+    @PreAuthorize("hasRole('ADMIN')")
     public DashboardSummaryDTO getDashboardSummary() {
         return adminDashboardService.getDashboardSummary();
     }

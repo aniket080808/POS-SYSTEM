@@ -1,6 +1,7 @@
 package com.aniket.service.impl;
 
 import com.aniket.domain.UserRole;
+import com.aniket.exception.AccessDeniedException;
 import com.aniket.exception.ResourceNotFoundException;
 import com.aniket.exception.UserException;
 import com.aniket.mapper.UserMapper;
@@ -12,6 +13,9 @@ import com.aniket.repository.BranchRepository;
 import com.aniket.repository.StoreRepository;
 import com.aniket.repository.UserRepository;
 import com.aniket.service.EmployeeService;
+import com.aniket.service.StoreSubscriptionService;
+import com.aniket.service.UserService;
+import com.aniket.exception.PlanLimitExceededException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -27,13 +31,11 @@ import java.util.stream.Collectors;
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final UserRepository userRepository;
-
-
     private final StoreRepository storeRepository;
-
     private final BranchRepository branchRepository;
-
     private final PasswordEncoder passwordEncoder;
+    private final StoreSubscriptionService storeSubscriptionService;
+    private final UserService userService;
 
     // Branch-level roles that require a branch assignment
     private static final List<UserRole> BRANCH_LEVEL_ROLES = List.of(
@@ -51,9 +53,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public UserDTO createStoreEmployee(UserDTO dto, Long storeId) throws Exception {
+        Store store = resolveAndVerifyStore(storeId);
 
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Store not found with ID: " + storeId));
+        enforceUserLimit(store);
 
         Branch branch = null;
 
@@ -109,6 +111,11 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw new UserException("Invalid role for branch employee. Must be ROLE_BRANCH_ADMIN, ROLE_BRANCH_MANAGER, or ROLE_BRANCH_CASHIER");
         }
 
+        // Verify the branch belongs to the authenticated user's store
+        resolveAndVerifyStore(branch.getStore().getId());
+
+        enforceUserLimit(branch.getStore());
+
         // 🔹 Duplicate validation — email
         User existingByEmail = userRepository.findByEmail(employee.getEmail());
         if (existingByEmail != null) {
@@ -131,10 +138,29 @@ public class EmployeeServiceImpl implements EmployeeService {
         return UserMapper.toDTO(savedEmployee);
     }
 
+    private void enforceUserLimit(Store store) throws PlanLimitExceededException {
+        if (store == null) return;
+        var storeSub = storeSubscriptionService.getOrCreateForStore(store);
+        var plan = storeSub.getCurrentPlan();
+        if (plan == null || plan.getMaxUsers() == null || plan.getMaxUsers() <= 0) return;
+
+        int current = userRepository.findAllEmployeesByStoreId(store.getId()).size();
+        if (current >= plan.getMaxUsers()) {
+            throw new PlanLimitExceededException(
+                "Your plan allows a maximum of " + plan.getMaxUsers() + " users.");
+        }
+    }
+
     @Override
     @Transactional
     public UserDTO updateEmployee(Long employeeId, UserDTO employeeDetails) throws Exception {
         User existingEmployee = findEmployeeByIdEntity(employeeId);
+
+        // Verify the employee belongs to the authenticated user's store
+        if (existingEmployee.getStore() == null) {
+            throw new AccessDeniedException("You are not authorized to update this employee.");
+        }
+        resolveAndVerifyStore(existingEmployee.getStore().getId());
 
         if (employeeDetails.getFullName() != null) {
             existingEmployee.setFullName(employeeDetails.getFullName());
@@ -180,6 +206,13 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public void deleteEmployee(Long employeeId) throws Exception {
         User employee = findEmployeeByIdEntity(employeeId);
+
+        // Verify the employee belongs to the authenticated user's store
+        if (employee.getStore() == null) {
+            throw new AccessDeniedException("You are not authorized to delete this employee.");
+        }
+        resolveAndVerifyStore(employee.getStore().getId());
+
         userRepository.delete(employee);
     }
 
@@ -203,8 +236,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public List<UserDTO> findStoreEmployees(Long storeId, UserRole role) throws Exception {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Store not found with ID: " + storeId));
+        Store store = resolveAndVerifyStore(storeId);
 
         // 🔹 Use the new query that fetches BOTH store-level (u.store) AND branch-level (u.branch.store) employees
         List<User> employees = userRepository.findAllEmployeesByStoreId(storeId);
@@ -223,10 +255,40 @@ public class EmployeeServiceImpl implements EmployeeService {
     public List<UserDTO> findBranchEmployees(Long branchId, UserRole role) throws Exception {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch not found with ID: " + branchId));
+
+        // Verify the branch belongs to the authenticated user's store
+        if (branch.getStore() == null) {
+            throw new AccessDeniedException("You are not authorized to access this branch's employees.");
+        }
+        resolveAndVerifyStore(branch.getStore().getId());
+
         List<User> employees = userRepository.findByBranchId(branch.getId()).stream()
                 .filter(user -> role == null || user.getRole() == role)
                 .collect(Collectors.toList());
 
         return UserMapper.toDTOList(employees);
+    }
+
+    private Store resolveAndVerifyStore(Long requestedStoreId) throws UserException, ResourceNotFoundException {
+        User currentUser = userService.getCurrentUser();
+
+        // Super Admin bypass — allow access to any store
+        if (currentUser.getRole() == UserRole.ROLE_ADMIN) {
+            if (requestedStoreId != null) {
+                return storeRepository.findById(requestedStoreId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Store not found with ID: " + requestedStoreId));
+            }
+            // If no specific store requested, return null to indicate super admin mode
+            return null;
+        }
+
+        Store userStore = currentUser.getStore();
+        if (userStore == null) {
+            throw new AccessDeniedException("No store is linked to this account.");
+        }
+        if (requestedStoreId != null && !requestedStoreId.equals(userStore.getId())) {
+            throw new AccessDeniedException("You are not authorized to manage employees for this store.");
+        }
+        return userStore;
     }
 }

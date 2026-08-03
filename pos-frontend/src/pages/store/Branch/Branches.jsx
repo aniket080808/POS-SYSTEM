@@ -16,6 +16,8 @@ import { toast } from "@/components/ui/use-toast";
 import {
   getAllBranchesByStore,
 } from "@/Redux Toolkit/features/branch/branchThunks";
+import { getStoreOverview } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import BranchTable from "./BranchTable";
 import BranchForm from "./BranchForm";
@@ -24,13 +26,13 @@ export default function Branches() {
   const dispatch = useDispatch();
   const { branches, loading, error } = useSelector((state) => state.branch);
   const { store } = useSelector((state) => state.store);
-  const { user } = useSelector((state) => state.user);
+  const { user, userProfile } = useSelector((state) => state.user);
+  const { storeOverview } = useSelector((state) => state.storeAnalytics);
+  const { statusResponse } = useSelector((state) => state.storeSubscription);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentBranch, setCurrentBranch] = useState(null);
-
-
 
   // Fetch branches when component mounts
   useEffect(() => {
@@ -44,7 +46,16 @@ export default function Branches() {
     }
   }, [dispatch, store, user]);
 
-  console.log("store ", store);
+  // Fetch store overview for usage-vs-limit badge if not already loaded
+  useEffect(() => {
+    if (userProfile?.id && !storeOverview) {
+      dispatch(getStoreOverview(userProfile.id));
+    }
+  }, [dispatch, userProfile, storeOverview]);
+
+  const maxBranches = statusResponse?.currentPlan?.maxBranches;
+  const totalBranches = storeOverview?.totalBranches;
+  const showBranchLimit = storeOverview && maxBranches != null && maxBranches > 0;
 
   const handleAddBranchSuccess = () => {
     setIsAddDialogOpen(false);
@@ -70,31 +81,38 @@ export default function Branches() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="mr-2 h-4 w-4" /> Add Branch
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Branch</DialogTitle>
-            </DialogHeader>
-            <BranchForm 
-              onSubmit={handleAddBranchSuccess} 
-              onCancel={() => setIsAddDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-3">
+          {showBranchLimit && (
+            <Badge variant="outline" className="text-xs">
+              {totalBranches}/{maxBranches} branches
+            </Badge>
+          )}
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" /> Add Branch
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add New Branch</DialogTitle>
+              </DialogHeader>
+              <BranchForm
+                onSubmit={handleAddBranchSuccess}
+                onCancel={() => setIsAddDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Branch</DialogTitle>
             </DialogHeader>
-            <BranchForm 
-              initialValues={currentBranch} 
-              onSubmit={handleEditBranchSuccess} 
+            <BranchForm
+              initialValues={currentBranch}
+              onSubmit={handleEditBranchSuccess}
               onCancel={() => setIsEditDialogOpen(false)}
               isEditing={true}
             />
@@ -104,9 +122,9 @@ export default function Branches() {
 
       <Card>
         <CardContent className="p-0">
-          <BranchTable 
-            branches={branches} 
-            loading={loading} 
+          <BranchTable
+            branches={branches}
+            loading={loading}
             onEdit={openEditDialog}
           />
         </CardContent>

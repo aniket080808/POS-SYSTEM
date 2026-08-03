@@ -351,4 +351,35 @@ export const getStoreAlerts = createAsyncThunk(
       );
     }
   }
-); 
+);
+
+// 🔹 Super Admin: Get Store Usage for a specific store
+export const getStoreUsageForAdmin = createAsyncThunk(
+  "storeAnalytics/getStoreUsageForAdmin",
+  async (storeId, { rejectWithValue }) => {
+    try {
+      console.log('🔄 Fetching store usage for admin...', { storeId });
+      
+      const headers = getAuthHeaders();
+      const res = await api.get(`/api/super-admin/stores/${storeId}/usage`, { headers });
+      
+      console.log('✅ Store usage fetched successfully:', {
+        storeId,
+        response: res.data
+      });
+      
+      return res.data;
+    } catch (err) {
+      console.error('❌ Failed to fetch store usage:', {
+        storeId,
+        error: err.response?.data || err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText
+      });
+      
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch store usage"
+      );
+    }
+  }
+);

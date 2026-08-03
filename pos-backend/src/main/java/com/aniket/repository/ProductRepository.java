@@ -28,14 +28,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("""
         SELECT new com.aniket.payload.StoreAnalysis.CategorySalesDTO(
-            p.category.name,
-            SUM(oi.quantity * bi.sellingPrice)
+            COALESCE(p.category.name, 'Uncategorized'),
+            SUM(oi.price)
         )
         FROM OrderItem oi
+        JOIN oi.order o
         JOIN oi.product p
-        JOIN BranchInventory bi ON bi.product.id = p.id
-        JOIN bi.store s
-        WHERE s.storeAdmin.id = :storeAdminId
+        WHERE o.branch.store.storeAdmin.id = :storeAdminId
+          AND o.status = com.aniket.domain.OrderStatus.COMPLETED
         GROUP BY p.category.name
     """)
     List<CategorySalesDTO> getSalesGroupedByCategory(@Param("storeAdminId") Long storeAdminId);

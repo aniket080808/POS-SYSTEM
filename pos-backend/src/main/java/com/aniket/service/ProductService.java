@@ -19,4 +19,6 @@ public interface ProductService {
     List<ProductDTO> getProductsByStoreId(Long storeId);
 
     List<ProductDTO> searchByKeyword(Long storeId, String query);
+
+    List<ProductDTO> bulkCreateProducts(List<ProductDTO> dtos, User user) throws AccessDeniedException;
 }

@@ -77,10 +77,10 @@ const SalesTrend = () => {
         }),
         sales: item.totalAmount,
       }));
-    } else if (salesTrends) {
-      return salesTrends.map((item) => ({
-        date: item.period,
-        sales: item.totalSales,
+    } else if (salesTrends?.points) {
+      return salesTrends.points.map((item) => ({
+        date: item.date,
+        sales: item.totalAmount,
       }));
     }
     return [];

@@ -3,7 +3,9 @@ import {
   createStore,
   getStoreById,
   getAllStores,
+  searchStores,
   updateStore,
+  updateStoreAsSuperAdmin,
   deleteStore,
   getStoreByAdmin,
   getStoreByEmployee,
@@ -20,6 +22,13 @@ const initialState = {
   storeSubscription: null,
   loading: false,
   error: null,
+  searchPage: {
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    number: 0,
+    size: 10,
+  },
 };
 
 const storeSlice = createSlice({
@@ -52,8 +61,25 @@ const storeSlice = createSlice({
       .addCase(getAllStores.fulfilled, (state, action) => {
         state.stores = action.payload;
       })
+      .addCase(searchStores.fulfilled, (state, action) => {
+        const page = action.payload;
+        state.searchPage = {
+          content: page.content || [],
+          totalElements: page.totalElements || 0,
+          totalPages: page.totalPages || 0,
+          number: page.number || 0,
+          size: page.size || 10,
+        };
+      })
       .addCase(updateStore.fulfilled, (state, action) => {
         state.store = action.payload;
+      })
+      .addCase(updateStoreAsSuperAdmin.fulfilled, (state, action) => {
+        const updated = action.payload;
+        state.store = updated;
+        state.stores = state.stores.map(store =>
+          store.id === updated.id ? updated : store
+        );
       })
       .addCase(deleteStore.fulfilled, (state) => {
         state.store = null;

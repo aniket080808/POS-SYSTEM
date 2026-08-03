@@ -23,6 +23,7 @@ public class StoreOverviewDTO {
     private Integer todayOrders;
     private Integer yesterdayOrders;
     private Integer activeCashiers;
+    private Integer yesterdayActiveCashiers;
     private Double averageOrderValue;
     private Double previousPeriodSales;
     private Double previousPeriodAverageOrderValue;

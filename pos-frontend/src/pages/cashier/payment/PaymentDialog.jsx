@@ -68,6 +68,24 @@ const PaymentDialog = ({
       return;
     }
 
+    // Guard: ensure a payment method is selected and is in the accepted list
+    if (!paymentMethod) {
+      toast({
+        title: "Payment Method Required",
+        description: "Please select a payment method",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!acceptedMethods.includes(paymentMethod.toUpperCase())) {
+      toast({
+        title: "Payment Method Not Available",
+        description: "This payment method is not accepted by this store.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Prepare order data according to OrderDTO structure
       const orderData = {
@@ -126,16 +144,22 @@ const PaymentDialog = ({
           </div>
 
           <div className="space-y-2">
-            {paymentMethods.map((method) => (
-              <Button
-                key={method.key}
-                variant={paymentMethod === method.key ? "default" : "outline"}
-                className="w-full justify-start"
-                onClick={() => handlePaymentMethod(method.key)}
-              >
-                {method.label}
-              </Button>
-            ))}
+            {paymentMethods.length > 0 ? (
+              paymentMethods.map((method) => (
+                <Button
+                  key={method.key}
+                  variant={paymentMethod === method.key ? "default" : "outline"}
+                  className="w-full justify-start"
+                  onClick={() => handlePaymentMethod(method.key)}
+                >
+                  {method.label}
+                </Button>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No payment methods are configured for this store. Please contact your store administrator.
+              </p>
+            )}
           </div>
         </div>
 

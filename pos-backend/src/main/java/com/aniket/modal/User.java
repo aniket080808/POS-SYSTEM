@@ -77,6 +77,8 @@ public class User {
 
     private LocalDateTime lastLogin;
 
+    private LocalDateTime lastActivity;
+
     @JsonIgnore
     public Store getStore() {
         return this.ownedStore != null ? this.ownedStore : this.store;
