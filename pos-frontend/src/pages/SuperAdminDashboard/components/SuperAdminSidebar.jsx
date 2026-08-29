@@ -10,6 +10,8 @@ import {
   FileText,
   IndianRupee,
   Clock,
+  LogOut,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
@@ -17,29 +19,37 @@ const navLinks = [
   {
     name: "Dashboard",
     path: "/super-admin/dashboard",
-    icon: <LayoutDashboard className="w-5 h-5" />,
+    icon: LayoutDashboard,
   },
   {
     name: "Stores",
     path: "/super-admin/stores",
-    icon: <Store className="w-5 h-5" />,
+    icon: Store,
   },
   {
     name: "Subscription Plans",
     path: "/super-admin/subscriptions",
-    icon: <FileText className="w-5 h-5" />,
+    icon: FileText,
   },
   {
     name: "Pending Requests",
     path: "/super-admin/requests",
-    icon: <Clock className="w-5 h-5" />,
+    icon: Clock,
   },
- 
-
+  {
+    name: "Commissions",
+    path: "/super-admin/commissions",
+    icon: IndianRupee,
+  },
+  {
+    name: "Exports",
+    path: "/super-admin/exports",
+    icon: Download,
+  },
   {
     name: "Settings",
     path: "/super-admin/settings",
-    icon: <Settings className="w-5 h-5" />,
+    icon: Settings,
   },
 ];
 
@@ -54,63 +64,55 @@ export default function SuperAdminSidebar() {
   };
 
   return (
-    <aside className="h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col py-6 px-4 shadow-lg">
-      <div className="mb-8 text-2xl font-extrabold text-primary tracking-tight flex items-center gap-2">
-        <Store className="w-7 h-7 text-primary" />
-        Super Admin
+    <aside className="h-full w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col py-5 px-4 shadow-sm select-none">
+      {/* Brand Header */}
+      <div className="mb-6 px-2 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-xs">
+          <Store className="w-5 h-5 text-primary-foreground" />
+        </div>
+        <div>
+          <span className="text-base font-bold tracking-tight text-sidebar-foreground block">
+            NexPOS
+          </span>
+          <span className="text-[11px] font-semibold text-primary uppercase tracking-wider block">
+            Super Admin
+          </span>
+        </div>
       </div>
-      <nav className="flex-1 overflow-y-auto">
-        <ul className="space-y-2">
-          {navLinks.map((link) => (
-            <li key={link.name}>
-              <Link
-                to={link.path}
-                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-base font-medium group ${
-                  location.pathname.startsWith(link.path)
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                }`}
-              >
-                <span
-                  className={`transition-colors ${
-                    location.pathname.startsWith(link.path)
-                      ? "text-sidebar-primary"
-                      : "text-sidebar-foreground/60 group-hover:text-sidebar-primary"
-                  }`}
-                >
-                  {link.icon}
-                </span>
-                {link.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto space-y-1">
+        {navLinks.map((link) => {
+          const Icon = link.icon;
+          const isActive = location.pathname.startsWith(link.path);
+          return (
+            <Link
+              key={link.name}
+              to={link.path}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all text-xs font-semibold ${
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isActive ? "text-primary-foreground" : "text-sidebar-foreground/60"}`} />
+              <span>{link.name}</span>
+            </Link>
+          );
+        })}
       </nav>
-      <div className="mt-auto">
+
+      {/* Footer Profile / Logout */}
+      <div className="pt-4 mt-auto border-t border-sidebar-border/80">
         <Button
           onClick={handleLogout}
-          variant=""
-          className="flex items-center gap-3 rounded-lg transition-colors text-base font-medium w-full text-left "
+          variant="outline"
+          className="w-full justify-start gap-2.5 h-10 rounded-xl text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/40"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="lucide lucide-log-out w-5 h-5"
-          >
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="17 16 22 12 17 8" />
-            <line x1="22" x2="10" y1="12" y2="12" />
-          </svg>
-          Logout
+          <LogOut className="w-4 h-4" />
+          <span>Sign Out</span>
         </Button>
       </div>
     </aside>
   );
-} 
+}

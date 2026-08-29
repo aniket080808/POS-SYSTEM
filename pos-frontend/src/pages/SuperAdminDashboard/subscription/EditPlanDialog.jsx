@@ -11,6 +11,7 @@ import {
 } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { Button } from '../../../components/ui/button';
+import { Plus, Trash2 } from 'lucide-react';
 import { updateSubscriptionPlan } from '@/Redux Toolkit/features/subscriptionPlan/subscriptionPlanThunks';
 
 const BILLING_CYCLES = [
@@ -19,13 +20,13 @@ const BILLING_CYCLES = [
 ];
 
 const FEATURE_FIELDS = [
-  { key: 'enableAdvancedReports', label: 'Advanced Reports' },
-  { key: 'enableInventory', label: 'Inventory System' },
-  { key: 'enableIntegrations', label: 'Integrations' },
-  { key: 'enableEcommerce', label: 'eCommerce' },
-  { key: 'enableInvoiceBranding', label: 'Invoice Branding' },
-  { key: 'prioritySupport', label: 'Priority Support' },
-  { key: 'enableMultiLocation', label: 'Multi-location' },
+  { key: 'enableAdvancedReports', label: 'Advanced Reports & Export' },
+  { key: 'enableInventory', label: 'Inventory Management Engine' },
+  { key: 'enableIntegrations', label: 'Third-party Integrations' },
+  { key: 'enableEcommerce', label: 'Online Storefront / eCommerce' },
+  { key: 'enableInvoiceBranding', label: 'White-label Custom Invoices' },
+  { key: 'prioritySupport', label: '24/7 Priority SLA Support' },
+  { key: 'enableMultiLocation', label: 'Multi-Location Sync' },
 ];
 
 const validationSchema = Yup.object().shape({
@@ -47,9 +48,10 @@ const validationSchema = Yup.object().shape({
 });
 
 const FeaturesSwitchGrid = memo(({ handleFeatureSwitch }) => (
-  <div className="grid grid-cols-2 gap-2">
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
     {FEATURE_FIELDS.map(f => (
-      <label key={f.key} className="flex items-center gap-2">
+      <label key={f.key} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/60 text-xs cursor-pointer hover:bg-muted/60 transition-colors">
+        <span className="font-medium text-foreground pr-2">{f.label}</span>
         <Field name={f.key} type="checkbox">
           {({ field }) => (
             <Switch
@@ -59,7 +61,6 @@ const FeaturesSwitchGrid = memo(({ handleFeatureSwitch }) => (
             />
           )}
         </Field>
-        <span>{f.label}</span>
       </label>
     ))}
   </div>
@@ -67,22 +68,25 @@ const FeaturesSwitchGrid = memo(({ handleFeatureSwitch }) => (
 FeaturesSwitchGrid.displayName = 'FeaturesSwitchGrid';
 
 const ExtraFeaturesList = memo(({ values, handleExtraFeatureChange, handleRemoveExtraFeature, handleAddExtraFeature }) => (
-  <>
+  <div className="space-y-2">
     {values.extraFeatures.map((feature, idx) => (
-      <div key={idx} className="flex gap-2 mb-1">
+      <div key={idx} className="flex gap-2">
         <Input
           value={feature}
           onChange={e => handleExtraFeatureChange(idx, e.target.value)}
-          placeholder="Extra feature"
+          placeholder={`Bullet feature ${idx + 1}`}
           aria-label={`Extra feature ${idx + 1}`}
+          className="h-9 rounded-xl text-xs"
         />
         <Button
           type="button"
           variant="ghost"
+          size="icon"
           onClick={() => handleRemoveExtraFeature(idx)}
           disabled={values.extraFeatures.length === 1}
+          className="h-9 w-9 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10"
         >
-          Remove
+          <Trash2 className="w-3.5 h-3.5" />
         </Button>
       </div>
     ))}
@@ -91,10 +95,11 @@ const ExtraFeaturesList = memo(({ values, handleExtraFeatureChange, handleRemove
       variant="outline"
       size="sm"
       onClick={handleAddExtraFeature}
+      className="h-8 rounded-xl text-xs font-semibold gap-1.5"
     >
-      + Add Feature
+      <Plus className="w-3.5 h-3.5" /> Add Capability
     </Button>
-  </>
+  </div>
 ));
 ExtraFeaturesList.displayName = 'ExtraFeaturesList';
 
@@ -156,33 +161,39 @@ const EditPlanDialog = ({ open, onOpenChange, plan, onSuccess }) => {
     const handleAddExtraFeature = () => {
       setFieldValue('extraFeatures', [...values.extraFeatures, '']);
     };
+
     return (
-      <Form className="space-y-4">
-        <div>
-          <label className="block font-medium" htmlFor="plan-name">Name</label>
-          <Field as={Input} id="plan-name" name="name" placeholder="Plan name" />
-          <ErrorMessage name="name" component="div" className="text-red-500 text-xs" />
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="plan-description">Description</label>
-          <Field as={Input} id="plan-description" name="description" placeholder="Description" />
-          <ErrorMessage name="description" component="div" className="text-red-500 text-xs" />
-        </div>
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label className="block font-medium" htmlFor="plan-price">Price (₹)</label>
-            <Field as={Input} id="plan-price" name="price" type="number" min="0" placeholder="Price" />
-            <ErrorMessage name="price" component="div" className="text-red-500 text-xs" />
+      <Form className="space-y-4 text-xs">
+        {/* Name & Description */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground" htmlFor="plan-name">Plan Name</label>
+            <Field as={Input} id="plan-name" name="name" placeholder="Plan name" className="h-9 rounded-xl text-xs" />
+            <ErrorMessage name="name" component="div" className="text-destructive text-[11px]" />
           </div>
-          <div className="flex-1">
-            <label className="block font-medium" htmlFor="plan-billing-cycle">Billing Cycle</label>
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground" htmlFor="plan-description">Short Tagline</label>
+            <Field as={Input} id="plan-description" name="description" placeholder="Description" className="h-9 rounded-xl text-xs" />
+            <ErrorMessage name="description" component="div" className="text-destructive text-[11px]" />
+          </div>
+        </div>
+
+        {/* Price & Billing Cycle */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground" htmlFor="plan-price">Price (₹)</label>
+            <Field as={Input} id="plan-price" name="price" type="number" min="0" placeholder="Price" className="h-9 rounded-xl text-xs font-mono" />
+            <ErrorMessage name="price" component="div" className="text-destructive text-[11px]" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground" htmlFor="plan-billing-cycle">Billing Frequency</label>
             <Field name="billingCycle">
               {({ field }) => (
                 <Select value={field.value} onValueChange={val => setFieldValue('billingCycle', val)}>
-                  <SelectTrigger className="w-full" id="plan-billing-cycle">
+                  <SelectTrigger className="w-full h-9 rounded-xl text-xs" id="plan-billing-cycle">
                     <SelectValue placeholder="Select cycle" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl text-xs">
                     {BILLING_CYCLES.map(opt => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
@@ -190,51 +201,58 @@ const EditPlanDialog = ({ open, onOpenChange, plan, onSuccess }) => {
                 </Select>
               )}
             </Field>
-            <ErrorMessage name="billingCycle" component="div" className="text-red-500 text-xs" />
+            <ErrorMessage name="billingCycle" component="div" className="text-destructive text-[11px]" />
           </div>
         </div>
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label className="block font-medium" htmlFor="plan-branches">Branches</label>
-            <Field as={Input} id="plan-branches" name="maxBranches" type="number" min="1" placeholder="Branches" />
-            <ErrorMessage name="maxBranches" component="div" className="text-red-500 text-xs" />
+
+        {/* Branches, Users, Products */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground" htmlFor="plan-branches">Max Branches</label>
+            <Field as={Input} id="plan-branches" name="maxBranches" type="number" min="1" placeholder="Branches" className="h-9 rounded-xl text-xs font-mono" />
+            <ErrorMessage name="maxBranches" component="div" className="text-destructive text-[11px]" />
           </div>
-          <div className="flex-1">
-            <label className="block font-medium" htmlFor="plan-users">Users</label>
-            <Field as={Input} id="plan-users" name="maxUsers" type="number" min="1" placeholder="Users" />
-            <ErrorMessage name="maxUsers" component="div" className="text-red-500 text-xs" />
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground" htmlFor="plan-users">Max Staff</label>
+            <Field as={Input} id="plan-users" name="maxUsers" type="number" min="1" placeholder="Users" className="h-9 rounded-xl text-xs font-mono" />
+            <ErrorMessage name="maxUsers" component="div" className="text-destructive text-[11px]" />
           </div>
-          <div className="flex-1">
-            <label className="block font-medium" htmlFor="plan-products">Products</label>
-            <Field as={Input} id="plan-products" name="maxProducts" type="number" min="1" placeholder="Products" />
-            <ErrorMessage name="maxProducts" component="div" className="text-red-500 text-xs" />
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground" htmlFor="plan-products">Max SKUs</label>
+            <Field as={Input} id="plan-products" name="maxProducts" type="number" min="1" placeholder="Products" className="h-9 rounded-xl text-xs font-mono" />
+            <ErrorMessage name="maxProducts" component="div" className="text-destructive text-[11px]" />
           </div>
         </div>
-        <div>
-          <label className="block font-medium mb-2">Features</label>
+
+        {/* Features Switches */}
+        <div className="space-y-2 pt-1">
+          <label className="font-semibold text-foreground block">System Feature Gates</label>
           <FeaturesSwitchGrid handleFeatureSwitch={handleFeatureSwitch} />
-          {FEATURE_FIELDS.map(f => (
-            <ErrorMessage key={f.key} name={f.key} component="div" className="text-red-500 text-xs" />
-          ))}
         </div>
-        <div>
-          <label className="block font-medium mb-1">Extra Features</label>
+
+        {/* Extra Features */}
+        <div className="space-y-2 pt-1">
+          <label className="font-semibold text-foreground block">Key Bullet Highlights</label>
           <ExtraFeaturesList
             values={values}
             handleExtraFeatureChange={handleExtraFeatureChange}
             handleRemoveExtraFeature={handleRemoveExtraFeature}
             handleAddExtraFeature={handleAddExtraFeature}
           />
-          <ErrorMessage name="extraFeatures" component="div" className="text-red-500 text-xs" />
+          <ErrorMessage name="extraFeatures" component="div" className="text-destructive text-[11px]" />
         </div>
-        {errors.submit && <div className="text-red-500 text-xs">{errors.submit}</div>}
-        <DialogFooter>
-          <Button type="submit" disabled={isSubmitting || loading}>
+
+        {/* Submission error */}
+        {errors.submit && <div className="text-destructive text-xs font-semibold">{errors.submit}</div>}
+
+        {/* Dialog Footer */}
+        <DialogFooter className="gap-2 pt-2">
+          <DialogClose asChild>
+            <Button type="button" variant="outline" size="sm" className="rounded-xl text-xs">Cancel</Button>
+          </DialogClose>
+          <Button type="submit" size="sm" disabled={isSubmitting || loading} className="rounded-xl text-xs font-semibold">
             {loading ? 'Saving...' : 'Save Changes'}
           </Button>
-          <DialogClose asChild>
-            <Button type="button" variant="ghost">Cancel</Button>
-          </DialogClose>
         </DialogFooter>
       </Form>
     );
@@ -242,11 +260,11 @@ const EditPlanDialog = ({ open, onOpenChange, plan, onSuccess }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="rounded-2xl bg-card border-border sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Subscription Plan</DialogTitle>
+          <DialogTitle className="text-base font-bold text-foreground">Edit Subscription Tier</DialogTitle>
         </DialogHeader>
-        <div style={{ maxHeight: '65vh', overflowY: 'auto', paddingRight: 4 }}>
+        <div className="py-2">
           <Formik
             initialValues={getInitialValues(plan)}
             validationSchema={validationSchema}
@@ -261,4 +279,5 @@ const EditPlanDialog = ({ open, onOpenChange, plan, onSuccess }) => {
   );
 };
 
-export default EditPlanDialog; 
+export default EditPlanDialog;
+ 

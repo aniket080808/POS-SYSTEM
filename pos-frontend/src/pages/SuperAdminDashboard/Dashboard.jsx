@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Store, Clock, TrendingUp, AlertTriangle, RefreshCw, Loader2, Wifi, WifiOff } from "lucide-react";
+import { StatCard } from "../../components/ui/stat-card";
+import { Store, Clock, TrendingUp, AlertTriangle, RefreshCw, Loader2, Wifi, WifiOff, CheckCircle2, XCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Client } from "@stomp/stompjs";
 import {
@@ -12,36 +13,10 @@ import {
 } from "../../Redux Toolkit/features/adminDashboard/adminDashboardThunks";
 
 const COLORS = ["#10b981", "#f59e0b", "#ef4444"];
+const POLLING_INTERVAL = 30000;
 
-const POLLING_INTERVAL = 30000; // 30 seconds (fallback when WebSocket is unavailable)
-
-const StatCard = ({ title, value, icon, description, trend }) => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">
-        {title}
-      </CardTitle>
-      {icon}
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{value}</div>
-      <p className="text-xs text-muted-foreground flex items-center gap-1">
-        {trend !== undefined && (
-          <span className={trend > 0 ? "text-green-600" : trend < 0 ? "text-red-600" : ""}>
-            {trend > 0 ? "+" : ""}{trend}%
-          </span>
-        )}
-        {description}
-      </p>
-    </CardContent>
-  </Card>
-);
-
-/**
- * Returns a human-readable relative time string.
- * e.g. "2 minutes ago", "1 hour ago", "Yesterday", "3 days ago"
- */
 function getRelativeTime(dateString) {
+  if (!dateString) return "";
   const now = new Date();
   const date = new Date(dateString);
   const diffMs = now - date;
@@ -51,30 +26,27 @@ function getRelativeTime(dateString) {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffSeconds < 60) return "Just now";
-  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString();
 }
 
-/**
- * Returns the appropriate color dot for an activity based on its action/status.
- */
 function getActivityColor(action, status) {
   const actionUpper = (action || "").toUpperCase();
   const statusUpper = (status || "").toUpperCase();
 
   if (actionUpper.includes("APPROVED") || actionUpper.includes("ACTIVE") || statusUpper === "ACTIVE") {
-    return "bg-green-500";
+    return "bg-emerald-500 ring-emerald-500/20";
   }
   if (actionUpper.includes("BLOCKED") || actionUpper.includes("REJECTED") || actionUpper.includes("DELETED") || statusUpper === "BLOCKED") {
-    return "bg-red-500";
+    return "bg-destructive ring-destructive/20";
   }
   if (actionUpper.includes("PENDING") || actionUpper.includes("REGISTERED") || statusUpper === "PENDING") {
-    return "bg-yellow-500";
+    return "bg-amber-500 ring-amber-500/20";
   }
-  return "bg-blue-500";
+  return "bg-primary ring-primary/20";
 }
 
 export default function Dashboard() {
@@ -107,20 +79,13 @@ export default function Dashboard() {
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
-      debug: (str) => {
-        // Uncomment for debugging WebSocket
-        // console.log('WS:', str);
-      },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
         setWsConnected(true);
-        console.log("✅ WebSocket connected for real-time activities");
         client.subscribe("/topic/activities", (message) => {
           try {
-            const newActivity = JSON.parse(message.body);
-            // Fetch activities to get the latest list
             dispatch(getRecentActivities());
           } catch (e) {
             console.error("Failed to parse WebSocket message:", e);
@@ -129,15 +94,12 @@ export default function Dashboard() {
       },
       onDisconnect: () => {
         setWsConnected(false);
-        console.log("❌ WebSocket disconnected");
       },
       onStompError: (frame) => {
         setWsConnected(false);
-        console.error("STOMP error:", frame.headers["message"]);
       },
     });
 
-    // Only activate WebSocket if not already connected
     if (!stompClientRef.current?.active) {
       client.activate();
       stompClientRef.current = client;
@@ -157,8 +119,6 @@ export default function Dashboard() {
     dispatch(getStoreStatusDistribution());
     fetchActivities();
 
-    // Set up polling only if WebSocket is not connected
-    // The interval checks wsConnected state to avoid duplicate requests
     pollingRef.current = setInterval(() => {
       if (!stompClientRef.current?.active) {
         fetchActivities();
@@ -173,7 +133,6 @@ export default function Dashboard() {
     };
   }, [dispatch, fetchActivities]);
 
-  // Prepare data for charts
   const barData = storeRegistrationStats?.map((item) => ({
     date: item.date || item.day || item.label,
     stores: item.count || item.value || 0
@@ -189,195 +148,246 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Page Title & Live Stream Indicator */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            Overview of all stores and system statistics
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Platform Overview</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            System performance, tenant health, and registration activity across all registered retail stores.
           </p>
         </div>
-        {/* Connection Status Indicator */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {wsConnected ? (
-            <>
-              <Wifi className="h-3 w-3 text-green-500" />
-              <span className="text-green-500">Live</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-3 w-3 text-yellow-500" />
-              <span className="text-yellow-500">Polling (30s)</span>
-            </>
-          )}
+        
+        <div className="flex items-center gap-2">
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+            wsConnected 
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+              : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+          }`}>
+            {wsConnected ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Live Gateway</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3 h-3" />
+                <span>Polling (30s)</span>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={() => {
+              dispatch(getDashboardSummary());
+              dispatch(getStoreRegistrationStats());
+              dispatch(getStoreStatusDistribution());
+              fetchActivities();
+            }}
+            disabled={loading || activitiesLoading}
+            className="p-2 rounded-xl border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+            title="Refresh statistics"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading || activitiesLoading ? "animate-spin" : ""}`} />
+          </button>
         </div>
       </div>
 
-      {loading && <div className="text-center py-8">Loading dashboard...</div>}
-      {error && <div className="text-center py-8 text-red-500">{error}</div>}
+      {error && (
+        <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          <span>{error}</span>
+        </div>
+      )}
 
-      {/* Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* KPI Stat Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Stores"
-          value={dashboardSummary?.totalStores ?? "-"}
-          icon={<Store className="h-4 w-4 text-muted-foreground" />}
-          description="from last month"
-          trend={undefined}
+          title="Total Store Tenants"
+          value={dashboardSummary?.totalStores ?? "—"}
+          icon={Store}
+          description="Registered brand accounts"
+          badgeText="All Stores"
         />
         <StatCard
-          title="Active Stores"
-          value={dashboardSummary?.activeStores ?? "-"}
-          icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-          description="currently operational"
-          trend={undefined}
+          title="Active & Operating"
+          value={dashboardSummary?.activeStores ?? "—"}
+          icon={TrendingUp}
+          description="Approved live retail stores"
+          badgeText="Operational"
         />
         <StatCard
-          title="Blocked Stores"
-          value={dashboardSummary?.blockedStores ?? "-"}
-          icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
-          description="suspended accounts"
-          trend={undefined}
+          title="Pending Moderation"
+          value={dashboardSummary?.pendingStores ?? "—"}
+          icon={Clock}
+          description="Awaiting super admin review"
+          badgeText="Action Needed"
         />
         <StatCard
-          title="Pending Requests"
-          value={dashboardSummary?.pendingStores ?? "-"}
-          icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-          description="awaiting approval"
-          trend={undefined}
+          title="Suspended / Blocked"
+          value={dashboardSummary?.blockedStores ?? "—"}
+          icon={AlertTriangle}
+          description="Restricted tenant accounts"
+          badgeText="Suspended"
         />
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Store Registrations (Last 7 Days)</CardTitle>
+      {/* Analytics Visualizations */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Registration Velocity Bar Chart */}
+        <Card className="lg:col-span-8 rounded-2xl border-border/80 shadow-2xs">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold text-foreground">
+              New Store Registrations (Past 7 Days)
+            </CardTitle>
           </CardHeader>
-          <CardContent className="pl-2">
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={barData}>
-                <XAxis
-                  dataKey="date"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value}`}
-                />
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <Tooltip />
-                <Bar
-                  dataKey="stores"
-                  fill="currentColor"
-                  radius={[4, 4, 0, 0]}
-                  className="fill-primary"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Store Status Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => (percent === 0 ? null : `${name} ${(percent * 100).toFixed(0)}%`)}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity - Real data from backend */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Recent Activity</CardTitle>
-          <div className="flex items-center gap-2">
-            {wsConnected && (
-              <span className="flex items-center gap-1 text-xs text-green-500">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                Live
-              </span>
+          <CardContent className="pt-2">
+            {barData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/60" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="currentColor"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    className="text-muted-foreground font-mono"
+                  />
+                  <YAxis
+                    stroke="currentColor"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    className="text-muted-foreground font-mono"
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.75rem',
+                      fontSize: '12px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                    }}
+                  />
+                  <Bar
+                    dataKey="stores"
+                    fill="currentColor"
+                    radius={[6, 6, 0, 0]}
+                    className="fill-primary"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-xs text-muted-foreground">
+                No registration trends available for this period.
+              </div>
             )}
-            <button
-              onClick={fetchActivities}
-              disabled={activitiesLoading}
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${activitiesLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
+          </CardContent>
+        </Card>
+
+        {/* Store Status Distribution */}
+        <Card className="lg:col-span-4 rounded-2xl border-border/80 shadow-2xs">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold text-foreground">
+              Tenant Health Ratio
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            {pieData.some(d => d.value > 0) ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '0.75rem',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-xs text-muted-foreground">
+                No store records found in system.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Real-time Activity Stream */}
+      <Card className="rounded-2xl border-border/80 shadow-2xs">
+        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/60">
+          <div>
+            <CardTitle className="text-sm font-bold text-foreground">Real-Time Audit Stream</CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">Live events logged across tenant registration and moderation</p>
           </div>
+          <button
+            onClick={fetchActivities}
+            disabled={activitiesLoading}
+            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3 h-3 ${activitiesLoading ? "animate-spin" : ""}`} />
+            <span>Sync</span>
+          </button>
         </CardHeader>
-        <CardContent>
-          {/* Loading State */}
+        <CardContent className="p-4 sm:p-6">
           {activitiesLoading && recentActivities.length === 0 && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-sm text-muted-foreground">Loading activities...</span>
+            <div className="flex items-center justify-center py-10 text-xs text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              <span>Fetching live event stream...</span>
             </div>
           )}
 
-          {/* Error State */}
           {activitiesError && !activitiesLoading && (
-            <div className="text-center py-8">
-              <p className="text-sm text-red-500">
-                {typeof activitiesError === "string" ? activitiesError : "Failed to load recent activities"}
-              </p>
-              <button
-                onClick={fetchActivities}
-                className="mt-2 text-sm text-primary hover:text-primary/80 transition-colors"
-              >
-                Try again
-              </button>
+            <div className="text-center py-8 text-xs text-destructive">
+              <p>{typeof activitiesError === "string" ? activitiesError : "Failed to load audit activities"}</p>
             </div>
           )}
 
-          {/* Empty State */}
           {!activitiesLoading && !activitiesError && recentActivities.length === 0 && (
-            <div className="text-center py-8">
-              <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No recent activity</p>
+            <div className="text-center py-10 text-xs text-muted-foreground">
+              <Clock className="w-6 h-6 mx-auto mb-2 opacity-50" />
+              <span>No administrative activities recorded yet.</span>
             </div>
           )}
 
-          {/* Activity List */}
           {recentActivities.length > 0 && (
-            <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getActivityColor(activity.action, activity.status)}`}></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{activity.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {activity.performedBy ? `${activity.performedBy} · ` : ""}
-                      {getRelativeTime(activity.createdAt)}
-                    </p>
+            <div className="space-y-2.5">
+              {recentActivities.slice(0, 8).map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between gap-4 p-3 rounded-xl bg-card border border-border/60 hover:border-border transition-colors text-xs"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-2.5 h-2.5 rounded-full ring-4 ${getActivityColor(activity.action, activity.status)} flex-shrink-0`} />
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">{activity.description}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {activity.performedBy ? `${activity.performedBy} • ` : ""}
+                        <span className="font-mono">{getRelativeTime(activity.createdAt)}</span>
+                      </p>
+                    </div>
                   </div>
+
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase px-2 py-0.5 rounded-md bg-muted/60 flex-shrink-0">
+                    {activity.action || "EVENT"}
+                  </span>
                 </div>
               ))}
             </div>
@@ -386,4 +396,4 @@ export default function Dashboard() {
       </Card>
     </div>
   );
-}
+}

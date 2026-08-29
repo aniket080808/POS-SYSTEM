@@ -1,37 +1,39 @@
 import React from "react";
 import { Badge } from "../../../components/ui/badge";
-import { CheckCircle, Clock, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, Ban } from "lucide-react";
 
 const statusConfig = {
   active: {
     label: "Active",
-    variant: "default",
-    className: "bg-green-100 text-green-800 hover:bg-green-100",
-    icon: <CheckCircle className="w-3 h-3" />,
+    variant: "success",
+    icon: CheckCircle2,
   },
   pending: {
     label: "Pending",
-    variant: "secondary",
-    className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
-    icon: <Clock className="w-3 h-3" />,
+    variant: "warning",
+    icon: Clock,
   },
   blocked: {
     label: "Blocked",
     variant: "destructive",
-    className: "bg-red-100 text-red-800 hover:bg-red-100",
-    icon: <XCircle className="w-3 h-3" />,
+    icon: Ban,
+  },
+  inactive: {
+    label: "Inactive",
+    variant: "secondary",
+    icon: XCircle,
   },
 };
 
 export default function StoreStatusBadge({ status }) {
-  const config = statusConfig[status?.toLowerCase()] || statusConfig.pending;
+  const normalized = status?.toLowerCase() || "pending";
+  const config = statusConfig[normalized] || statusConfig.pending;
+  const Icon = config.icon;
 
   return (
-    <Badge variant={config.variant} className={config.className}>
-      <span className="flex items-center gap-1">
-        {config.icon}
-        {config.label}
-      </span>
+    <Badge variant={config.variant} className="gap-1 font-semibold text-[11px] px-2.5 py-0.5 rounded-full">
+      <Icon className="w-3 h-3" />
+      <span>{config.label}</span>
     </Badge>
   );
-} 
+}

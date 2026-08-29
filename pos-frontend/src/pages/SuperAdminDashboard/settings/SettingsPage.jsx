@@ -8,7 +8,7 @@ import SystemSettingsForm from "./components/SystemSettingsForm";
 import { useSettingsState } from "./components/useSettingsState";
 
 const SettingsTabTrigger = ({ value, children }) => (
-  <TabsTrigger value={value} className="flex items-center gap-2">
+  <TabsTrigger value={value} className="flex items-center gap-2 rounded-lg text-xs font-semibold">
     {children}
   </TabsTrigger>
 );
@@ -31,30 +31,30 @@ export default function SettingsPage() {
   } = useSettingsState();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">
-          Manage your account and system preferences
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">Platform Settings</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Manage administrator profile credentials, security policies, and system preferences.
         </p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="bg-muted/60 p-1 rounded-xl w-full grid grid-cols-2 sm:grid-cols-4 max-w-xl">
           <SettingsTabTrigger value="profile">
-            <User className="w-4 h-4" />
+            <User className="w-3.5 h-3.5" />
             Profile
           </SettingsTabTrigger>
           <SettingsTabTrigger value="security">
-            <Shield className="w-4 h-4" />
+            <Shield className="w-3.5 h-3.5" />
             Security
           </SettingsTabTrigger>
           <SettingsTabTrigger value="notifications">
-            <Bell className="w-4 h-4" />
+            <Bell className="w-3.5 h-3.5" />
             Notifications
           </SettingsTabTrigger>
           <SettingsTabTrigger value="system">
-            <SettingsIcon className="w-4 h-4" />
+            <SettingsIcon className="w-3.5 h-3.5" />
             System
           </SettingsTabTrigger>
         </TabsList>
@@ -94,4 +94,5 @@ export default function SettingsPage() {
       </Tabs>
     </div>
   );
-} 
+}
+ 
