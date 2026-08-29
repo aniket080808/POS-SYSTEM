@@ -5,12 +5,13 @@ import { logout } from "../../../Redux Toolkit/features/user/userThunks";
 import {
   LayoutDashboard,
   Store,
+  FileText,
+  Clock,
+  IndianRupee,
   Download,
   Settings,
-  FileText,
-  IndianRupee,
-  Clock,
   LogOut,
+  ShoppingCart,
   ShieldAlert,
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
@@ -19,37 +20,44 @@ const navLinks = [
   {
     name: "Dashboard",
     path: "/super-admin/dashboard",
-    icon: LayoutDashboard,
+    matchPaths: ["/super-admin", "/super-admin/dashboard"],
+    icon: <LayoutDashboard className="w-4 h-4" />,
   },
   {
-    name: "Stores",
+    name: "Stores Directory",
     path: "/super-admin/stores",
-    icon: Store,
-  },
-  {
-    name: "Subscription Plans",
-    path: "/super-admin/subscriptions",
-    icon: FileText,
+    matchPaths: ["/super-admin/stores"],
+    icon: <Store className="w-4 h-4" />,
   },
   {
     name: "Pending Requests",
     path: "/super-admin/requests",
-    icon: Clock,
+    matchPaths: ["/super-admin/requests"],
+    icon: <Clock className="w-4 h-4" />,
+  },
+  {
+    name: "Subscription Plans",
+    path: "/super-admin/subscriptions",
+    matchPaths: ["/super-admin/subscriptions"],
+    icon: <FileText className="w-4 h-4" />,
   },
   {
     name: "Commissions",
     path: "/super-admin/commissions",
-    icon: IndianRupee,
+    matchPaths: ["/super-admin/commissions"],
+    icon: <IndianRupee className="w-4 h-4" />,
   },
   {
-    name: "Exports",
+    name: "Data Exports",
     path: "/super-admin/exports",
-    icon: Download,
+    matchPaths: ["/super-admin/exports"],
+    icon: <Download className="w-4 h-4" />,
   },
   {
-    name: "Settings",
+    name: "System Settings",
     path: "/super-admin/settings",
-    icon: Settings,
+    matchPaths: ["/super-admin/settings"],
+    icon: <Settings className="w-4 h-4" />,
   },
 ];
 
@@ -63,54 +71,68 @@ export default function SuperAdminSidebar() {
     navigate("/auth/login");
   };
 
+  const isLinkActive = (link) => {
+    if (link.path === "/super-admin/dashboard") {
+      return location.pathname === "/super-admin" || location.pathname === "/super-admin/dashboard";
+    }
+    return location.pathname.startsWith(link.path);
+  };
+
   return (
-    <aside className="h-full w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col py-5 px-4 shadow-sm select-none">
+    <aside className="h-full w-64 shrink-0 bg-[#18181b] border-r border-zinc-800 flex flex-col py-5 px-3 shadow-xl z-20 text-zinc-100">
       {/* Brand Header */}
-      <div className="mb-6 px-2 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-xs">
-          <Store className="w-5 h-5 text-primary-foreground" />
-        </div>
-        <div>
-          <span className="text-base font-bold tracking-tight text-sidebar-foreground block">
-            NexPOS
-          </span>
-          <span className="text-[11px] font-semibold text-primary uppercase tracking-wider block">
-            Super Admin
-          </span>
+      <div className="px-3 mb-6">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-accent text-accent-foreground rounded-xl flex items-center justify-center font-bold shadow-xs">
+            <ShoppingCart className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base font-extrabold tracking-tight text-white">NexPOS</span>
+              <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30">
+                ADMIN
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-400">Platform Governance</p>
+          </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto space-y-1">
+      <nav className="flex-1 overflow-y-auto px-1 space-y-1">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1.5">
+          Core Management
+        </div>
         {navLinks.map((link) => {
-          const Icon = link.icon;
-          const isActive = location.pathname.startsWith(link.path);
+          const active = isLinkActive(link);
           return (
             <Link
               key={link.name}
               to={link.path}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all text-xs font-semibold ${
-                isActive
-                  ? "bg-primary text-primary-foreground shadow-2xs"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-xs font-semibold group ${
+                active
+                  ? "bg-accent text-accent-foreground shadow-xs font-bold"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800/80"
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? "text-primary-foreground" : "text-sidebar-foreground/60"}`} />
+              <span className={active ? "text-accent-foreground" : "text-zinc-400 group-hover:text-zinc-200"}>
+                {link.icon}
+              </span>
               <span>{link.name}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer Profile / Logout */}
-      <div className="pt-4 mt-auto border-t border-sidebar-border/80">
+      {/* Footer / Logout */}
+      <div className="pt-3 mt-auto border-t border-zinc-800 px-1">
         <Button
           onClick={handleLogout}
-          variant="outline"
-          className="w-full justify-start gap-2.5 h-10 rounded-xl text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/40"
+          variant="ghost"
+          className="w-full justify-start text-xs font-semibold text-zinc-400 hover:text-red-400 hover:bg-red-950/30 rounded-xl h-10 px-3 cursor-pointer"
         >
-          <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
+          <LogOut className="w-4 h-4 mr-2 text-zinc-400" />
+          Sign Out
         </Button>
       </div>
     </aside>
