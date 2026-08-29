@@ -1,84 +1,84 @@
 
-import { useSelector } from 'react-redux';
+import React from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-
-import { Tag, DollarSign, Package} from "lucide-react";
-import { LocationEdit } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { BellOff, MapPin, Loader2 } from "lucide-react";
+import { dismissAlert } from '@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks';
 
 const NoSaleTodayBranchTable = () => {
+  const dispatch = useDispatch();
+  const { storeAlerts, loading } = useSelector((state) => state.storeAnalytics || {});
+  const user = useSelector((state) => state.user?.userProfile);
 
-  const {storeAlerts,loading} = useSelector((state) => state.storeAnalytics);
+  const handleDismiss = (branchId) => {
+    if (user?.id) {
+      dispatch(dismissAlert({
+        storeAdminId: user.id,
+        alertType: 'NO_SALE_TODAY',
+        referenceId: branchId
+      }));
+    }
+  };
 
-  console.log("noSalesToday ",storeAlerts)
+  const branches = storeAlerts?.noSalesToday || [];
 
-  if (loading) {
-    return (
+  return (
+    <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Image</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Stock</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+          <TableRow className="bg-muted/40 hover:bg-muted/40 border-b border-border/60">
+            <TableHead className="text-xs font-bold text-foreground py-3 pl-6">Branch Location</TableHead>
+            <TableHead className="text-xs font-bold text-foreground py-3">Physical Address</TableHead>
+            <TableHead className="text-xs font-bold text-foreground py-3 pr-6 text-right">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow>
-            <TableCell colSpan={6} className="text-center py-8">
-              <div className="flex justify-center items-center">
-                <svg className="animate-spin h-6 w-6 text-emerald-600 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading products...
-              </div>
-            </TableCell>
-          </TableRow>
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={3} className="text-center py-8 text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin inline-block mr-2 text-primary" />
+                Scanning branch transaction registers...
+              </TableCell>
+            </TableRow>
+          ) : branches.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={3} className="text-center py-8 text-muted-foreground text-xs">
+                All store branches have recorded sales transactions today.
+              </TableCell>
+            </TableRow>
+          ) : (
+            branches.map((branch) => (
+              <TableRow key={branch.id} className="hover:bg-muted/30 transition-colors border-b border-border/40">
+                <TableCell className="pl-6 py-3">
+                  <div>
+                    <div className="font-bold text-xs text-foreground">{branch.name}</div>
+                    <div className="text-[10px] text-muted-foreground font-mono">Branch ID #{branch.id}</div>
+                  </div>
+                </TableCell>
+                <TableCell className="py-3">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                    <span>{branch.address || 'Address unlisted'}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="pr-6 py-3 text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                    onClick={() => handleDismiss(branch.id)}
+                  >
+                    <BellOff className="h-3 w-3 mr-1" /> Dismiss
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
-    );
-  }
-
-
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>Branch Name</TableHead>
-          <TableHead>Address</TableHead>
-         
-         
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {storeAlerts?.noSalesToday?.map((branch) => (
-          <TableRow key={branch.id}>
-            <TableCell>
-             {branch.id}
-            </TableCell>
-            <TableCell>
-              
-                <div className="font-medium">{branch.name}</div>
-                
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <LocationEdit className="h-4 w-4 text-gray-400" />
-                {branch.address}
-              </div>
-            </TableCell>
-         
-         
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    </div>
   );
 };
 
-
-export default NoSaleTodayBranchTable
+export default NoSaleTodayBranchTable;

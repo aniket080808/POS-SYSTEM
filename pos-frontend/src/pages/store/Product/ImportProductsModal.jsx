@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from "react";
+import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import * as XLSX from "xlsx";
 import {
@@ -16,7 +16,7 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 import {
   Upload,
   Download,
@@ -25,6 +25,17 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
+  Sparkles,
+  Database,
+  Layers,
+  Check,
+  ArrowRight,
+  RefreshCw,
+  X,
+  FileCheck,
+  Zap,
+  ShoppingBag,
+  AlertTriangle,
 } from "lucide-react";
 import {
   bulkCreateProducts,
@@ -56,8 +67,39 @@ const SAMPLE_ROW = [
   "Red",
   100,
   90,
-  0,
+  10,
   "Sample product description",
+];
+
+const IMPORT_STAGES = [
+  {
+    id: "validate",
+    title: "Sanitizing & Validating",
+    desc: "Deduplicating SKUs and verifying data types",
+    icon: FileCheck,
+    threshold: 25,
+  },
+  {
+    id: "taxonomy",
+    title: "Mapping Categories & Attributes",
+    desc: "Binding store catalog hierarchy and pricing",
+    icon: Layers,
+    threshold: 55,
+  },
+  {
+    id: "transaction",
+    title: "Writing to Database",
+    desc: "Executing atomic bulk write to cloud inventory",
+    icon: Database,
+    threshold: 85,
+  },
+  {
+    id: "indexing",
+    title: "Catalog Sync & Search Indexes",
+    desc: "Refreshing store search indexes and cache",
+    icon: Zap,
+    threshold: 100,
+  },
 ];
 
 /**
@@ -93,7 +135,6 @@ function normalizeApiError(err) {
 
 /**
  * Parse a File into an array of row objects using SheetJS.
- * Returns { rows, headers, error }.
  */
 async function parseFile(file) {
   try {
@@ -150,12 +191,20 @@ function toNumber(v) {
 }
 
 /**
+ * Format bytes to readable size
+ */
+function formatFileSize(bytes) {
+  if (!bytes) return "0 KB";
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(2)} MB`;
+}
+
+/**
  * Validate parsed rows and resolve categories.
- * Returns array of { row, errors, dto } where dto is null if invalid.
  */
 function validateRows(rows, categoryMap) {
   const skuCount = {};
-  // First pass: count SKUs
   rows.forEach((r) => {
     const sku = trimVal(r["SKU"]);
     if (sku) {
@@ -211,7 +260,7 @@ function validateRows(rows, categoryMap) {
         : null;
 
     return {
-      rowIndex: idx + 2, // +2 because row 1 is header, and idx is 0-based
+      rowIndex: idx + 2,
       raw: r,
       name,
       sku,
@@ -229,30 +278,9 @@ function validateRows(rows, categoryMap) {
   });
 }
 
-/**
- * Run tasks with a concurrency limit, calling onProgress after each settlement.
- */
-async function runWithConcurrency(items, limit, taskFn, onProgress) {
-  let index = 0;
-  let completed = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (index < items.length) {
-      const currentIndex = index++;
-      await taskFn(items[currentIndex], currentIndex)
-        .catch(() => {
-          // error handled inside taskFn via its own try/catch
-        })
-        .finally(() => {
-          completed++;
-          onProgress(completed);
-        });
-    }
-  });
-  await Promise.all(workers);
-}
-
 export default function ImportProductsModal({ open, onOpenChange }) {
   const dispatch = useDispatch();
+  const { format: formatCurrency } = useCurrencyFormatter();
   const { store } = useSelector((state) => state.store);
   const { categories } = useSelector((state) => state.category);
 
@@ -260,13 +288,19 @@ export default function ImportProductsModal({ open, onOpenChange }) {
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState(null);
   const [validatedRows, setValidatedRows] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState("all");
+
+  // Buttery smooth import states
   const [importing, setImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-  const [importTotal, setImportTotal] = useState(0);
-  const [results, setResults] = useState(null); // { successCount, failures: [{row, reason}] }
+  const [smoothProgress, setSmoothProgress] = useState(0);
+  const [currentProductIndex, setCurrentProductIndex] = useState(0);
+  const [results, setResults] = useState(null);
   const [showFailures, setShowFailures] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
   const fileInputRef = useRef(null);
+  const animFrameRef = useRef(null);
 
   // Build category lookup map
   const categoryMap = useMemo(() => {
@@ -280,7 +314,7 @@ export default function ImportProductsModal({ open, onOpenChange }) {
   }, [categories]);
 
   // Ensure categories are loaded for the current store
-  React.useEffect(() => {
+  useEffect(() => {
     if (store?.id && open) {
       const token = localStorage.getItem("jwt");
       if (token && (!categories || categories.length === 0)) {
@@ -289,20 +323,62 @@ export default function ImportProductsModal({ open, onOpenChange }) {
     }
   }, [store, open, dispatch, categories]);
 
-  const validRows = useMemo(() => validatedRows.filter((r) => r.errors.length === 0), [validatedRows]);
-  const errorRows = useMemo(() => validatedRows.filter((r) => r.errors.length > 0), [validatedRows]);
+  const validRows = useMemo(
+    () => validatedRows.filter((r) => r.errors.length === 0),
+    [validatedRows]
+  );
+  const errorRows = useMemo(
+    () => validatedRows.filter((r) => r.errors.length > 0),
+    [validatedRows]
+  );
+
+  // Filtered preview rows based on search & filter
+  const displayedPreviewRows = useMemo(() => {
+    return validatedRows.filter((row) => {
+      if (selectedFilter === "valid" && row.errors.length > 0) return false;
+      if (selectedFilter === "error" && row.errors.length === 0) return false;
+      if (!searchQuery.trim()) return true;
+
+      const q = searchQuery.toLowerCase();
+      return (
+        row.name?.toLowerCase().includes(q) ||
+        row.sku?.toLowerCase().includes(q) ||
+        row.brand?.toLowerCase().includes(q) ||
+        row.category?.toLowerCase().includes(q)
+      );
+    });
+  }, [validatedRows, selectedFilter, searchQuery]);
+
+  // Summary statistics for celebration screen
+  const importMetrics = useMemo(() => {
+    if (!validRows.length) return { uniqueCategories: 0, totalStock: 0, totalValue: 0 };
+    const uniqueCats = new Set(validRows.map((r) => r.category).filter(Boolean));
+    const totalStock = validRows.reduce((acc, r) => acc + (r.stock || 0), 0);
+    const totalValue = validRows.reduce((acc, r) => acc + (r.sellingPrice || 0) * (r.stock || 0), 0);
+    return {
+      uniqueCategories: uniqueCats.size,
+      totalStock,
+      totalValue,
+    };
+  }, [validRows]);
 
   const resetState = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
     setFile(null);
     setParsing(false);
     setParseError(null);
     setValidatedRows([]);
     setImporting(false);
-    setImportProgress(0);
-    setImportTotal(0);
+    setSmoothProgress(0);
+    setCurrentProductIndex(0);
     setResults(null);
     setShowFailures(false);
     setDragOver(false);
+    setSearchQuery("");
+    setSelectedFilter("all");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
@@ -361,91 +437,124 @@ export default function ImportProductsModal({ open, onOpenChange }) {
     if (selectedFile) handleFileSelected(selectedFile);
   };
 
+  /**
+   * Buttery Smooth Import Animation and Execution
+   */
   const handleImport = async () => {
     if (!validRows.length || !store?.id) return;
+
     setImporting(true);
-    setImportProgress(0);
-    setImportTotal(validRows.length);
+    setSmoothProgress(0);
+    setCurrentProductIndex(0);
     setResults(null);
 
-    // Build the batch of DTOs (backend resolves store from authenticated user,
-    // and validates every DTO's storeId against it — a mismatch rejects the whole batch).
+    const totalItems = validRows.length;
     const batch = validRows.map((row) => ({ ...row.dto, storeId: store.id }));
 
-    let successCount = 0;
-    let failures = [];
+    // Animation interpolation state
+    let currentAnimValue = 0;
+    let isApiResolved = false;
+    let finalSuccess = false;
+    let apiResultData = null;
+    let apiErrorData = null;
+    const beginTime = Date.now();
 
+    // 60FPS smooth requestAnimationFrame engine
+    const animate = () => {
+      const elapsed = Date.now() - beginTime;
+
+      if (!isApiResolved) {
+        // Target progress stages while waiting for server response
+        let target = 0;
+        if (elapsed < 800) {
+          // Stage 1: Validation & data packing (0 - 30%)
+          target = (elapsed / 800) * 30;
+        } else if (elapsed < 2000) {
+          // Stage 2: Category mapping & integrity (30 - 62%)
+          target = 30 + ((elapsed - 800) / 1200) * 32;
+        } else if (elapsed < 4000) {
+          // Stage 3: Database transaction writes (62 - 88%)
+          target = 62 + ((elapsed - 2000) / 2000) * 26;
+        } else {
+          // Stage 4: Indexing & catalog caching (88 - 94% asymptote)
+          target = 88 + Math.min(6, (elapsed - 4000) / 1500);
+        }
+
+        // Smooth physics-based easing
+        currentAnimValue += (target - currentAnimValue) * 0.08;
+      } else {
+        // API finished: smooth fast-forward to 100%
+        currentAnimValue += (100 - currentAnimValue) * 0.18 + 0.8;
+      }
+
+      const clamped = Math.min(Math.max(currentAnimValue, 0), 100);
+      setSmoothProgress(clamped);
+
+      // Smoothly update live preview item ticker
+      if (totalItems > 0) {
+        const itemIdx = Math.min(
+          Math.floor((clamped / 100) * totalItems),
+          totalItems - 1
+        );
+        setCurrentProductIndex(itemIdx);
+      }
+
+      // Check for completion
+      if (isApiResolved && clamped >= 99.8) {
+        setSmoothProgress(100);
+        setCurrentProductIndex(totalItems - 1);
+
+        // Allow user to admire the 100% complete state for a brief buttery pause
+        setTimeout(() => {
+          setImporting(false);
+          if (finalSuccess) {
+            const successCount = apiResultData?.length || totalItems;
+            setResults({ successCount, failures: [] });
+            toast({
+              title: "Import complete ✨",
+              description: `Successfully imported ${successCount} products into your store.`,
+            });
+          } else {
+            const reason = normalizeApiError(apiErrorData);
+            const failures = validRows.map((row) => ({
+              row: row.rowIndex,
+              sku: row.sku,
+              name: row.name,
+              reason,
+            }));
+            setResults({ successCount: 0, failures });
+            toast({
+              title: "Import failed",
+              description: reason,
+              variant: "destructive",
+            });
+          }
+        }, 450);
+        return;
+      }
+
+      animFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    // Perform actual API operation
     try {
-      // Single atomic backend call: pre-checks plan limit, rejects whole batch
-      // if it would exceed maxProducts, and creates all rows in one transaction.
       const created = await dispatch(bulkCreateProducts(batch)).unwrap();
-      successCount = created?.length || 0;
-
-      setResults({ successCount, failures: [] });
-      setImportProgress(successCount);
+      apiResultData = created;
+      finalSuccess = true;
     } catch (err) {
-      // Whole batch rejected (e.g. plan limit exceeded, IDOR mismatch, or
-      // any row-level failure inside the transaction → atomic rollback).
-      const reason = normalizeApiError(err);
-      failures = validRows.map((row) => ({
-        row: row.rowIndex,
-        sku: row.sku,
-        name: row.name,
-        reason,
-      }));
-      setResults({ successCount: 0, failures });
-      setImportProgress(0);
+      apiErrorData = err;
+      finalSuccess = false;
     } finally {
-      setImporting(false);
+      isApiResolved = true;
     }
 
-    // Refresh product list
+    // Refresh products catalog in background
     try {
       await dispatch(getProductsByStore(store.id)).unwrap();
     } catch (e) {
       // ignore refresh error
-    }
-
-    if (successCount > 0) {
-      const skippedCount = failures.filter(f => 
-        f.reason.toLowerCase().includes("already exists") || 
-        f.reason.toLowerCase().includes("sku")
-      ).length;
-      const otherFailures = failures.length - skippedCount;
-
-      let summary = `${successCount} product${successCount === 1 ? "" : "s"} imported successfully`;
-      if (skippedCount > 0) {
-        summary += `, ${skippedCount} skipped (already exist)`;
-      }
-      if (otherFailures > 0) {
-        summary += `, ${otherFailures} failed`;
-      }
-      summary += ".";
-
-      toast({
-        title: "Import complete",
-        description: summary,
-      });
-    } else {
-      const skippedCount = failures.filter(f => 
-        f.reason.toLowerCase().includes("already exists") || 
-        f.reason.toLowerCase().includes("sku")
-      ).length;
-      const otherFailures = failures.length - skippedCount;
-      
-      let summary = "No products were imported.";
-      if (skippedCount > 0) {
-        summary += ` ${skippedCount} SKU${skippedCount === 1 ? "" : "s"} already exist`;
-      }
-      if (otherFailures > 0) {
-        summary += ` ${otherFailures} other error${otherFailures === 1 ? "" : "s"}`;
-      }
-      
-      toast({
-        title: "Import failed",
-        description: summary,
-        variant: "destructive",
-      });
     }
   };
 
@@ -477,36 +586,110 @@ export default function ImportProductsModal({ open, onOpenChange }) {
     XLSX.writeFile(wb, "failed_import_rows.csv", { bookType: "csv" });
   };
 
-  const progressPercent = importTotal > 0 ? Math.round((importProgress / importTotal) * 100) : 0;
+  // Determine current active pipeline stage based on progress
+  const currentStage = useMemo(() => {
+    if (smoothProgress < 25) return IMPORT_STAGES[0];
+    if (smoothProgress < 55) return IMPORT_STAGES[1];
+    if (smoothProgress < 85) return IMPORT_STAGES[2];
+    return IMPORT_STAGES[3];
+  }, [smoothProgress]);
+
+  const currentlyProcessingItem = validRows[currentProductIndex] || validRows[0];
+  const roundedProgress = Math.round(smoothProgress);
+  const itemsProcessedCount = Math.min(
+    Math.round((smoothProgress / 100) * validRows.length),
+    validRows.length
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
-      <DialogContent className="sm:max-w-[1100px] max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Import Products</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[1100px] max-h-[92vh] overflow-y-auto p-0 border-0 bg-gradient-to-b from-card to-card/95 shadow-2xl rounded-2xl">
+        {/* Custom scoped animations */}
+        <style>{`
+          @keyframes importShimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+          }
+          @keyframes glowPulse {
+            0%, 100% { opacity: 0.35; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+          }
+          @keyframes spinSlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes spinReverse {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+          }
+          @keyframes floatItem {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+          }
+          @keyframes celebrationPop {
+            0% { transform: scale(0.6); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          .animate-import-shimmer {
+            animation: importShimmer 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          }
+          .animate-glow-pulse {
+            animation: glowPulse 2.5s ease-in-out infinite;
+          }
+          .animate-spin-slow {
+            animation: spinSlow 8s linear infinite;
+          }
+          .animate-spin-reverse {
+            animation: spinReverse 6s linear infinite;
+          }
+          .animate-float-item {
+            animation: floatItem 3s ease-in-out infinite;
+          }
+          .animate-celebration-pop {
+            animation: celebrationPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          }
+        `}</style>
 
-        <div className="space-y-4">
-          {/* Step 1: Template + File upload */}
-          {!results && !importing && (
-            <>
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <p className="text-sm text-muted-foreground">
-                  Upload a CSV or Excel file to bulk import products. Category names must match
-                  existing categories for your store.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadTemplate}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download Sample Template
-                </Button>
+        {/* Header with gradient accent */}
+        <div className="relative px-6 pt-6 pb-4 border-b bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                <FileSpreadsheet className="h-5 w-5" />
               </div>
+              <div>
+                <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+                  Bulk Product Importer
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Import hundreds of products instantly with automatic category mapping and SKU validation
+                </p>
+              </div>
+            </div>
 
-              {/* Drop zone */}
+            {!importing && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadTemplate}
+                className="gap-2 text-xs font-medium border-border hover:bg-muted"
+              >
+                <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                Sample Template (.xlsx)
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* ========================================================================= */}
+          {/* STEP 1: FILE UPLOAD ZONE (When not importing and no results) */}
+          {/* ========================================================================= */}
+          {!results && !importing && validatedRows.length === 0 && (
+            <div className="space-y-4">
+              {/* Interactive Drop Zone */}
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -515,10 +698,10 @@ export default function ImportProductsModal({ open, onOpenChange }) {
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
                 onClick={handleBrowseClick}
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                className={`relative group overflow-hidden border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-300 ${
                   dragOver
-                    ? "border-emerald-500 bg-emerald-50"
-                    : "border-gray-300 hover:border-gray-400"
+                    ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10 scale-[1.01]"
+                    : "border-border/80 hover:border-emerald-500/60 bg-muted/20 hover:bg-muted/40"
                 }`}
               >
                 <input
@@ -528,134 +711,246 @@ export default function ImportProductsModal({ open, onOpenChange }) {
                   className="hidden"
                   onChange={handleFileInputChange}
                 />
-                <FileSpreadsheet className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-                {file ? (
-                  <p className="text-sm font-medium text-emerald-700">{file.name}</p>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium">
-                      Drag and drop your file here, or click to browse
+
+                <div className="flex flex-col items-center justify-center space-y-3">
+                  <div className="relative p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10 border border-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
+                    <Upload className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500 absolute -top-1 -right-1 animate-pulse" />
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-base font-semibold text-foreground">
+                      Drag & drop your inventory file here, or{" "}
+                      <span className="text-emerald-600 dark:text-emerald-400 underline underline-offset-4 decoration-emerald-500/30 group-hover:decoration-emerald-500">
+                        browse computer
+                      </span>
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Supports .csv, .xlsx, .xls
+                    <p className="text-xs text-muted-foreground">
+                      Supported formats: <span className="font-medium text-foreground">CSV (.csv)</span>, <span className="font-medium text-foreground">Excel (.xlsx, .xls)</span> • Maximum 5,000 items per file
                     </p>
-                  </>
-                )}
+                  </div>
+                </div>
+
+                {/* Ambient glow behind dropzone */}
+                <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-emerald-500/5 via-transparent to-teal-500/5 pointer-events-none" />
               </div>
 
+              {/* Parsing state loader */}
               {parsing && (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600 mr-2" />
-                  <span className="text-sm">Parsing file...</span>
+                <div className="flex items-center justify-center gap-3 py-6 px-4 bg-muted/40 rounded-xl border border-border">
+                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                  <span className="text-sm font-medium text-foreground">
+                    Reading and sanitizing spreadsheet records...
+                  </span>
                 </div>
               )}
 
+              {/* Parsing error box */}
               {parseError && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-md border border-red-200 text-sm">
-                  {parseError}
+                <div className="p-4 bg-red-500/10 text-red-600 dark:text-red-400 rounded-xl border border-red-500/20 text-sm flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">File Format Issue</p>
+                    <p className="text-xs mt-0.5 opacity-90">{parseError}</p>
+                  </div>
                 </div>
               )}
-            </>
-          )}
 
-          {/* Importing progress */}
-          {importing && (
-            <div className="space-y-4 py-8">
-              <div className="flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-600 mr-2" />
-                <span className="text-sm font-medium">
-                  Importing {importProgress} of {importTotal}...
-                </span>
+              {/* Instruction Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                <div className="p-3.5 rounded-xl border bg-card/60 backdrop-blur-sm space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    Exact Column Matching
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Ensure headers match: Product Name, SKU, Brand, Category, MRP, Selling Price, Stock.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border bg-card/60 backdrop-blur-sm space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                    <Layers className="h-3.5 w-3.5 text-teal-500" />
+                    Store Categories
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Categories in the file will automatically link with your existing store category library.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border bg-card/60 backdrop-blur-sm space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                    <Zap className="h-3.5 w-3.5 text-amber-500" />
+                    Atomic Batch Sync
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    All items are validated for duplicates and written in a secure atomic cloud transaction.
+                  </p>
+                </div>
               </div>
-              <Progress value={progressPercent} className="h-2" />
-              <p className="text-center text-xs text-muted-foreground">
-                {progressPercent}% complete
-              </p>
             </div>
           )}
 
-          {/* Preview table */}
+          {/* ========================================================================= */}
+          {/* STEP 2: PREVIEW TABLE (When file parsed, before clicking import) */}
+          {/* ========================================================================= */}
           {!importing && !results && validatedRows.length > 0 && (
-            <>
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <p className="text-sm">
-                  <span className="font-medium text-emerald-700">
-                    {validRows.length} valid row{validRows.length === 1 ? "" : "s"}
-                  </span>
-                  {errorRows.length > 0 && (
-                    <span className="text-red-600">
-                      , {errorRows.length} row{errorRows.length === 1 ? "" : "s"} with errors
-                    </span>
-                  )}
-                </p>
-                <div className="flex gap-2">
+            <div className="space-y-4">
+              {/* File Info & Action Bar */}
+              <div className="flex items-center justify-between flex-wrap gap-3 p-3.5 bg-muted/40 rounded-xl border">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <FileCheck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">{file?.name}</span>
+                      <span className="text-[11px] text-muted-foreground">({formatFileSize(file?.size)})</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs mt-0.5">
+                      <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                        {validRows.length} valid product{validRows.length === 1 ? "" : "s"} ready
+                      </span>
+                      {errorRows.length > 0 && (
+                        <span className="text-red-500 font-medium">
+                          • {errorRows.length} row{errorRows.length === 1 ? "" : "s"} with issues
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={resetState}
+                    className="text-xs"
                   >
+                    <X className="h-3.5 w-3.5 mr-1" />
                     Choose different file
                   </Button>
                   <Button
                     type="button"
-                    className="bg-emerald-600 hover:bg-emerald-700"
                     disabled={validRows.length === 0}
                     onClick={handleImport}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 text-xs font-semibold px-4 gap-2"
                   >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Import {validRows.length} Product{validRows.length === 1 ? "" : "s"}
+                    <Upload className="h-3.5 w-3.5" />
+                    Import {validRows.length} Product{validRows.length === 1 ? "" : "s"} Now
                   </Button>
                 </div>
               </div>
 
-              <div className="border rounded-md max-h-[600px] overflow-auto">
+              {/* Filters & Search in Preview */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-lg border text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFilter("all")}
+                    className={`px-3 py-1 rounded-md font-medium transition-all ${
+                      selectedFilter === "all"
+                        ? "bg-background text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    All ({validatedRows.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFilter("valid")}
+                    className={`px-3 py-1 rounded-md font-medium transition-all ${
+                      selectedFilter === "valid"
+                        ? "bg-background text-emerald-600 dark:text-emerald-400 shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Valid ({validRows.length})
+                  </button>
+                  {errorRows.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFilter("error")}
+                      className={`px-3 py-1 rounded-md font-medium transition-all ${
+                        selectedFilter === "error"
+                          ? "bg-background text-red-500 shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Errors ({errorRows.length})
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Filter by name, SKU, or category..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="text-xs px-3 py-1.5 rounded-lg border bg-background text-foreground placeholder:text-muted-foreground w-64 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Preview Table */}
+              <div className="border rounded-xl max-h-[380px] overflow-auto shadow-xs">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
                     <TableRow>
-                      <TableHead className="w-8">#</TableHead>
+                      <TableHead className="w-10 text-center">#</TableHead>
                       <TableHead>Product Name</TableHead>
                       <TableHead>SKU</TableHead>
                       <TableHead>Brand</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead>MRP</TableHead>
-                      <TableHead>Selling Price</TableHead>
-                      <TableHead>Stock</TableHead>
+                      <TableHead className="text-right">Selling Price</TableHead>
+                      <TableHead className="text-center">Stock</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {validatedRows.map((row) => {
+                    {displayedPreviewRows.slice(0, 100).map((row) => {
                       const hasError = row.errors.length > 0;
                       return (
                         <TableRow
                           key={row.rowIndex}
-                          className={hasError ? "bg-red-50" : ""}
+                          className={hasError ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/40"}
                         >
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-xs text-center font-mono text-muted-foreground">
                             {row.rowIndex}
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="text-xs font-semibold max-w-[220px] truncate">
                             {row.name || <span className="text-red-500">—</span>}
                           </TableCell>
-                          <TableCell>{row.sku || <span className="text-red-500">—</span>}</TableCell>
-                          <TableCell>{row.brand}</TableCell>
-                          <TableCell>{row.category}</TableCell>
-                          <TableCell>{row.mrp ?? <span className="text-red-500">—</span>}</TableCell>
-                          <TableCell>
-                            <span className="font-medium">₹{row.sellingPrice ?? <span className="text-red-500">—</span>}</span>
+                          <TableCell className="text-xs font-mono text-muted-foreground">
+                            {row.sku || <span className="text-red-500">—</span>}
                           </TableCell>
-                          <TableCell>{row.stock ?? "0"}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{row.brand || "—"}</TableCell>
+                          <TableCell className="text-xs">
+                            <span className="px-2 py-0.5 rounded-md bg-muted text-[11px] font-medium">
+                              {row.category || "—"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-right font-medium">
+                            {row.sellingPrice !== null && row.sellingPrice !== undefined
+                              ? formatCurrency(row.sellingPrice)
+                              : <span className="text-red-500">—</span>}
+                          </TableCell>
+                          <TableCell className="text-xs text-center font-medium">
+                            {row.stock ?? "0"}
+                          </TableCell>
+                          <TableCell className="text-xs">
                             {hasError ? (
-                              <div className="text-red-600 text-xs space-y-0.5">
+                              <div className="text-red-500 text-[11px] space-y-0.5">
                                 {row.errors.map((e, i) => (
-                                  <div key={i}>{e}</div>
+                                  <div key={i} className="flex items-center gap-1">
+                                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                                    <span>{e}</span>
+                                  </div>
                                 ))}
                               </div>
                             ) : (
-                              <span className="inline-flex items-center text-emerald-600 text-xs">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                                <CheckCircle2 className="h-3 w-3" />
                                 Valid
                               </span>
                             )}
@@ -666,102 +961,342 @@ export default function ImportProductsModal({ open, onOpenChange }) {
                   </TableBody>
                 </Table>
               </div>
-            </>
+
+              {displayedPreviewRows.length > 100 && (
+                <p className="text-center text-xs text-muted-foreground">
+                  Showing first 100 of {displayedPreviewRows.length} items in preview. All valid items will be imported.
+                </p>
+              )}
+            </div>
           )}
 
-          {/* Results summary */}
-          {!importing && results && (
-            <div className="space-y-4">
-              <div
-                className={`p-4 rounded-md border ${
-                  results.failures.length > 0
-                    ? "bg-amber-50 border-amber-200 text-amber-800"
-                    : "bg-emerald-50 border-emerald-200 text-emerald-800"
-                }`}
-              >
-                <p className="font-medium">
-                  {results.successCount} product{results.successCount === 1 ? "" : "s"} imported
-                  successfully
-                  {results.failures.length > 0 &&
-                    `, ${results.failures.length} failed`}
-                  .
-                </p>
+          {/* ========================================================================= */}
+          {/* STEP 3: BUTTERY SMOOTH 60FPS IMPORTING STATE */}
+          {/* ========================================================================= */}
+          {importing && (
+            <div className="relative py-4 px-2 space-y-8 overflow-hidden">
+              {/* Ambient Radiant Glow in Background */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-tr from-emerald-500/20 via-teal-500/15 to-cyan-500/10 rounded-full blur-3xl -z-10 animate-glow-pulse pointer-events-none" />
+
+              {/* Central Orbital Spinner with Live Percentage */}
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="relative w-32 h-32 flex items-center justify-center">
+                  {/* Outer spinning gradient ring */}
+                  <div className="absolute inset-0 rounded-full border-2 border-dashed border-emerald-500/40 animate-spin-slow" />
+                  
+                  {/* Middle counter-spinning ring with glowing dots */}
+                  <div className="absolute inset-2 rounded-full border border-teal-500/30 animate-spin-reverse" />
+                  
+                  {/* Inner glass disc */}
+                  <div className="absolute inset-4 rounded-full bg-gradient-to-b from-card to-background border border-emerald-500/30 shadow-xl flex flex-col items-center justify-center p-2">
+                    <span className="text-2xl font-black tracking-tight text-foreground font-mono">
+                      {roundedProgress}%
+                    </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                      Syncing
+                    </span>
+                  </div>
+
+                  {/* Orbiting Satellite Particle */}
+                  <div
+                    className="absolute w-3 h-3 rounded-full bg-gradient-to-r from-emerald-400 to-teal-300 shadow-[0_0_12px_rgba(16,185,129,0.8)]"
+                    style={{
+                      transform: `rotate(${smoothProgress * 3.6}deg) translate(58px) rotate(-${smoothProgress * 3.6}deg)`,
+                      transition: "transform 0.05s linear",
+                    }}
+                  />
+                </div>
+
+                <div className="text-center space-y-1">
+                  <h3 className="text-lg font-bold text-foreground tracking-tight flex items-center justify-center gap-2">
+                    {currentStage.title}
+                    <Sparkles className="h-4 w-4 text-emerald-500 animate-pulse" />
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {currentStage.desc}
+                  </p>
+                </div>
               </div>
 
-              {results.failures.length > 0 && (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    className="flex items-center text-sm font-medium text-red-600 hover:text-red-700"
-                    onClick={() => setShowFailures((s) => !s)}
+              {/* Liquid Shimmer Progress Bar */}
+              <div className="space-y-2 max-w-xl mx-auto">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-muted-foreground">
+                    Processed <span className="text-foreground font-bold">{itemsProcessedCount}</span> of <span className="text-foreground font-bold">{validRows.length}</span> products
+                  </span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">
+                    {roundedProgress}%
+                  </span>
+                </div>
+
+                {/* Progress bar container */}
+                <div className="relative h-3.5 w-full bg-muted/80 rounded-full overflow-hidden p-0.5 border border-border shadow-inner">
+                  <div
+                    className="relative h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all duration-75 ease-out"
+                    style={{ width: `${smoothProgress}%` }}
                   >
-                    {showFailures ? (
-                      <ChevronDown className="h-4 w-4 mr-1" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 mr-1" />
-                    )}
-                    View failed rows ({results.failures.length})
-                  </button>
+                    {/* Shimmer sweep overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-import-shimmer" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Streaming Item Ticker (Micro-Card) */}
+              {currentlyProcessingItem && (
+                <div className="max-w-xl mx-auto p-3.5 rounded-2xl bg-card/80 backdrop-blur-md border border-emerald-500/20 shadow-lg space-y-2 animate-float-item">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      Active Record Stream
+                    </span>
+                    <span className="text-[11px] font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                      Item #{currentProductIndex + 1}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 bg-muted/40 p-2.5 rounded-xl border border-border/50">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <ShoppingBag className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-foreground truncate">
+                          {currentlyProcessingItem.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground font-mono truncate">
+                          SKU: {currentlyProcessingItem.sku} • {currentlyProcessingItem.category}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(currentlyProcessingItem.sellingPrice || 0)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Stock: {currentlyProcessingItem.stock || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Multi-Stage Pipeline Status Indicators */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 max-w-2xl mx-auto pt-2">
+                {IMPORT_STAGES.map((stage) => {
+                  const isPassed = smoothProgress >= stage.threshold;
+                  const isCurrent = currentStage.id === stage.id && !isPassed;
+                  const StageIcon = stage.icon;
+
+                  return (
+                    <div
+                      key={stage.id}
+                      className={`p-2.5 rounded-xl border text-center transition-all duration-300 ${
+                        isPassed
+                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                          : isCurrent
+                          ? "bg-card border-emerald-500 shadow-md shadow-emerald-500/10 scale-105"
+                          : "bg-muted/20 border-border/60 text-muted-foreground opacity-60"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center mb-1">
+                        {isPassed ? (
+                          <div className="p-1 rounded-full bg-emerald-500 text-white">
+                            <Check className="h-3 w-3" />
+                          </div>
+                        ) : isCurrent ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <StageIcon className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <p className="text-[11px] font-bold truncate">{stage.title}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* STEP 4: CELEBRATION & RESULTS SCREEN (When finished) */}
+          {/* ========================================================================= */}
+          {!importing && results && (
+            <div className="space-y-6 py-2 animate-celebration-pop">
+              {results.successCount > 0 ? (
+                <>
+                  {/* Glorious Success Hero Card */}
+                  <div className="relative overflow-hidden p-6 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/30 text-center space-y-3 shadow-xl">
+                    <div className="relative inline-flex items-center justify-center p-4 rounded-full bg-emerald-500 text-white shadow-xl shadow-emerald-500/30 mx-auto">
+                      <CheckCircle2 className="h-10 w-10" />
+                      <div className="absolute inset-0 rounded-full border-2 border-emerald-400 animate-ping opacity-30" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-black tracking-tight text-foreground">
+                        Import Completed Successfully!
+                      </h3>
+                      <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          {results.successCount} products
+                        </span>{" "}
+                        have been verified and successfully written into your store catalog.
+                      </p>
+                    </div>
+
+                    {/* Ambient Glow */}
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-xl border bg-card/60 backdrop-blur-sm space-y-1 text-center">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Total Added
+                      </span>
+                      <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                        {results.successCount}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground">Products</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border bg-card/60 backdrop-blur-sm space-y-1 text-center">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Categories
+                      </span>
+                      <p className="text-lg font-black text-foreground">
+                        {importMetrics.uniqueCategories}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground">Mapped</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border bg-card/60 backdrop-blur-sm space-y-1 text-center">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Total Stock
+                      </span>
+                      <p className="text-lg font-black text-foreground">
+                        {importMetrics.totalStock.toLocaleString()}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground">Units</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border bg-card/60 backdrop-blur-sm space-y-1 text-center">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Database Status
+                      </span>
+                      <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1 pt-1">
+                        <Check className="h-4 w-4" />
+                        Live & Ready
+                      </p>
+                      <span className="text-[10px] text-muted-foreground">Store Synced</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Failure Notice */
+                <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-center space-y-3">
+                  <div className="inline-flex p-3 rounded-full bg-red-500/20 text-red-600 dark:text-red-400 mx-auto">
+                    <AlertTriangle className="h-8 w-8" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold text-foreground">No Products Were Imported</h3>
+                    <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                      Please check the error details below and resolve duplicate SKUs or plan limitations.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Failures Accordion */}
+              {results.failures?.length > 0 && (
+                <div className="space-y-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      className="flex items-center text-xs font-bold text-red-600 dark:text-red-400 hover:underline gap-1.5"
+                      onClick={() => setShowFailures((s) => !s)}
+                    >
+                      {showFailures ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      View {results.failures.length} Unresolved Item{results.failures.length === 1 ? "" : "s"}
+                    </button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownloadFailedRows}
+                      className="text-xs border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                    >
+                      <Download className="mr-1.5 h-3.5 w-3.5" />
+                      Download Failed Rows (.csv)
+                    </Button>
+                  </div>
 
                   {showFailures && (
-                    <div className="border rounded-md max-h-[300px] overflow-auto">
+                    <div className="border rounded-lg max-h-[220px] overflow-auto bg-background/80">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-8">#</TableHead>
-                            <TableHead>Product Name</TableHead>
-                            <TableHead>SKU</TableHead>
-                            <TableHead>Reason</TableHead>
+                            <TableHead className="w-10 text-xs">#</TableHead>
+                            <TableHead className="text-xs">Product Name</TableHead>
+                            <TableHead className="text-xs">SKU</TableHead>
+                            <TableHead className="text-xs">Error Reason</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {results.failures.map((f, i) => (
-                            <TableRow key={i} className="bg-red-50">
-                              <TableCell className="text-muted-foreground">{f.row}</TableCell>
+                            <TableRow key={i} className="hover:bg-red-500/5 text-xs">
+                              <TableCell className="font-mono text-muted-foreground">{f.row}</TableCell>
                               <TableCell className="font-medium">{f.name}</TableCell>
-                              <TableCell>{f.sku}</TableCell>
-                              <TableCell className="text-red-600 text-xs">{f.reason}</TableCell>
+                              <TableCell className="font-mono">{f.sku}</TableCell>
+                              <TableCell className="text-red-500 font-medium">{f.reason}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
                     </div>
                   )}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDownloadFailedRows}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download failed rows as CSV
-                  </Button>
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={resetState}>
-                  Import another file
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetState}
+                  className="gap-2 text-xs font-semibold"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Import Another File
                 </Button>
                 <Button
                   type="button"
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25 gap-2 text-xs font-semibold px-5"
                   onClick={() => handleDialogChange(false)}
                 >
                   Done
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Footer buttons (only in upload/preview state) */}
-          {!importing && !results && (
+          {/* ========================================================================= */}
+          {/* MODAL FOOTER (Only when in upload / preview before import starts) */}
+          {/* ========================================================================= */}
+          {!importing && !results && validatedRows.length === 0 && (
             <div className="flex justify-end pt-2">
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 onClick={() => handleDialogChange(false)}
+                className="text-xs"
               >
                 Cancel
               </Button>

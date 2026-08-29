@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useDispatch, useSelector } from "react-redux";
 import {
   createProduct,
@@ -18,20 +19,25 @@ import {
 } from "@/Redux Toolkit/features/product/productThunks";
 import { toast } from "@/components/ui/use-toast";
 import { getCategoriesByStore } from "../../../Redux Toolkit/features/category/categoryThunks";
-import { PhoneOutgoing } from "lucide-react";
-import { X } from "lucide-react";
-import { useState } from "react";
+import { Upload, X, Loader2, Save, Image as ImageIcon } from "lucide-react";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary";
 
 const validationSchema = Yup.object({
-  name: Yup.string().required("Product name is required"),
-  sku: Yup.string().required("SKU is required"),
+  name: Yup.string().trim().min(2, "Product name must be at least 2 characters").required("Product name is required"),
+  sku: Yup.string().trim().min(2, "SKU must be at least 2 characters").required("SKU is required"),
   mrp: Yup.number()
     .required("MRP is required")
     .positive("MRP must be positive"),
   sellingPrice: Yup.number()
     .required("Selling price is required")
-    .positive("Selling price must be positive"),
+    .positive("Selling price must be positive")
+    .test('selling-price-mrp', 'Selling price cannot exceed MRP', function(value) {
+      const { mrp } = this.parent;
+      if (value != null && mrp != null) {
+        return value <= mrp;
+      }
+      return true;
+    }),
   stock: Yup.number()
     .nullable()
     .integer("Stock must be an integer")
@@ -51,22 +57,22 @@ const ProductForm = ({
   isEditing = false,
 }) => {
   const dispatch = useDispatch();
-  const { loading } = useSelector((state) => state.product);
-  const { store } = useSelector((state) => state.store);
-  const { categories: categoryList } = useSelector((state) => state.category);
-  const [uploadImage, setUploadingImage] = useState(false);
+  const { loading } = useSelector((state) => state.product || {});
+  const { store } = useSelector((state) => state.store || {});
+  const { categories: categoryList = [] } = useSelector((state) => state.category || {});
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   const defaultValues = {
-    name: "",
-    sku: "",
-    description: "",
-    mrp: "",
-    sellingPrice: "",
-    stock: "0",
-    brand: "",
-    categoryId: "",
-    color: "",
-    image: null,
-    ...initialValues,
+    name: initialValues?.name || "",
+    sku: initialValues?.sku || "",
+    description: initialValues?.description || "",
+    mrp: initialValues?.mrp ?? "",
+    sellingPrice: initialValues?.sellingPrice ?? "",
+    stock: initialValues?.stock !== undefined && initialValues?.stock !== null ? String(initialValues.stock) : "0",
+    brand: initialValues?.brand || "",
+    categoryId: initialValues?.categoryId ? String(initialValues.categoryId) : (initialValues?.category?.id ? String(initialValues.category.id) : ""),
+    color: initialValues?.color || "",
+    image: initialValues?.image || null,
   };
 
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
@@ -77,23 +83,21 @@ const ProductForm = ({
         mrp: parseFloat(values.mrp),
         sellingPrice: parseFloat(values.sellingPrice),
         stock: values.stock === "" ? 0 : parseInt(values.stock, 10),
-        storeId: store.id,
+        storeId: store?.id,
         categoryId: parseInt(values.categoryId),
       };
-
-      console.log("Product form data:", dto);
 
       if (isEditing && initialValues?.id) {
         await dispatch(
           updateProduct({ id: initialValues.id, dto, token })
         ).unwrap();
         toast({
-          title: "Success",
-          description: "Product updated successfully",
+          title: "Product Updated",
+          description: "Inventory details saved successfully.",
         });
       } else {
         await dispatch(createProduct(dto)).unwrap();
-        toast({ title: "Success", description: "Product added successfully" });
+        toast({ title: "Product Created", description: "Product registered successfully in catalog." });
         resetForm();
       }
 
@@ -114,14 +118,20 @@ const ProductForm = ({
     if (store?.id && token) {
       dispatch(getCategoriesByStore({ storeId: store.id, token }));
     }
-  }, [dispatch, store]);
+  }, [dispatch, store?.id]);
 
   const handleImageChange = async (e, setFieldValue) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
+    if (!file) return;
     setUploadingImage(true);
-    const image = await uploadToCloudinary(file);
-    setFieldValue("image",image);
-    setUploadingImage(false)
+    try {
+      const image = await uploadToCloudinary(file);
+      setFieldValue("image", image);
+    } catch (err) {
+      toast({ title: "Upload Failed", description: "Failed to upload product image.", variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   return (
@@ -132,141 +142,116 @@ const ProductForm = ({
       enableReinitialize
     >
       {({ isSubmitting, touched, errors, values, setFieldValue }) => (
-        <Form className="space-y-4 py-2 pr-2">
-          <div className="flex flex-wrap gap-5" item xs={12}>
+        <Form className="space-y-4 pt-2">
+          {/* Image Upload Banner */}
+          <div className="flex items-center gap-3">
             {!values.image ? (
               <>
-                {" "}
                 <input
                   type="file"
                   accept="image/*"
-                  id="fileInput"
+                  id="productFileInput"
                   style={{ display: "none" }}
                   onChange={(e) => handleImageChange(e, setFieldValue)}
                 />
-                <label className="relative" htmlFor="fileInput">
-                  <span className="w-24 h-24 cursor-pointer flex items-center justify-center p-3 border rounded-md border-gray-400">
-                    <PhoneOutgoing className="text-gray-700" />
-                  </span>
-                  {uploadImage && (
-                    <div className="absolute left-0 right-0 top-0 bottom-0 w-24 h-24 flex justify-center items-center">
-                      <p>Uploading...</p>
-                    </div>
+                <label
+                  htmlFor="productFileInput"
+                  className="w-20 h-20 rounded-2xl border-2 border-dashed border-border/80 hover:border-primary cursor-pointer flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors bg-muted/20"
+                >
+                  {uploadingImage ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5 mb-1" />
+                      <span className="text-[10px] font-semibold">Photo</span>
+                    </>
                   )}
                 </label>
               </>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                <div className="relative">
-                  <img
-                    className="w-24 h-24 object-cover"
-                    src={values.image}
-                    alt={`ProductImage`}
-                  />
-                  <Button
-                    onClick={() => {
-                      setFieldValue("image", null)
-                      console.log("handle remove image")
-                    }}
-                    className="absolute top-0 right-0"
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <X />
-                  </Button>
-                </div>
+              <div className="relative group w-20 h-20 rounded-2xl overflow-hidden border border-border/60">
+                <img
+                  className="w-full h-full object-cover"
+                  src={values.image}
+                  alt="Product preview"
+                />
+                <Button
+                  type="button"
+                  onClick={() => setFieldValue("image", null)}
+                  size="icon"
+                  variant="destructive"
+                  className="absolute top-1 right-1 h-5 w-5 rounded-md"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
               </div>
             )}
+            <div className="space-y-1 flex-1">
+              <Label htmlFor="image" className="text-xs font-semibold text-foreground">Or Direct Image URL</Label>
+              <Field
+                as={Input}
+                id="image"
+                name="image"
+                placeholder="https://cdn.example.com/item.jpg"
+                className="h-8 rounded-xl text-xs"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="image" className="block text-sm font-medium">
-              Image URL
-            </label>
-            <Field
-              as={Input}
-              id="image"
-              name="image"
-              placeholder="Paste image URL"
-            />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="name" className="text-xs font-semibold text-foreground">Product Title *</Label>
+              <Field
+                as={Input}
+                id="name"
+                name="name"
+                placeholder="e.g. Organic Roast Coffee Beans 250g"
+                className={`h-9 rounded-xl text-xs ${touched.name && errors.name ? "border-destructive" : ""}`}
+              />
+              <ErrorMessage name="name" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+            </div>
 
-          <div className="space-y-2">
-            <label htmlFor="name" className="block text-sm font-medium">
-              Product Name
-            </label>
-            <Field
-              as={Input}
-              id="name"
-              name="name"
-              placeholder="Enter product name"
-              className={touched.name && errors.name ? "border-red-300" : ""}
-            />
-            <ErrorMessage
-              name="name"
-              component="div"
-              className="text-red-500 text-sm"
-            />
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sku" className="text-xs font-semibold text-foreground">SKU / Barcode *</Label>
+              <Field
+                as={Input}
+                id="sku"
+                name="sku"
+                placeholder="e.g. BEV-COF-001"
+                className={`h-9 rounded-xl text-xs font-mono ${touched.sku && errors.sku ? "border-destructive" : ""}`}
+              />
+              <ErrorMessage name="sku" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+            </div>
 
-          <div className="space-y-2">
-            <label htmlFor="sku" className="block text-sm font-medium">
-              SKU
-            </label>
-            <Field
-              as={Input}
-              id="sku"
-              name="sku"
-              placeholder="Enter SKU"
-              className={touched.sku && errors.sku ? "border-red-300" : ""}
-            />
-            <ErrorMessage
-              name="sku"
-              component="div"
-              className="text-red-500 text-sm"
-            />
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="brand" className="text-xs font-semibold text-foreground">Brand / Manufacturer</Label>
+              <Field
+                as={Input}
+                id="brand"
+                name="brand"
+                placeholder="e.g. Roaster's Choice"
+                className="h-9 rounded-xl text-xs"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <label htmlFor="brand" className="block text-sm font-medium">
-              Brand
-            </label>
-            <Field
-              as={Input}
-              id="brand"
-              name="brand"
-              placeholder="Enter brand"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="categoryId" className="block text-sm font-medium">
-                Category
-              </label>
+            <div className="space-y-1.5">
+              <Label htmlFor="categoryId" className="text-xs font-semibold text-foreground">Category *</Label>
               <Field name="categoryId">
                 {({ field }) => (
                   <Select
                     value={field.value}
-                    onValueChange={(value) =>
-                      setFieldValue("categoryId", value)
-                    }
+                    onValueChange={(value) => setFieldValue("categoryId", value)}
                   >
                     <SelectTrigger
-                      className={` w-full ${
-                        touched.categoryId && errors.categoryId
-                          ? "border-red-300"
-                          : ""
+                      className={`h-9 rounded-xl text-xs w-full ${
+                        touched.categoryId && errors.categoryId ? "border-destructive" : ""
                       }`}
                     >
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl text-xs">
                       {categoryList.map((category) => (
-                        <SelectItem
-                          key={category.id}
-                          value={category.id.toString()}
-                        >
+                        <SelectItem key={category.id} value={category.id.toString()}>
                           {category.name}
                         </SelectItem>
                       ))}
@@ -274,30 +259,24 @@ const ProductForm = ({
                   </Select>
                 )}
               </Field>
-              <ErrorMessage
-                name="categoryId"
-                component="div"
-                className="text-red-500 text-sm"
-              />
+              <ErrorMessage name="categoryId" component="div" className="text-destructive text-[11px] font-medium mt-1" />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="color" className="block text-sm font-medium">
-                Color
-              </label>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="color" className="text-xs font-semibold text-foreground">Variant / Color</Label>
               <Field
                 as={Input}
                 id="color"
                 name="color"
-                placeholder="Enter color"
+                placeholder="e.g. Dark Roast, Black"
+                className="h-9 rounded-xl text-xs"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="mrp" className="block text-sm font-medium">
-                MRP
-              </label>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="mrp" className="text-xs font-semibold text-foreground">MRP (List) *</Label>
               <Field
                 as={Input}
                 id="mrp"
@@ -306,21 +285,13 @@ const ProductForm = ({
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                className={touched.mrp && errors.mrp ? "border-red-300" : ""}
+                className={`h-9 rounded-xl text-xs font-mono ${touched.mrp && errors.mrp ? "border-destructive" : ""}`}
               />
-              <ErrorMessage
-                name="mrp"
-                component="div"
-                className="text-red-500 text-sm"
-              />
+              <ErrorMessage name="mrp" component="div" className="text-destructive text-[11px] font-medium mt-1" />
             </div>
-            <div className="space-y-2">
-              <label
-                htmlFor="sellingPrice"
-                className="block text-sm font-medium"
-              >
-                Selling Price
-              </label>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="sellingPrice" className="text-xs font-semibold text-foreground">Selling Price *</Label>
               <Field
                 as={Input}
                 id="sellingPrice"
@@ -329,22 +300,13 @@ const ProductForm = ({
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                className={
-                  touched.sellingPrice && errors.sellingPrice
-                    ? "border-red-300"
-                    : ""
-                }
+                className={`h-9 rounded-xl text-xs font-mono ${touched.sellingPrice && errors.sellingPrice ? "border-destructive" : ""}`}
               />
-              <ErrorMessage
-                name="sellingPrice"
-                component="div"
-                className="text-red-500 text-sm"
-              />
+              <ErrorMessage name="sellingPrice" component="div" className="text-destructive text-[11px] font-medium mt-1" />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="stock" className="block text-sm font-medium">
-                Stock
-              </label>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="stock" className="text-xs font-semibold text-foreground">Opening Stock</Label>
               <Field
                 as={Input}
                 id="stock"
@@ -353,70 +315,46 @@ const ProductForm = ({
                 min="0"
                 step="1"
                 placeholder="0"
-                className={
-                  touched.stock && errors.stock ? "border-red-300" : ""
-                }
+                className={`h-9 rounded-xl text-xs font-mono ${touched.stock && errors.stock ? "border-destructive" : ""}`}
               />
-              <ErrorMessage
-                name="stock"
-                component="div"
-                className="text-red-500 text-sm"
-              />
+              <ErrorMessage name="stock" component="div" className="text-destructive text-[11px] font-medium mt-1" />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="description" className="block text-sm font-medium">
-              Description
-            </label>
+          <div className="space-y-1.5">
+            <Label htmlFor="description" className="text-xs font-semibold text-foreground">Description & Notes</Label>
             <Field
               as={Textarea}
               id="description"
               name="description"
-              placeholder="Enter product description"
-              rows={3}
+              placeholder="Product specs, ingredients, or retail features"
+              rows={2}
+              className="rounded-xl text-xs"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border/60">
             {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel}>
+              <Button type="button" variant="outline" size="sm" onClick={onCancel} className="rounded-xl text-xs font-semibold h-9">
                 Cancel
               </Button>
             )}
             <Button
               type="submit"
-              className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={isSubmitting || loading}
+              size="sm"
+              className="rounded-xl text-xs font-semibold h-9 gap-1.5"
+              disabled={isSubmitting || loading || uploadingImage}
             >
               {isSubmitting || loading ? (
-                <span className="flex items-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  {isEditing ? "Updating..." : "Adding..."}
-                </span>
-              ) : isEditing ? (
-                "Update Product"
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{isEditing ? "Updating..." : "Creating..."}</span>
+                </>
               ) : (
-                "Add Product"
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isEditing ? "Save Product SKU" : "Register Product"}</span>
+                </>
               )}
             </Button>
           </div>
@@ -427,3 +365,4 @@ const ProductForm = ({
 };
 
 export default ProductForm;
+

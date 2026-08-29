@@ -25,6 +25,7 @@ export const StoreValidationSchema = Yup.object().shape({
   gstNumber: Yup.string()
     .nullable()
     .notRequired()
+    .transform((value) => (value === "" ? null : value))
     .matches(
       /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
       "GST number must be 15 chars: 2 digits + 5 letters + 4 digits + 1 letter + 1 alphanumeric + Z + 1 alphanumeric"
@@ -32,6 +33,7 @@ export const StoreValidationSchema = Yup.object().shape({
   panNumber: Yup.string()
     .nullable()
     .notRequired()
+    .transform((value) => (value === "" ? null : value))
     .matches(
       /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
       "PAN number must be 10 chars: 5 letters + 4 digits + 1 letter"

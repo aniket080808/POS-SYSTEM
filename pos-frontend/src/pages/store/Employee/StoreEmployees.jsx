@@ -9,12 +9,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Users, Store as StoreIcon, MapPin } from "lucide-react";
+import { Plus, Users, Store as StoreIcon, MapPin, UserPlus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { EmployeeForm, EmployeeTable } from ".";
@@ -26,29 +27,51 @@ import {
 } from "@/Redux Toolkit/features/employee/employeeThunks";
 import { getAllBranchesByStore } from "@/Redux Toolkit/features/branch/branchThunks";
 import { getStoreOverview } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
+import { getStoreByAdmin } from "@/Redux Toolkit/features/store/storeThunks";
 import { storeAdminRole, STORE_LEVEL_ROLES, BRANCH_LEVEL_ROLES } from "../../../utils/userRole";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function StoreEmployees() {
   const dispatch = useDispatch();
-  const { employees, loading, error } = useSelector((state) => state.employee);
-  const { branches } = useSelector((state) => state.branch);
-  const { store } = useSelector((state) => state.store);
-  const { storeOverview } = useSelector((state) => state.storeAnalytics);
-  const { statusResponse } = useSelector((state) => state.storeSubscription);
-  const { user } = useSelector((state) => state.user);
-  const { userProfile } = useSelector((state) => state.user);
+  const { employees, loading, error } = useSelector((state) => state.employee || {});
+  const { branches } = useSelector((state) => state.branch || {});
+  const { store } = useSelector((state) => state.store || {});
+  const { storeOverview } = useSelector((state) => state.storeAnalytics || {});
+  const { statusResponse } = useSelector((state) => state.storeSubscription || {});
+  const { user, userProfile } = useSelector((state) => state.user || {});
+
+  const activeStoreId = store?.id || userProfile?.store?.id;
+
+  // Fetch store if not already loaded
+  useEffect(() => {
+    if (!store) {
+      const jwt = localStorage.getItem("jwt");
+      if (jwt) {
+        dispatch(getStoreByAdmin(jwt));
+      }
+    }
+  }, [dispatch, store]);
 
   // Fetch employees + branches when component mounts or store/user changes
   useEffect(() => {
-    if (store?.id) {
+    if (activeStoreId) {
       const jwt = localStorage.getItem("jwt");
       if (jwt) {
-        dispatch(findStoreEmployees({ storeId: store.id, token: jwt }));
-        dispatch(getAllBranchesByStore({ storeId: store.id, jwt }));
+        dispatch(findStoreEmployees({ storeId: activeStoreId, token: jwt }));
+        dispatch(getAllBranchesByStore({ storeId: activeStoreId, jwt }));
       }
     }
-  }, [dispatch, store, user]);
+  }, [dispatch, activeStoreId, user]);
 
   // Fetch store overview for usage-vs-limit badge if not already loaded
   useEffect(() => {
@@ -60,22 +83,24 @@ export default function StoreEmployees() {
   const maxEmployees = statusResponse?.currentPlan?.maxUsers;
   const totalEmployees = storeOverview?.totalEmployees;
   const showEmployeeLimit = storeOverview && maxEmployees != null && maxEmployees > 0;
+  const currentUserRole = userProfile?.role || user?.role;
+  const currentUserId = userProfile?.id || user?.id;
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Helper to re-fetch the full employee list (avoids "disappears after refresh" bug)
   const refreshEmployees = () => {
-    if (store?.id) {
+    if (activeStoreId) {
       const jwt = localStorage.getItem("jwt");
       if (jwt) {
-        dispatch(findStoreEmployees({ storeId: store.id, token: jwt }));
+        dispatch(findStoreEmployees({ storeId: activeStoreId, token: jwt }));
       }
     }
   };
 
-  // Role priority weight for sorting (lower weight = higher priority / pinned to top)
   const rolePriority = (role) => {
     switch (role) {
       case "ROLE_STORE_ADMIN":
@@ -93,7 +118,6 @@ export default function StoreEmployees() {
     }
   };
 
-  // Sort employees by role priority
   const sortByRolePriority = (list) => {
     return [...list].sort((a, b) => {
       const pA = rolePriority(a.role);
@@ -105,16 +129,17 @@ export default function StoreEmployees() {
 
   const handleAddEmployee = async (newEmployeeData) => {
     const jwt = localStorage.getItem("jwt");
-    if (store?.id && jwt) {
+    const targetStoreId = activeStoreId;
+    if (targetStoreId && jwt) {
       try {
         await dispatch(
           createStoreEmployee({
             employee: {
               ...newEmployeeData,
-              storeId: store.id,
+              storeId: targetStoreId,
               username: newEmployeeData.email.split("@")[0],
             },
-            storeId: store.id,
+            storeId: targetStoreId,
             token: jwt,
           })
         ).unwrap();
@@ -141,26 +166,39 @@ export default function StoreEmployees() {
         toast.success("Employee updated successfully!");
         setIsEditDialogOpen(false);
         refreshEmployees();
+        if (currentEmployee.role === "ROLE_STORE_ADMIN") {
+          dispatch(getStoreByAdmin(jwt));
+        }
       } catch (err) {
         toast.error(err || "Failed to update employee");
       }
     }
   };
 
-  const handleDeleteEmployee = async (id) => {
+  const confirmDeleteEmployee = async () => {
+    if (!employeeToDelete) return;
     const jwt = localStorage.getItem("jwt");
     if (jwt) {
+      setIsDeleting(true);
       try {
-        await dispatch(deleteEmployee({ employeeId: id, token: jwt })).unwrap();
+        await dispatch(deleteEmployee({ employeeId: employeeToDelete.id, token: jwt })).unwrap();
+        toast.success(`Employee "${employeeToDelete.fullName}" deleted successfully!`);
         refreshEmployees();
       } catch (err) {
-        toast.error(err || "Failed to delete employee");
+        toast.error(err?.message || err || "Failed to delete employee");
+      } finally {
+        setIsDeleting(false);
+        setEmployeeToDelete(null);
       }
     }
   };
 
   const openEditDialog = (employee) => {
-    setCurrentEmployee(employee);
+    const phone = employee.phone || (employee.role === "ROLE_STORE_ADMIN" ? store?.contact?.phone : "") || "";
+    setCurrentEmployee({
+      ...employee,
+      phone,
+    });
     setIsEditDialogOpen(true);
   };
 
@@ -179,7 +217,7 @@ export default function StoreEmployees() {
     };
   }, [employees]);
 
-  // Group branch-level employees by branchId (preserve sort order within each branch)
+  // Group branch-level employees by branchId
   const employeesByBranch = useMemo(() => {
     const map = {};
     branchLevelEmployees.forEach((emp) => {
@@ -195,36 +233,35 @@ export default function StoreEmployees() {
   return (
     <div className="space-y-6">
       {/* Header + Add Employee button */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Employee Management
-        </h1>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Employee Directory</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Manage store managers, branch managers, and terminal cashiers across all branches.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
           {showEmployeeLimit && (
-            <Badge variant="outline" className="text-xs">
-              {totalEmployees}/{maxEmployees} employees
+            <Badge variant="outline" className="text-xs font-mono px-2.5 py-1 rounded-xl">
+              {totalEmployees} / {maxEmployees} Quota
             </Badge>
           )}
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="mr-2 h-4 w-4" /> Add Employee
+              <Button size="sm" className="rounded-xl text-xs font-semibold h-9 gap-1.5 shadow-2xs">
+                <UserPlus className="h-3.5 w-3.5" /> Add New Employee
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[540px] max-h-[85vh] overflow-y-auto rounded-2xl">
               <DialogHeader>
-                <DialogTitle>Add New Employee</DialogTitle>
+                <DialogTitle className="text-base font-bold text-foreground">Add New Employee</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Create credentials and assign administrative or cashier roles.
+                </DialogDescription>
               </DialogHeader>
               <EmployeeForm
                 onSubmit={handleAddEmployee}
-                initialData={{
-                  fullName: "",
-                  email: "",
-                  password: "",
-                  phone: "",
-                  role: "",
-                  branchId: "",
-                }}
                 roles={storeAdminRole}
               />
             </DialogContent>
@@ -232,9 +269,12 @@ export default function StoreEmployees() {
         </div>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[540px] max-h-[85vh] overflow-y-auto rounded-2xl">
             <DialogHeader>
-              <DialogTitle>Edit Employee</DialogTitle>
+              <DialogTitle className="text-base font-bold text-foreground">Edit Employee Profile</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Update user credentials, contact details, or assigned branch.
+              </DialogDescription>
             </DialogHeader>
             <EmployeeForm
               onSubmit={handleEditEmployee}
@@ -243,7 +283,10 @@ export default function StoreEmployees() {
                 currentEmployee
                   ? {
                       ...currentEmployee,
-                      branchId: currentEmployee.branchId || "",
+                      branchId:
+                        currentEmployee.branchId ||
+                        currentEmployee.branch?.id ||
+                        "",
                     }
                   : null
               }
@@ -253,70 +296,80 @@ export default function StoreEmployees() {
       </div>
 
       {error && (
-        <div className="text-red-500 text-sm">{error}</div>
+        <div className="text-destructive text-xs font-medium">{error}</div>
       )}
 
       {/* Group A — Store-Level Staff (top section) */}
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <StoreIcon className="h-5 w-5 text-muted-foreground" />
-          <CardTitle className="text-lg">Store-Level Staff</CardTitle>
-          <Badge variant="secondary" className="ml-1">
-            {storeLevelEmployees.length}
+      <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
+        <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <StoreIcon className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-bold text-foreground">Store Executive & Management Staff</CardTitle>
+          </div>
+          <Badge variant="secondary" className="text-xs font-semibold rounded-lg">
+            {storeLevelEmployees.length} Staff
           </Badge>
         </CardHeader>
         <CardContent className="p-0">
           {storeLevelEmployees.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No store-level staff found.
+            <div className="text-center py-8 text-xs text-muted-foreground">
+              No store-level administrative staff found.
             </div>
           ) : (
             <EmployeeTable
               employees={storeLevelEmployees}
               onEdit={openEditDialog}
-              onDelete={handleDeleteEmployee}
+              onDelete={(emp) => setEmployeeToDelete(emp)}
+              currentUserRole={currentUserRole}
+              currentUserId={currentUserId}
               showBranchColumn={false}
+              storePhone={store?.contact?.phone || ""}
             />
           )}
         </CardContent>
       </Card>
 
       {/* Group B — Branch-Level Staff (accordion grouped by branch) */}
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <Users className="h-5 w-5 text-muted-foreground" />
-          <CardTitle className="text-lg">Branch-Level Staff</CardTitle>
-          <Badge variant="secondary" className="ml-1">
-            {branchLevelEmployees.length}
+      <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
+        <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-bold text-foreground">Branch Staff & Cashier Terminals</CardTitle>
+          </div>
+          <Badge variant="secondary" className="text-xs font-semibold rounded-lg">
+            {branchLevelEmployees.length} Staff
           </Badge>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           {branches && branches.length > 0 ? (
-            <Accordion type="multiple" className="w-full">
+            <Accordion type="multiple" className="w-full space-y-3">
               {branches.map((branch) => {
                 const branchEmployees = employeesByBranch[branch.id] || [];
                 return (
-                  <AccordionItem key={branch.id} value={`branch-${branch.id}`}>
-                    <AccordionTrigger className="px-4 py-3 text-left hover:no-underline hover:bg-gray-50 text-gray-900 font-medium">
+                  <AccordionItem key={branch.id} value={`branch-${branch.id}`} className="border border-border/60 rounded-xl overflow-hidden">
+                    <AccordionTrigger className="px-4 py-3 text-left hover:no-underline bg-muted/20 hover:bg-muted/40 font-medium">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{branch.name}</span>
-                        <Badge variant="outline" className="ml-1">
-                          {branchEmployees.length}
+                        <MapPin className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-xs font-bold text-foreground">{branch.name}</span>
+                        <Badge variant="outline" className="text-[10px] ml-1">
+                          {branchEmployees.length} Members
                         </Badge>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4 pt-2">
+                    <AccordionContent className="p-0 border-t border-border/40">
                       {branchEmployees.length === 0 ? (
-                        <div className="text-center py-6 text-gray-500">
+                        <div className="text-center py-6 text-xs text-muted-foreground">
                           No staff assigned to this branch yet.
                         </div>
                       ) : (
                         <EmployeeTable
                           employees={branchEmployees}
                           onEdit={openEditDialog}
-                          onDelete={handleDeleteEmployee}
+                          onDelete={(emp) => setEmployeeToDelete(emp)}
+                          currentUserRole={currentUserRole}
+                          currentUserId={currentUserId}
                           showBranchColumn={false}
+                          storePhone={store?.contact?.phone || ""}
                         />
                       )}
                     </AccordionContent>
@@ -325,12 +378,41 @@ export default function StoreEmployees() {
               })}
             </Accordion>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-xs text-muted-foreground">
               No branches found. Create a branch first to assign branch-level staff.
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog for Employee Deletion */}
+      <AlertDialog
+        open={Boolean(employeeToDelete)}
+        onOpenChange={(open) => !open && setEmployeeToDelete(null)}
+      >
+        <AlertDialogContent className="rounded-2xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-foreground">Delete Employee Account</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground">
+              Are you sure you want to delete{" "}
+              <strong className="text-foreground">
+                "{employeeToDelete?.fullName}"
+              </strong>
+              ? This action will permanently revoke their POS login credentials.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 pt-2">
+            <AlertDialogCancel disabled={isDeleting} className="rounded-xl text-xs font-semibold h-8">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteEmployee}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl text-xs font-semibold h-8"
+            >
+              {isDeleting ? "Deleting..." : "Delete Employee"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

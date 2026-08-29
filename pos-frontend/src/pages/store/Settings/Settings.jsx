@@ -4,6 +4,7 @@ import { getStoreByAdmin, updateStore } from "@/Redux Toolkit/features/store/sto
 import { fetchStoreSettings, updateStoreSettings } from "@/Redux Toolkit/features/storeSettings/storeSettingsThunks";
 import { toast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 import { Store, Bell, Shield, CreditCard, Database, HelpCircle } from "lucide-react";
 import StoreSettingsForm from "./components/StoreSettingsForm";
 import NotificationSettingsForm from "./components/NotificationSettings";
@@ -14,16 +15,17 @@ import HelpSupportForm from "./components/HelpSupport";
 import { transformSettingsToApiFormat, getInitialValues } from "./components/formUtils";
 
 const SettingsTabTrigger = ({ value, children }) => (
-  <TabsTrigger value={value} className="flex items-center gap-2">
+  <TabsTrigger value={value} className="flex items-center gap-1.5 rounded-lg text-xs font-semibold">
     {children}
   </TabsTrigger>
 );
 
 export default function Settings() {
   const dispatch = useDispatch();
-  const { store, loading: storeLoading } = useSelector((state) => state.store);
-  const { settings: storeSettings, loading: settingsLoading } = useSelector((state) => state.storeSettings);
-  const { statusResponse } = useSelector((state) => state.storeSubscription);
+  const { store, loading: storeLoading } = useSelector((state) => state.store || {});
+  const { settings: storeSettings, loading: settingsLoading } = useSelector((state) => state.storeSettings || {});
+  const { statusResponse } = useSelector((state) => state.storeSubscription || {});
+  const { userProfile } = useSelector((state) => state.user || {});
 
   const regStatus = statusResponse?.registrationStatus || store?.status || 'PENDING';
   const subStatus = statusResponse?.subscriptionStatus || 'NONE';
@@ -44,6 +46,8 @@ export default function Settings() {
   });
   const [paymentData, setPaymentData] = useState({
     acceptedPaymentMethods: ['cash', 'upi', 'card'],
+    upiId: '',
+    merchantName: '',
   });
 
   const [savingStore, setSavingStore] = useState(false);
@@ -55,7 +59,7 @@ export default function Settings() {
       toast({ title: "Error", description: err || "Failed to fetch store data", variant: "destructive" });
     });
     dispatch(fetchStoreSettings()).unwrap().catch(() => {
-      // Settings may not exist yet for existing stores - that's ok
+      // Settings may not exist yet for existing stores
     });
   }, [dispatch]);
 
@@ -67,6 +71,8 @@ export default function Settings() {
         acceptedPaymentMethods: store.acceptedPaymentMethods
           ? store.acceptedPaymentMethods.split(',')
           : ['cash', 'upi', 'card'],
+        upiId: store.upiId || '',
+        merchantName: store.merchantName || '',
       });
     }
   }, [store]);
@@ -96,13 +102,13 @@ export default function Settings() {
     }
     setSavingStore(true);
     try {
-      // Use the apiData from Formik (which has the latest user edits), not stale storeFormData
       const apiData = {
         ...apiDataFromFormik,
         acceptedPaymentMethods: paymentData.acceptedPaymentMethods.join(','),
+        upiId: paymentData.upiId,
+        merchantName: paymentData.merchantName,
       };
       await dispatch(updateStore({ id: store.id, storeData: apiData })).unwrap();
-      // Re-fetch store data to update Redux state
       await dispatch(getStoreByAdmin()).unwrap();
       toast({ title: "Success", description: "Store settings updated successfully" });
     } catch (err) {
@@ -125,7 +131,6 @@ export default function Settings() {
         passwordExpiry: securityData.passwordExpiry,
         sessionTimeout: securityData.sessionTimeout,
       })).unwrap();
-      // Re-fetch store settings to update Redux state
       await dispatch(fetchStoreSettings()).unwrap();
       toast({ title: "Success", description: "Notification & security settings updated successfully" });
     } catch (err) {
@@ -145,9 +150,10 @@ export default function Settings() {
       const apiData = transformSettingsToApiFormat({
         ...storeFormData,
         acceptedPaymentMethods: paymentData.acceptedPaymentMethods.join(','),
+        upiId: paymentData.upiId,
+        merchantName: paymentData.merchantName,
       });
       await dispatch(updateStore({ id: store.id, storeData: apiData })).unwrap();
-      // Re-fetch store data to update Redux state
       await dispatch(getStoreByAdmin()).unwrap();
       toast({ title: "Success", description: "Payment settings updated successfully" });
     } catch (err) {
@@ -157,128 +163,96 @@ export default function Settings() {
     }
   };
 
-  const handleSaveAll = async () => {
-    setSavingStore(true);
-    setSavingSettings(true);
-    try {
-      if (store?.id) {
-        const apiData = transformSettingsToApiFormat({
-          ...storeFormData,
-          acceptedPaymentMethods: paymentData.acceptedPaymentMethods.join(','),
-        });
-        await dispatch(updateStore({ id: store.id, storeData: apiData })).unwrap();
-      }
-      await dispatch(updateStoreSettings({
-        emailNotifications: notificationData.emailNotifications,
-        lowStockAlerts: notificationData.lowStockAlerts,
-        salesReports: notificationData.salesReports,
-        employeeActivity: notificationData.employeeActivity,
-        twoFactorAuth: securityData.twoFactorAuth,
-        ipRestriction: securityData.ipRestriction,
-        passwordExpiry: securityData.passwordExpiry,
-        sessionTimeout: securityData.sessionTimeout,
-      })).unwrap();
-      // Re-fetch both to ensure Redux state is updated
-      if (store?.id) {
-        await dispatch(getStoreByAdmin()).unwrap();
-      }
-      await dispatch(fetchStoreSettings()).unwrap();
-      toast({ title: "Success", description: "All settings saved successfully" });
-    } catch (err) {
-      toast({ title: "Error", description: err || "Failed to save settings", variant: "destructive" });
-    } finally {
-      setSavingStore(false);
-      setSavingSettings(false);
-    }
-  };
-
   const loading = storeLoading || settingsLoading;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">
-          Configure your store's preferences and system options
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">Store Configuration & Preferences</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Configure business details, terminal payments, security policies, and notification rules.
         </p>
       </div>
 
       <Tabs defaultValue="store-settings" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
+        <TabsList className="bg-muted/60 p-1 rounded-xl w-full grid grid-cols-3 sm:grid-cols-6 max-w-2xl">
           <SettingsTabTrigger value="store-settings">
-            <Store className="w-4 h-4" />
-            <span className="hidden md:inline">Store</span>
+            <Store className="w-3.5 h-3.5" />
+            <span>Store</span>
           </SettingsTabTrigger>
           <SettingsTabTrigger value="notification-settings">
-            <Bell className="w-4 h-4" />
-            <span className="hidden md:inline">Notifications</span>
+            <Bell className="w-3.5 h-3.5" />
+            <span>Alerts</span>
           </SettingsTabTrigger>
           <SettingsTabTrigger value="security-settings">
-            <Shield className="w-4 h-4" />
-            <span className="hidden md:inline">Security</span>
+            <Shield className="w-3.5 h-3.5" />
+            <span>Security</span>
           </SettingsTabTrigger>
           <SettingsTabTrigger value="payment-settings">
-            <CreditCard className="w-4 h-4" />
-            <span className="hidden md:inline">Payments</span>
+            <CreditCard className="w-3.5 h-3.5" />
+            <span>Payments</span>
           </SettingsTabTrigger>
           <SettingsTabTrigger value="system-settings">
-            <Database className="w-4 h-4" />
-            <span className="hidden md:inline">System</span>
+            <Database className="w-3.5 h-3.5" />
+            <span>System</span>
           </SettingsTabTrigger>
           <SettingsTabTrigger value="help">
-            <HelpCircle className="w-4 h-4" />
-            <span className="hidden md:inline">Help</span>
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>Help</span>
           </SettingsTabTrigger>
         </TabsList>
 
-        <TabsContent value="store-settings">
-          <StoreSettingsForm
-            initialValues={storeFormData}
-            onSubmit={handleSaveStore}
-            isSubmitting={savingStore || loading}
-            storeId={store?.id}
-            onChange={(name, value) => setStoreFormData(prev => ({ ...prev, [name]: value }))}
-          />
-        </TabsContent>
+        <Card className="rounded-2xl border-border/80 shadow-2xs p-5 sm:p-6 bg-card">
+          <TabsContent value="store-settings" className="mt-0">
+            <StoreSettingsForm
+              initialValues={storeFormData}
+              onSubmit={handleSaveStore}
+              isSubmitting={savingStore || loading}
+              storeId={store?.id}
+              onChange={(name, value) => setStoreFormData(prev => ({ ...prev, [name]: value }))}
+            />
+          </TabsContent>
 
-        <TabsContent value="notification-settings">
-          <NotificationSettingsForm
-            settings={notificationData}
-            onChange={(name, value) => setNotificationData(prev => ({ ...prev, [name]: value }))}
-            onSave={handleSaveSettings}
-            isSubmitting={savingSettings}
-            isSubscriptionActive={isSubscriptionActive}
-          />
-        </TabsContent>
+          <TabsContent value="notification-settings" className="mt-0">
+            <NotificationSettingsForm
+              settings={notificationData}
+              onChange={(name, value) => setNotificationData(prev => ({ ...prev, [name]: value }))}
+              onSave={handleSaveSettings}
+              isSubmitting={savingSettings}
+              isSubscriptionActive={isSubscriptionActive}
+            />
+          </TabsContent>
 
-        <TabsContent value="security-settings">
-          <SecuritySettingsForm
-            settings={securityData}
-            onChange={(name, value) => setSecurityData(prev => ({ ...prev, [name]: value }))}
-            onSave={handleSaveSettings}
-            isSubmitting={savingSettings}
-            isSubscriptionActive={isSubscriptionActive}
-          />
-        </TabsContent>
+          <TabsContent value="security-settings" className="mt-0">
+            <SecuritySettingsForm
+              settings={securityData}
+              onChange={(name, value) => setSecurityData(prev => ({ ...prev, [name]: value }))}
+              onSave={handleSaveSettings}
+              isSubmitting={savingSettings}
+              isSubscriptionActive={isSubscriptionActive}
+              isReadOnly={userProfile?.role === 'ROLE_STORE_MANAGER'}
+            />
+          </TabsContent>
 
-        <TabsContent value="payment-settings">
-          <PaymentSettingsForm
-            settings={paymentData}
-            onChange={(name, value) => setPaymentData(prev => ({ ...prev, [name]: value }))}
-            onSave={handleSavePayment}
-            isSubmitting={savingStore}
-            isSubscriptionActive={isSubscriptionActive}
-          />
-        </TabsContent>
+          <TabsContent value="payment-settings" className="mt-0">
+            <PaymentSettingsForm
+              settings={paymentData}
+              onChange={(name, value) => setPaymentData(prev => ({ ...prev, [name]: value }))}
+              onSave={handleSavePayment}
+              isSubmitting={savingStore}
+              isSubscriptionActive={isSubscriptionActive}
+            />
+          </TabsContent>
 
-        <TabsContent value="system-settings">
-          <SystemSettingsForm store={store} />
-        </TabsContent>
+          <TabsContent value="system-settings" className="mt-0">
+            <SystemSettingsForm store={store} />
+          </TabsContent>
 
-        <TabsContent value="help">
-          <HelpSupportForm />
-        </TabsContent>
+          <TabsContent value="help" className="mt-0">
+            <HelpSupportForm />
+          </TabsContent>
+        </Card>
       </Tabs>
     </div>
   );
-}
+}

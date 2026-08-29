@@ -1,96 +1,106 @@
 import React from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Tag, DollarSign, Package, Eye } from "lucide-react";
-
-import { useSelector } from 'react-redux';
+import { Tag, BellOff, Package, Loader2 } from "lucide-react";
+import { useSelector, useDispatch } from 'react-redux';
+import { dismissAlert } from '@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks';
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
+import { Badge } from "@/components/ui/badge";
 
 const LowStockProductTable = () => {
-  
-  const { storeAlerts , loading} = useSelector((state) => state.storeAnalytics);
+  const dispatch = useDispatch();
+  const { format: formatCurrency } = useCurrencyFormatter();
+  const { storeAlerts, loading } = useSelector((state) => state.storeAnalytics || {});
+  const user = useSelector((state) => state.user?.userProfile);
 
+  const handleDismiss = (productId, stock) => {
+    if (user?.id) {
+      dispatch(dismissAlert({
+        storeAdminId: user.id,
+        alertType: 'LOW_STOCK',
+        referenceId: productId,
+        snapshotValue: stock
+      }));
+    }
+  };
 
+  const products = storeAlerts?.lowStockAlerts || [];
 
-  if (loading) {
-    return (
+  return (
+    <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Image</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Stock</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+          <TableRow className="bg-muted/40 hover:bg-muted/40 border-b border-border/60">
+            <TableHead className="text-xs font-bold text-foreground py-3 pl-6">Product</TableHead>
+            <TableHead className="text-xs font-bold text-foreground py-3">Category</TableHead>
+            <TableHead className="text-xs font-bold text-foreground py-3">Selling Price</TableHead>
+            <TableHead className="text-xs font-bold text-foreground py-3">Stock Balance</TableHead>
+            <TableHead className="text-xs font-bold text-foreground py-3 pr-6 text-right">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow>
-            <TableCell colSpan={6} className="text-center py-8">
-              <div className="flex justify-center items-center">
-                <svg className="animate-spin h-6 w-6 text-emerald-600 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading products...
-              </div>
-            </TableCell>
-          </TableRow>
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center py-8 text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin inline-block mr-2 text-primary" />
+                Scanning store stock levels...
+              </TableCell>
+            </TableRow>
+          ) : products.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-xs">
+                All inventory SKU levels are healthy above safety threshold.
+              </TableCell>
+            </TableRow>
+          ) : (
+            products.map((product) => (
+              <TableRow key={product.id} className="hover:bg-muted/30 transition-colors border-b border-border/40">
+                <TableCell className="pl-6 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-muted/60 border border-border/60 flex items-center justify-center shrink-0 overflow-hidden">
+                      {product.image ? (
+                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="w-3.5 h-3.5 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs text-foreground truncate max-w-[160px]">
+                        {product.name || 'Unnamed Product'}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-mono">
+                        {product.sku || `#${product.id}`}
+                      </div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="py-3 text-xs text-muted-foreground">
+                  {product.category || 'Uncategorized'}
+                </TableCell>
+                <TableCell className="py-3 font-mono font-bold text-xs text-foreground">
+                  {formatCurrency(product.sellingPrice || product.mrp || 0)}
+                </TableCell>
+                <TableCell className="py-3">
+                  <Badge variant="outline" className="text-[10px] font-bold bg-destructive/10 text-destructive border-destructive/20 font-mono">
+                    {product.stock ?? 0} units left
+                  </Badge>
+                </TableCell>
+                <TableCell className="pr-6 py-3 text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                    onClick={() => handleDismiss(product.id, product.stock)}
+                  >
+                    <BellOff className="h-3 w-3 mr-1" /> Dismiss
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
-    );
-  }
-
-
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Image</TableHead>
-          <TableHead>Product</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Price</TableHead>
-          <TableHead>Stock</TableHead>
-          <TableHead>Branch</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {storeAlerts?.lowStockAlerts?.map((product) => (
-          <TableRow key={product.id}>
-            <TableCell>
-              {product.image && (
-                <img src={product.image} alt={product.name} className="w-12 h-12 object-cover rounded-md" />
-              )}
-            </TableCell>
-            <TableCell>
-              <div className="space-y-1 ">
-                <div className="font-medium ">{product.name.slice(0, 32)}...</div>
-                <div className="text-sm text-gray-500 truncate max-w-xs">{product.description.slice(0,30)}...</div>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <Tag className="h-4 w-4 text-gray-400" />
-                {product.category}
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-4 w-4 text-gray-400" />
-                {product.price?.toFixed ? product.price.toFixed(2) : product.sellingPrice}
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="font-medium text-red-600">{product.stock ?? 'N/A'}</div>
-            </TableCell>
-            <TableCell>
-              <div className="text-sm">{product.storeName || '—'}</div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    </div>
   );
 };
 

@@ -1,15 +1,17 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, CardContent } from "@/components/ui/card";
-import { DollarSign, Store, ShoppingCart, Users } from "lucide-react";
+import { DollarSign, Store, ShoppingCart, Users, TrendingUp, IndianRupee } from "lucide-react";
 import { getStoreOverview } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
 import { useToast } from "@/components/ui/use-toast";
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
+import { StatCard } from "@/components/ui/stat-card";
 
 const DashboardStats = () => {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const { storeOverview, loading } = useSelector((state) => state.storeAnalytics);
-  const { userProfile } = useSelector((state) => state.user);
+  const { format: formatCurrency } = useCurrencyFormatter();
+  const { storeOverview, loading } = useSelector((state) => state.storeAnalytics || {});
+  const { userProfile } = useSelector((state) => state.user || {});
 
   useEffect(() => {
     if (userProfile?.id) {
@@ -29,89 +31,46 @@ const DashboardStats = () => {
     }
   };
 
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount || 0);
-  };
-
   // Format percentage change
-  const formatChange = (current, previous) => {
-    if (!previous || previous === 0) return "+0%";
+  const getPercentageChange = (current, previous) => {
+    if (!previous || previous === 0) return 0;
     const change = ((current - previous) / previous) * 100;
-    const sign = change >= 0 ? "+" : "";
-    return `${sign}${change.toFixed(1)}%`;
+    return Number(change.toFixed(1));
   };
 
-  const stats = [
-    {
-      title: "Total Sales",
-      value: formatCurrency(storeOverview?.totalSales || 0),
-      icon: <DollarSign className="w-8 h-8 text-emerald-500" />,
-      subText: formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales) + " from last week",
-      subTextClass: formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales).startsWith('+') ? 'text-emerald-500' : 'text-red-500',
-      loading: loading
-    },
-    {
-      title: "Total Branches",
-      value: storeOverview?.totalBranches || 0,
-      icon: <Store className="w-8 h-8 text-emerald-500" />,
-      subText: "All-time total",
-      subTextClass: "text-gray-500",
-      loading: loading
-    },
-    {
-      title: "Total Products",
-      value: storeOverview?.totalProducts || 0,
-      icon: <ShoppingCart className="w-8 h-8 text-emerald-500" />,
-      subText: "All-time total",
-      subTextClass: "text-gray-500",
-      loading: loading
-    },
-    {
-      title: "Total Employees",
-      value: storeOverview?.totalEmployees || 0,
-      icon: <Users className="w-8 h-8 text-emerald-500" />,
-      subText: "All-time total",
-      subTextClass: "text-gray-500",
-      loading: loading
-    },
-  ];
+  const salesChange = getPercentageChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales);
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {stats.map((stat, index) => (
-        <Card key={index}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">{stat.title}</p>
-                <h3 className="text-2xl font-bold mt-1">
-                  {stat.loading ? (
-                    <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
-                  ) : (
-                    stat.value
-                  )}
-                </h3>
-                <div className={`text-xs font-medium mt-1 ${stat.subTextClass}`}>
-                  {stat.loading ? (
-                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
-                  ) : (
-                    stat.subText
-                  )}
-                </div>
-              </div>
-              <div className="p-3 bg-emerald-50 rounded-full">
-                {stat.icon}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatCard
+        title="Gross Sales Volume"
+        value={formatCurrency(storeOverview?.totalSales || 0)}
+        change={salesChange}
+        icon={IndianRupee}
+        description="Compared to previous period"
+        loading={loading}
+      />
+      <StatCard
+        title="Active Branches"
+        value={storeOverview?.totalBranches || 0}
+        icon={Store}
+        description="Operating retail locations"
+        loading={loading}
+      />
+      <StatCard
+        title="Catalog Products"
+        value={storeOverview?.totalProducts || 0}
+        icon={ShoppingCart}
+        description="Active product SKUs in catalog"
+        loading={loading}
+      />
+      <StatCard
+        title="Staff & Employees"
+        value={storeOverview?.totalEmployees || 0}
+        icon={Users}
+        description="Registered store personnel"
+        loading={loading}
+      />
     </div>
   );
 };

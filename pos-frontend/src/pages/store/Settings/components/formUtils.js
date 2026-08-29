@@ -9,6 +9,8 @@ export const transformSettingsToApiFormat = (settings) => {
       phone: settings.storePhone,
       email: settings.storeEmail,
     },
+    gstNumber: settings.gstNumber,
+    panNumber: settings.panNumber,
     // Additional fields that might be needed by the API
     currency: settings.currency,
     taxRate: parseFloat(settings.taxRate) || 0,
@@ -16,6 +18,8 @@ export const transformSettingsToApiFormat = (settings) => {
     dateFormat: settings.dateFormat,
     receiptFooter: settings.receiptFooter,
     acceptedPaymentMethods: settings.acceptedPaymentMethods,
+    upiId: settings.upiId,
+    merchantName: settings.merchantName,
   };
 };
 
@@ -27,12 +31,16 @@ export const transformApiToSettingsFormat = (apiData) => {
     storePhone: apiData.contact?.phone || "",
     storeAddress: apiData.contact?.address || "",
     storeDescription: apiData.description || "",
+    gstNumber: apiData.gstNumber || "",
+    panNumber: apiData.panNumber || "",
     currency: apiData.currency || "INR",
     taxRate: apiData.taxRate?.toString() || "0",
     timezone: apiData.timezone || "Asia/Kolkata",
     dateFormat: apiData.dateFormat || "MM/DD/YYYY",
     receiptFooter: apiData.receiptFooter || "",
     acceptedPaymentMethods: apiData.acceptedPaymentMethods || "cash,upi,card",
+    upiId: apiData.upiId || "",
+    merchantName: apiData.merchantName || "",
   };
 };
 
@@ -45,11 +53,15 @@ export const getInitialValues = (storeData) => {
       storePhone: "",
       storeAddress: "",
       storeDescription: "",
+      gstNumber: "",
+      panNumber: "",
       currency: "INR",
       taxRate: "0",
       timezone: "Asia/Kolkata",
       dateFormat: "MM/DD/YYYY",
       receiptFooter: "",
+      upiId: "",
+      merchantName: "",
     };
   }
 
