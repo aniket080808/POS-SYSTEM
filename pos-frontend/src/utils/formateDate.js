@@ -1,18 +1,5 @@
-export const formatDateTime = (date) => {
-  return new Date(date).toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
-export const formatTime = (date) => {
-  return new Date(date).toLocaleTimeString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
+/**
+ * Re-exports from dateUtils.js to maintain 100% backward compatibility
+ * across all existing imports in the application.
+ */
+export { formatDateTime, formatTime, getRelativeTime, formatDateByPattern } from "./dateUtils";
