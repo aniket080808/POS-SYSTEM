@@ -5,8 +5,14 @@ import { cn } from "@/lib/utils"
 function Input({
   className,
   type,
+  value,
+  onChange,
+  readOnly,
   ...props
 }) {
+  const isControlled = value !== undefined;
+  const safeValue = value === null ? "" : value;
+
   return (
     <input
       type={type}
@@ -17,8 +23,11 @@ function Input({
         "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
         className
       )}
-     
-      {...props} />
+      {...(isControlled ? { value: safeValue } : {})}
+      onChange={onChange}
+      readOnly={readOnly || (isControlled && !onChange ? true : undefined)}
+      {...props}
+    />
   );
 }
 

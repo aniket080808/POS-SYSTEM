@@ -25,6 +25,7 @@ function SelectValue({
 function SelectTrigger({
   className,
   size = "default",
+  startIcon,
   children,
   ...props
 }) {
@@ -37,7 +38,10 @@ function SelectTrigger({
         className
       )}
       {...props}>
-      {children}
+      <div className="flex items-center gap-2">
+        {startIcon}
+        {children}
+      </div>
       <SelectPrimitive.Icon asChild>
         <ChevronDownIcon className="size-4 opacity-50" />
       </SelectPrimitive.Icon>
