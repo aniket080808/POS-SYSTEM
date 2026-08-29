@@ -9,13 +9,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Users, Store as StoreIcon, MapPin, UserPlus } from "lucide-react";
+import { Plus, Users, Store as StoreIcon, MapPin } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { EmployeeForm, EmployeeTable } from ".";
@@ -43,12 +42,13 @@ import {
 
 export default function StoreEmployees() {
   const dispatch = useDispatch();
-  const { employees, loading, error } = useSelector((state) => state.employee || {});
-  const { branches } = useSelector((state) => state.branch || {});
-  const { store } = useSelector((state) => state.store || {});
-  const { storeOverview } = useSelector((state) => state.storeAnalytics || {});
-  const { statusResponse } = useSelector((state) => state.storeSubscription || {});
-  const { user, userProfile } = useSelector((state) => state.user || {});
+  const { employees, error } = useSelector((state) => state.employee);
+  const { branches } = useSelector((state) => state.branch);
+  const { store } = useSelector((state) => state.store);
+  const { storeOverview } = useSelector((state) => state.storeAnalytics);
+  const { statusResponse } = useSelector((state) => state.storeSubscription);
+  const { user } = useSelector((state) => state.user);
+  const { userProfile } = useSelector((state) => state.user);
 
   const activeStoreId = store?.id || userProfile?.store?.id;
 
@@ -92,6 +92,7 @@ export default function StoreEmployees() {
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Helper to re-fetch the full employee list (avoids "disappears after refresh" bug)
   const refreshEmployees = () => {
     if (activeStoreId) {
       const jwt = localStorage.getItem("jwt");
@@ -101,6 +102,7 @@ export default function StoreEmployees() {
     }
   };
 
+  // Role priority weight for sorting (lower weight = higher priority / pinned to top)
   const rolePriority = (role) => {
     switch (role) {
       case "ROLE_STORE_ADMIN":
@@ -118,6 +120,7 @@ export default function StoreEmployees() {
     }
   };
 
+  // Sort employees by role priority
   const sortByRolePriority = (list) => {
     return [...list].sort((a, b) => {
       const pA = rolePriority(a.role);
@@ -215,9 +218,10 @@ export default function StoreEmployees() {
       storeLevelEmployees: sortByRolePriority(storeLevel),
       branchLevelEmployees: sortByRolePriority(branchLevel),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employees]);
 
-  // Group branch-level employees by branchId
+  // Group branch-level employees by branchId (preserve sort order within each branch)
   const employeesByBranch = useMemo(() => {
     const map = {};
     branchLevelEmployees.forEach((emp) => {
@@ -233,32 +237,25 @@ export default function StoreEmployees() {
   return (
     <div className="space-y-6">
       {/* Header + Add Employee button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Employee Directory</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage store managers, branch managers, and terminal cashiers across all branches.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Employee Management
+        </h1>
+        <div className="flex items-center gap-3">
           {showEmployeeLimit && (
-            <Badge variant="outline" className="text-xs font-mono px-2.5 py-1 rounded-xl">
-              {totalEmployees} / {maxEmployees} Quota
+            <Badge variant="outline" className="text-xs">
+              {totalEmployees}/{maxEmployees} employees
             </Badge>
           )}
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="rounded-xl text-xs font-semibold h-9 gap-1.5 shadow-2xs">
-                <UserPlus className="h-3.5 w-3.5" /> Add New Employee
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" /> Add Employee
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[540px] max-h-[85vh] overflow-y-auto rounded-2xl">
+            <DialogContent className="max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-base font-bold text-foreground">Add New Employee</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
-                  Create credentials and assign administrative or cashier roles.
-                </DialogDescription>
+                <DialogTitle>Add New Employee</DialogTitle>
               </DialogHeader>
               <EmployeeForm
                 onSubmit={handleAddEmployee}
@@ -269,12 +266,9 @@ export default function StoreEmployees() {
         </div>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[540px] max-h-[85vh] overflow-y-auto rounded-2xl">
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-foreground">Edit Employee Profile</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Update user credentials, contact details, or assigned branch.
-              </DialogDescription>
+              <DialogTitle>Edit Employee</DialogTitle>
             </DialogHeader>
             <EmployeeForm
               onSubmit={handleEditEmployee}
@@ -296,24 +290,22 @@ export default function StoreEmployees() {
       </div>
 
       {error && (
-        <div className="text-destructive text-xs font-medium">{error}</div>
+        <div className="text-red-500 text-sm">{error}</div>
       )}
 
       {/* Group A — Store-Level Staff (top section) */}
-      <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <StoreIcon className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-bold text-foreground">Store Executive & Management Staff</CardTitle>
-          </div>
-          <Badge variant="secondary" className="text-xs font-semibold rounded-lg">
-            {storeLevelEmployees.length} Staff
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-2">
+          <StoreIcon className="h-5 w-5 text-muted-foreground" />
+          <CardTitle className="text-lg">Store-Level Staff</CardTitle>
+          <Badge variant="secondary" className="ml-1">
+            {storeLevelEmployees.length}
           </Badge>
         </CardHeader>
         <CardContent className="p-0">
           {storeLevelEmployees.length === 0 ? (
-            <div className="text-center py-8 text-xs text-muted-foreground">
-              No store-level administrative staff found.
+            <div className="text-center py-8 text-gray-500">
+              No store-level staff found.
             </div>
           ) : (
             <EmployeeTable
@@ -330,35 +322,33 @@ export default function StoreEmployees() {
       </Card>
 
       {/* Group B — Branch-Level Staff (accordion grouped by branch) */}
-      <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-bold text-foreground">Branch Staff & Cashier Terminals</CardTitle>
-          </div>
-          <Badge variant="secondary" className="text-xs font-semibold rounded-lg">
-            {branchLevelEmployees.length} Staff
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-2">
+          <Users className="h-5 w-5 text-muted-foreground" />
+          <CardTitle className="text-lg">Branch-Level Staff</CardTitle>
+          <Badge variant="secondary" className="ml-1">
+            {branchLevelEmployees.length}
           </Badge>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6">
+        <CardContent>
           {branches && branches.length > 0 ? (
-            <Accordion type="multiple" className="w-full space-y-3">
+            <Accordion type="multiple" className="w-full">
               {branches.map((branch) => {
                 const branchEmployees = employeesByBranch[branch.id] || [];
                 return (
-                  <AccordionItem key={branch.id} value={`branch-${branch.id}`} className="border border-border/60 rounded-xl overflow-hidden">
-                    <AccordionTrigger className="px-4 py-3 text-left hover:no-underline bg-muted/20 hover:bg-muted/40 font-medium">
+                  <AccordionItem key={branch.id} value={`branch-${branch.id}`}>
+                    <AccordionTrigger className="px-4 py-3 text-left hover:no-underline hover:bg-gray-50 text-gray-900 font-medium">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-3.5 w-3.5 text-primary" />
-                        <span className="text-xs font-bold text-foreground">{branch.name}</span>
-                        <Badge variant="outline" className="text-[10px] ml-1">
-                          {branchEmployees.length} Members
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span>{branch.name}</span>
+                        <Badge variant="outline" className="ml-1">
+                          {branchEmployees.length}
                         </Badge>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="p-0 border-t border-border/40">
+                    <AccordionContent className="px-4 pb-4 pt-2">
                       {branchEmployees.length === 0 ? (
-                        <div className="text-center py-6 text-xs text-muted-foreground">
+                        <div className="text-center py-6 text-gray-500">
                           No staff assigned to this branch yet.
                         </div>
                       ) : (
@@ -378,7 +368,7 @@ export default function StoreEmployees() {
               })}
             </Accordion>
           ) : (
-            <div className="text-center py-8 text-xs text-muted-foreground">
+            <div className="text-center py-8 text-gray-500">
               No branches found. Create a branch first to assign branch-level staff.
             </div>
           )}
@@ -390,23 +380,23 @@ export default function StoreEmployees() {
         open={Boolean(employeeToDelete)}
         onOpenChange={(open) => !open && setEmployeeToDelete(null)}
       >
-        <AlertDialogContent className="rounded-2xl max-w-md">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-bold text-foreground">Delete Employee Account</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground">
+            <AlertDialogTitle>Delete Employee</AlertDialogTitle>
+            <AlertDialogDescription>
               Are you sure you want to delete{" "}
-              <strong className="text-foreground">
+              <span className="font-semibold text-foreground">
                 "{employeeToDelete?.fullName}"
-              </strong>
-              ? This action will permanently revoke their POS login credentials.
+              </span>
+              ? This action will permanently remove their access and profile.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 pt-2">
-            <AlertDialogCancel disabled={isDeleting} className="rounded-xl text-xs font-semibold h-8">Cancel</AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteEmployee}
               disabled={isDeleting}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl text-xs font-semibold h-8"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {isDeleting ? "Deleting..." : "Delete Employee"}
             </AlertDialogAction>

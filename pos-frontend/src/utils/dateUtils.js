@@ -28,6 +28,13 @@ export const formatDateByPattern = (dateInput, pattern = "DD/MM/YYYY") => {
 };
 
 /**
+ * Alias for formatDateByPattern for standard formatting.
+ */
+export const formatDate = (dateInput, pattern = "DD/MM/YYYY") => {
+  return formatDateByPattern(dateInput, pattern);
+};
+
+/**
  * Format date & time with standard 12-hour AM/PM format.
  */
 export const formatDateTime = (dateInput) => {

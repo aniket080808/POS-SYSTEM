@@ -3,24 +3,16 @@ import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Tag } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getCategoriesByStore } from "@/Redux Toolkit/features/category/categoryThunks";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import CategoryTable from "./CategoryTable";
 import CategoryForm from "./CategoryForm";
 
 export default function Categories() {
   const dispatch = useDispatch();
-  const { categories, loading, error } = useSelector((state) => state.category || {});
-  const { store } = useSelector((state) => state.store || {});
-  const { userProfile } = useSelector((state) => state.user || {});
+  const { categories, loading, error } = useSelector((state) => state.category);
+  const { store } = useSelector((state) => state.store);
+  const { userProfile } = useSelector((state) => state.user);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -28,7 +20,6 @@ export default function Categories() {
 
   const activeStoreId = store?.id || userProfile?.store?.id;
 
-  // Fetch categories on mount or when store changes
   useEffect(() => {
     const token = localStorage.getItem("jwt");
     if (activeStoreId && token) {
@@ -52,32 +43,27 @@ export default function Categories() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Product Categories</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Organize catalog inventory into taxonomy groups for quick terminal POS lookups.
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Product Categories
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Organize catalog inventory items into departments and product classifications
           </p>
         </div>
 
-        {error && (
-          <Alert variant="destructive" className="mb-2">
-            <AlertDescription className="text-xs">{error}</AlertDescription>
-          </Alert>
-        )}
-
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="rounded-xl text-xs font-semibold h-9 gap-1.5 shadow-2xs">
-              <Plus className="h-3.5 w-3.5" /> Add Category
+            <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold h-10 px-4 rounded-xl shadow-xs cursor-pointer">
+              <Plus className="w-4 h-4" /> Add Category
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[480px] rounded-2xl">
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto rounded-2xl">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-foreground">Create Product Category</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Define a new categorization label to classify store inventory.
-              </DialogDescription>
+              <DialogTitle className="text-base font-bold text-foreground">
+                Add New Product Category
+              </DialogTitle>
             </DialogHeader>
             <CategoryForm 
               onSubmit={handleAddCategorySuccess} 
@@ -87,12 +73,11 @@ export default function Categories() {
         </Dialog>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[480px] rounded-2xl">
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto rounded-2xl">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-foreground">Edit Product Category</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Update category classification details.
-              </DialogDescription>
+              <DialogTitle className="text-base font-bold text-foreground">
+                Edit Product Category
+              </DialogTitle>
             </DialogHeader>
             <CategoryForm 
               initialValues={currentCategory} 
@@ -104,7 +89,13 @@ export default function Categories() {
         </Dialog>
       </div>
 
-      <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
+      {error && (
+        <div className="p-3 text-xs bg-red-50 border border-red-200 text-red-700 rounded-xl">
+          {error}
+        </div>
+      )}
+
+      <Card className="rounded-2xl border border-border/80 shadow-2xs overflow-hidden">
         <CardContent className="p-0">
           <CategoryTable 
             categories={categories} 

@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, RefreshCw, Upload, Package } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, RefreshCw, Upload, IndianRupee } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { getProductsByStore } from "@/Redux Toolkit/features/product/productThunks";
@@ -24,12 +23,12 @@ import ImportProductsModal from "./ImportProductsModal";
 export default function Products() {
   const dispatch = useDispatch();
   const { products, loading, error, searchResults } = useSelector(
-    (state) => state.product || {}
+    (state) => state.product
   );
-  const { store } = useSelector((state) => state.store || {});
-  const { storeOverview } = useSelector((state) => state.storeAnalytics || {});
-  const { statusResponse } = useSelector((state) => state.storeSubscription || {});
-  const { userProfile } = useSelector((state) => state.user || {});
+  const { store } = useSelector((state) => state.store);
+  const { storeOverview } = useSelector((state) => state.storeAnalytics);
+  const { statusResponse } = useSelector((state) => state.storeSubscription);
+  const { userProfile } = useSelector((state) => state.user);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -42,12 +41,23 @@ export default function Products() {
 
   const activeStoreId = store?.id || userProfile?.store?.id;
 
-  // Fetch products on mount or when store changes
-  useEffect(() => {
-    if (activeStoreId) {
-      fetchProducts();
+  const fetchProducts = useCallback(async () => {
+    if (!activeStoreId) return;
+    try {
+      await dispatch(getProductsByStore(activeStoreId)).unwrap();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err || "Failed to fetch products",
+        variant: "destructive",
+      });
     }
   }, [dispatch, activeStoreId]);
+
+  // Fetch products on mount or when store changes
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Fetch store overview for usage-vs-limit badge if not already loaded
   useEffect(() => {
@@ -63,22 +73,9 @@ export default function Products() {
   // Update displayed products when products or search results change
   useEffect(() => {
     setDisplayedProducts(
-      isSearchActive && searchResults?.length > 0 ? searchResults : (products || [])
+      isSearchActive && searchResults.length > 0 ? searchResults : products
     );
   }, [products, searchResults, isSearchActive]);
-
-  const fetchProducts = async () => {
-    if (!activeStoreId) return;
-    try {
-      await dispatch(getProductsByStore(activeStoreId)).unwrap();
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err || "Failed to fetch products",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -108,6 +105,7 @@ export default function Products() {
 
   const handleSearch = (results) => {
     if (results === null) {
+      // Search was cleared
       setIsSearchActive(false);
     } else {
       setIsSearchActive(true);
@@ -117,41 +115,31 @@ export default function Products() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Catalog & Inventory</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage product SKU pricing, stock quantities, and batch imports.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Product Management
+        </h1>
+        <div className="flex gap-2">
           {showProductLimit && (
-            <Badge variant="outline" className="text-xs font-mono px-2.5 py-1 rounded-xl">
-              {totalProducts} / {maxProducts} Quota
+            <Badge variant="outline" className="text-xs">
+              {totalProducts}/{maxProducts} products
             </Badge>
           )}
           <Button
             variant="outline"
-            size="sm"
             onClick={() => setIsImportDialogOpen(true)}
-            className="rounded-xl text-xs font-semibold h-9 gap-1.5"
           >
-            <Upload className="h-3.5 w-3.5" /> Import CSV/Excel
+            <Upload className="mr-2 h-4 w-4" /> Import Products
           </Button>
-
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="rounded-xl text-xs font-semibold h-9 gap-1.5 shadow-2xs">
-                <Plus className="h-3.5 w-3.5" /> Add Product
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" /> Add Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[620px] max-h-[85vh] overflow-y-auto rounded-2xl">
+            <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-10">
               <DialogHeader>
-                <DialogTitle className="text-base font-bold text-foreground">Add New Product</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
-                  Define SKU code, MRP, selling price, and category classification.
-                </DialogDescription>
+                <DialogTitle>Add New Product</DialogTitle>
               </DialogHeader>
               <ProductForm
                 onSubmit={handleAddProductSuccess}
@@ -162,47 +150,46 @@ export default function Products() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between gap-3 items-stretch sm:items-center">
+      <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
         <ProductSearch onSearch={handleSearch} />
 
         <Button
           variant="outline"
-          size="sm"
           onClick={handleRefresh}
           disabled={refreshing}
-          className="rounded-xl text-xs font-semibold h-9 gap-1.5 self-end sm:self-auto shrink-0"
+          className="ml-auto"
         >
           <RefreshCw
-            className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
+            className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
           />
-          <span>{refreshing ? "Syncing..." : "Sync Catalog"}</span>
+          {refreshing ? "Refreshing..." : "Refresh"}
         </Button>
       </div>
 
       {isSearchActive && (
-        <div className="bg-primary/5 border border-primary/20 text-foreground px-4 py-2.5 rounded-xl flex justify-between items-center text-xs">
-          <span className="font-medium">
-            Search filter active — {displayedProducts.length}{" "}
-            {displayedProducts.length === 1 ? "match" : "matches"} found
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-md flex justify-between items-center">
+          <span>
+            Showing search results ({displayedProducts.length}{" "}
+            {displayedProducts.length === 1 ? "product" : "products"} found)
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsSearchActive(false)}
-            className="h-7 text-xs text-primary font-semibold hover:bg-primary/10"
+            className="text-amber-800 hover:text-amber-900 hover:bg-amber-100"
           >
-            Clear Filter
+            Show all products
           </Button>
         </div>
       )}
 
       {error && (
-        <div className="text-destructive text-xs font-medium bg-destructive/10 border border-destructive/20 p-3 rounded-xl">
+        <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-md border border-red-200">
           {error}
         </div>
       )}
 
-      <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
+      <Card>
         <CardContent className="p-0">
           <ProductTable
             products={displayedProducts}
@@ -214,12 +201,9 @@ export default function Products() {
       </Card>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[620px] max-h-[85vh] overflow-y-auto rounded-2xl">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold text-foreground">Edit Product SKU</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Modify product details, selling price, and stock levels.
-            </DialogDescription>
+            <DialogTitle>Edit Product</DialogTitle>
           </DialogHeader>
           <ProductForm
             initialValues={currentProduct}
@@ -231,7 +215,10 @@ export default function Products() {
       </Dialog>
 
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-[620px] max-h-[85vh] overflow-y-auto rounded-2xl p-0">
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Product Details</DialogTitle>
+          </DialogHeader>
           <ProductDetails product={currentProduct} />
         </DialogContent>
       </Dialog>
@@ -243,4 +230,3 @@ export default function Products() {
     </div>
   );
 }
-

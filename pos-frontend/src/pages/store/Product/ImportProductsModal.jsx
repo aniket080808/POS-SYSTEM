@@ -185,7 +185,7 @@ function trimVal(v) {
  */
 function toNumber(v) {
   if (v === null || v === undefined || v === "") return null;
-  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
+  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.-]/g, ""));
   if (isNaN(n) || n < 0) return null;
   return n;
 }
@@ -553,7 +553,7 @@ export default function ImportProductsModal({ open, onOpenChange }) {
     // Refresh products catalog in background
     try {
       await dispatch(getProductsByStore(store.id)).unwrap();
-    } catch (e) {
+    } catch {
       // ignore refresh error
     }
   };

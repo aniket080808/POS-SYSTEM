@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, Building2 } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { 
   Select,
   SelectContent,
@@ -20,10 +20,13 @@ import {
 } from "./validation";
 import { transformSettingsToApiFormat } from "./formUtils";
 
-const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting, storeId, onChange }) => {
+const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting }) => {
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
+      // Transform settings data to API format
       const apiData = transformSettingsToApiFormat(values);
+      
+      // Call the onSubmit function with the transformed data
       await onSubmit(apiData, { setSubmitting, resetForm });
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -38,48 +41,48 @@ const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting, storeId, onC
       onSubmit={handleSubmit}
       enableReinitialize
     >
-      {({ isSubmitting: formikSubmitting, errors, touched, values, setFieldValue }) => (
-        <Form className="space-y-5">
+      {({ isSubmitting: formikSubmitting, errors, touched }) => (
+        <Form className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="storeName" className="text-xs font-semibold text-foreground">Store Brand Name *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="storeName">Store Name *</Label>
               <Field
                 as={Input}
                 id="storeName"
                 name="storeName"
                 placeholder="Enter store name"
-                className={`h-9 rounded-xl text-xs ${errors.storeName && touched.storeName ? "border-destructive" : ""}`}
+                className={errors.storeName && touched.storeName ? "border-red-500" : ""}
               />
-              <ErrorMessage name="storeName" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+              <ErrorMessage name="storeName" component="div" className="text-red-500 text-sm mt-1" />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="storeEmail" className="text-xs font-semibold text-foreground">Contact Email *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="storeEmail">Store Email *</Label>
               <Field
                 as={Input}
                 id="storeEmail"
                 name="storeEmail"
                 type="email"
-                placeholder="store@example.com"
-                className={`h-9 rounded-xl text-xs ${errors.storeEmail && touched.storeEmail ? "border-destructive" : ""}`}
+                placeholder="Enter store email"
+                className={errors.storeEmail && touched.storeEmail ? "border-red-500" : ""}
               />
-              <ErrorMessage name="storeEmail" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+              <ErrorMessage name="storeEmail" component="div" className="text-red-500 text-sm mt-1" />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="storePhone" className="text-xs font-semibold text-foreground">Contact Phone *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="storePhone">Store Phone *</Label>
               <Field
                 as={Input}
                 id="storePhone"
                 name="storePhone"
-                placeholder="+91 98765 43210"
-                className={`h-9 rounded-xl text-xs ${errors.storePhone && touched.storePhone ? "border-destructive" : ""}`}
+                placeholder="Enter store phone"
+                className={errors.storePhone && touched.storePhone ? "border-red-500" : ""}
               />
-              <ErrorMessage name="storePhone" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+              <ErrorMessage name="storePhone" component="div" className="text-red-500 text-sm mt-1" />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="currency" className="text-xs font-semibold text-foreground">Operational Currency *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency *</Label>
               <Field name="currency">
                 {({ field, form }) => (
                   <Select
@@ -87,13 +90,13 @@ const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting, storeId, onC
                     onValueChange={(value) => form.setFieldValue(field.name, value)}
                   >
                     <SelectTrigger 
-                      className={`h-9 rounded-xl text-xs w-full ${
-                        errors.currency && touched.currency ? "border-destructive" : ""
+                      className={`w-full ${
+                        errors.currency && touched.currency ? "border-red-500" : ""
                       }`}
                     >
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl text-xs">
+                    <SelectContent>
                       {CURRENCY_OPTIONS.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -103,25 +106,25 @@ const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting, storeId, onC
                   </Select>
                 )}
               </Field>
-              <ErrorMessage name="currency" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+              <ErrorMessage name="currency" component="div" className="text-red-500 text-sm mt-1" />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="taxRate" className="text-xs font-semibold text-foreground">Default Sales Tax Rate (%) *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="taxRate">Tax Rate (%) *</Label>
               <Field
                 as={Input}
                 id="taxRate"
                 name="taxRate"
                 type="number"
                 step="0.01"
-                placeholder="18.0"
-                className={`h-9 rounded-xl text-xs ${errors.taxRate && touched.taxRate ? "border-destructive" : ""}`}
+                placeholder="Enter tax rate"
+                className={errors.taxRate && touched.taxRate ? "border-red-500" : ""}
               />
-              <ErrorMessage name="taxRate" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+              <ErrorMessage name="taxRate" component="div" className="text-red-500 text-sm mt-1" />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="timezone" className="text-xs font-semibold text-foreground">Store Timezone *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="timezone">Timezone *</Label>
               <Field name="timezone">
                 {({ field, form }) => (
                   <Select
@@ -129,13 +132,13 @@ const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting, storeId, onC
                     onValueChange={(value) => form.setFieldValue(field.name, value)}
                   >
                     <SelectTrigger 
-                      className={`h-9 rounded-xl text-xs w-full ${
-                        errors.timezone && touched.timezone ? "border-destructive" : ""
+                      className={`w-full ${
+                        errors.timezone && touched.timezone ? "border-red-500" : ""
                       }`}
                     >
                       <SelectValue placeholder="Select timezone" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl text-xs">
+                    <SelectContent>
                       {TIMEZONE_OPTIONS.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -145,21 +148,21 @@ const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting, storeId, onC
                   </Select>
                 )}
               </Field>
-              <ErrorMessage name="timezone" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+              <ErrorMessage name="timezone" component="div" className="text-red-500 text-sm mt-1" />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="dateFormat" className="text-xs font-semibold text-foreground">Display Date Format</Label>
+            <div className="space-y-2">
+              <Label htmlFor="dateFormat">Date Format</Label>
               <Field name="dateFormat">
                 {({ field, form }) => (
                   <Select
                     value={field.value}
                     onValueChange={(value) => form.setFieldValue(field.name, value)}
                   >
-                    <SelectTrigger className="h-9 rounded-xl text-xs w-full">
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select date format" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl text-xs">
+                    <SelectContent>
                       {DATE_FORMAT_OPTIONS.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -171,80 +174,73 @@ const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting, storeId, onC
               </Field>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="gstNumber" className="text-xs font-semibold text-foreground">GSTIN Number</Label>
+            <div className="space-y-2">
+              <Label htmlFor="gstNumber">GST Number</Label>
               <Field
                 as={Input}
                 id="gstNumber"
                 name="gstNumber"
                 placeholder="27AAAAA0000A1Z5"
-                className={`h-9 rounded-xl text-xs uppercase font-mono ${errors.gstNumber && touched.gstNumber ? "border-destructive" : ""}`}
+                className={errors.gstNumber && touched.gstNumber ? "border-red-500" : ""}
               />
-              <ErrorMessage name="gstNumber" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+              <ErrorMessage name="gstNumber" component="div" className="text-red-500 text-sm mt-1" />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="panNumber" className="text-xs font-semibold text-foreground">PAN Number</Label>
+            <div className="space-y-2">
+              <Label htmlFor="panNumber">PAN Number</Label>
               <Field
                 as={Input}
                 id="panNumber"
                 name="panNumber"
                 placeholder="ABCDE1234F"
-                className={`h-9 rounded-xl text-xs uppercase font-mono ${errors.panNumber && touched.panNumber ? "border-destructive" : ""}`}
+                className={errors.panNumber && touched.panNumber ? "border-red-500" : ""}
               />
-              <ErrorMessage name="panNumber" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+              <ErrorMessage name="panNumber" component="div" className="text-red-500 text-sm mt-1" />
             </div>
 
-            <div className="space-y-1.5 md:col-span-2">
-              <Label htmlFor="storeAddress" className="text-xs font-semibold text-foreground">Headquarters / Physical Address *</Label>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="storeAddress">Store Address *</Label>
               <Field
                 as={Input}
                 id="storeAddress"
                 name="storeAddress"
-                placeholder="Enter physical address"
-                className={`h-9 rounded-xl text-xs ${errors.storeAddress && touched.storeAddress ? "border-destructive" : ""}`}
+                placeholder="Enter store address"
+                className={errors.storeAddress && touched.storeAddress ? "border-red-500" : ""}
               />
-              <ErrorMessage name="storeAddress" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+              <ErrorMessage name="storeAddress" component="div" className="text-red-500 text-sm mt-1" />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="storeDescription" className="text-xs font-semibold text-foreground">Store Description / Tagline</Label>
+          <div className="space-y-2">
+            <Label htmlFor="storeDescription">Store Description</Label>
             <Field
               as={Textarea}
               id="storeDescription"
               name="storeDescription"
-              placeholder="Brief summary of your retail business and products"
-              rows={2}
-              className={`rounded-xl text-xs ${errors.storeDescription && touched.storeDescription ? "border-destructive" : ""}`}
+              placeholder="Enter store description"
+              rows={3}
+              className={errors.storeDescription && touched.storeDescription ? "border-red-500" : ""}
             />
-            <ErrorMessage name="storeDescription" component="div" className="text-destructive text-[11px] font-medium mt-1" />
+            <ErrorMessage name="storeDescription" component="div" className="text-red-500 text-sm mt-1" />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="receiptFooter" className="text-xs font-semibold text-foreground">Customer Receipt Footer Note</Label>
+          <div className="space-y-2">
+            <Label htmlFor="receiptFooter">Receipt Footer</Label>
             <Field
               as={Textarea}
               id="receiptFooter"
               name="receiptFooter"
-              placeholder="Thank you for shopping with us! Visit again."
+              placeholder="Thank you for shopping with us!"
               rows={2}
-              className="rounded-xl text-xs"
             />
           </div>
 
-          <div className="flex justify-end pt-2 border-t border-border/60">
-            <Button type="submit" disabled={formikSubmitting || isSubmitting} size="sm" className="rounded-xl text-xs font-semibold h-9 gap-1.5">
+          <div className="flex justify-end">
+            <Button type="submit" disabled={formikSubmitting || isSubmitting} className="flex items-center gap-2">
               {formikSubmitting || isSubmitting ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Saving...</span>
-                </>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</>
               ) : (
-                <>
-                  <Save className="w-3.5 h-3.5" />
-                  <span>Save Store Profile</span>
-                </>
+                <><Save className="w-4 h-4" /> Update Store Settings</>
               )}
             </Button>
           </div>

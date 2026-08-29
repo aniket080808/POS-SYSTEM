@@ -6,12 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const StoreHeader = ({ onRefresh, refreshing, loading }) => {
   return (
     <div className="flex justify-between items-center">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">Business Entity & Profile</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          View registered legal entity metadata, tax documents, and contact details.
-        </p>
-      </div>
+      <h2 className="text-3xl font-bold tracking-tight">Store Management</h2>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -20,13 +15,12 @@ const StoreHeader = ({ onRefresh, refreshing, loading }) => {
               size="icon" 
               onClick={onRefresh} 
               disabled={refreshing || loading}
-              className="h-9 w-9 rounded-xl"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
           </TooltipTrigger>
-          <TooltipContent className="text-xs">
-            <p>Sync store records</p>
+          <TooltipContent>
+            <p>Refresh store data</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -34,5 +28,4 @@ const StoreHeader = ({ onRefresh, refreshing, loading }) => {
   );
 };
 
-export default StoreHeader;
- 
+export default StoreHeader; 

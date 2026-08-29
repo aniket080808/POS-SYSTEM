@@ -1,79 +1,83 @@
 import React from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Bell, Save, Loader2 } from "lucide-react";
+import { Bell, Save, Loader2, Lock } from "lucide-react";
+
+const NotificationItem = ({ id, title, description, checked, onToggle, disabled }) => (
+  <>
+    <div className="flex items-center justify-between">
+      <div>
+        <h4 className="font-medium">{title}</h4>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onToggle} disabled={disabled} />
+    </div>
+    <Separator />
+  </>
+);
 
 const NotificationSettingsForm = ({ settings, onChange, onSave, isSubmitting, isSubscriptionActive }) => {
   const notificationItems = [
     {
       name: "emailNotifications",
-      title: "Email Digests & Reports",
-      description: "Receive daily summary reports and urgent alerts via administrator email"
+      title: "Email Notifications",
+      description: "Receive notifications via email"
     },
     {
       name: "lowStockAlerts",
-      title: "Low Inventory & Stock Warnings",
-      description: "Get real-time notifications when product units fall below threshold"
+      title: "Low Stock Alerts",
+      description: "Get notified when inventory is low"
     },
     {
       name: "salesReports",
-      title: "Periodic Business Statements",
-      description: "Receive weekly and monthly revenue summaries and tax reports"
+      title: "Sales Reports",
+      description: "Receive periodic sales reports"
     },
     {
       name: "employeeActivity",
-      title: "Cashier Shift & Register Logs",
-      description: "Get notified about cashier shift openings, closings, and discrepancies"
+      title: "Employee Activity",
+      description: "Get notified about employee activities"
     }
   ];
 
   const disabled = !isSubscriptionActive;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Bell className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">Notification & Alert Rules</h3>
-        </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          Configure real-time automated notifications and periodic merchant digests.
-        </p>
-
-        <div className="divide-y divide-border/60 border border-border/60 rounded-2xl p-4 bg-muted/20">
-          {notificationItems.map((item) => (
-            <div key={item.name} className="flex items-center justify-between py-3">
-              <div>
-                <h4 className="text-xs font-semibold text-foreground">{item.title}</h4>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{item.description}</p>
-              </div>
-              <Switch
-                id={item.name}
-                checked={!!settings[item.name]}
-                onCheckedChange={(checked) => onChange(item.name, checked)}
-                disabled={disabled}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex justify-end pt-2">
-        <Button onClick={onSave} disabled={isSubmitting || disabled} size="sm" className="rounded-xl text-xs font-semibold h-9 gap-1.5">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="w-5 h-5" />
+          Notification Settings
+        </CardTitle>
+        <CardDescription>
+          Configure how you receive alerts and notifications
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {notificationItems.map((item, index) => (
+          <React.Fragment key={item.name}>
+            <NotificationItem
+              id={item.name}
+              title={item.title}
+              description={item.description}
+              checked={!!settings[item.name]}
+              onToggle={(checked) => onChange(item.name, checked)}
+              disabled={disabled}
+            />
+            {index === notificationItems.length - 2 && <Separator />}
+          </React.Fragment>
+        ))}
+        <Button onClick={onSave} disabled={isSubmitting || disabled} className="flex items-center gap-2">
           {isSubmitting ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>Saving...</span>
-            </>
+            <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
           ) : (
-            <>
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Notification Preferences</span>
-            </>
+            <><Save className="w-4 h-4" /> Save Notification Settings</>
           )}
         </Button>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -7,12 +7,11 @@ import NoSaleTodayBranchTable from './NoSaleTodayBranchTable';
 import RefundSpikeTable from './RefundSpikeTable';
 import { useDispatch, useSelector } from 'react-redux';
 import { getStoreAlerts } from '../../../Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks';
-import { Bell, AlertTriangle, UserX, AlertOctagon, TrendingDown } from 'lucide-react';
 
 const Alerts = () => {
   const dispatch = useDispatch();
-  const { storeAlerts } = useSelector((state) => state.storeAnalytics || {});
-  const user = useSelector((state) => state.user?.userProfile);
+  const { storeAlerts } = useSelector((state) => state.storeAnalytics);
+  const user = useSelector((state) => state.user.userProfile);
 
   useEffect(() => {
     if (user?.id) {
@@ -27,29 +26,21 @@ const Alerts = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Operational Alerts & Monitoring</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Automated feeds flagging operational anomalies, inventory thresholds, and transaction deviations.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Store Alerts & Monitoring</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Real-time automated feeds flagging operational anomalies, inventory thresholds, and cash drawer activities.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Inactive Cashiers */}
-        <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <UserX className="w-4 h-4 text-amber-500" />
-              <CardTitle className="text-sm font-bold text-foreground">Inactive Terminal Shifts</CardTitle>
-            </div>
-            <Badge
-              variant="outline"
-              className={`text-xs font-semibold ${
-                inactiveCount > 0
-                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
+        <Card className="min-h-96">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-lg font-bold">Inactive Cashiers</CardTitle>
+            <Badge variant={inactiveCount > 0 ? "destructive" : "secondary"}>
               {inactiveCount} {inactiveCount === 1 ? 'Cashier' : 'Cashiers'}
             </Badge>
           </CardHeader>
@@ -59,20 +50,10 @@ const Alerts = () => {
         </Card>
 
         {/* Low Stock Alerts */}
-        <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-destructive" />
-              <CardTitle className="text-sm font-bold text-foreground">Critical Low Stock Thresholds</CardTitle>
-            </div>
-            <Badge
-              variant="outline"
-              className={`text-xs font-semibold ${
-                lowStockCount > 0
-                  ? "bg-destructive/10 text-destructive border-destructive/20"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
+        <Card className="min-h-96">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-lg font-bold">Low Stock Alerts</CardTitle>
+            <Badge variant={lowStockCount > 0 ? "destructive" : "secondary"}>
               {lowStockCount} {lowStockCount === 1 ? 'Product' : 'Products'}
             </Badge>
           </CardHeader>
@@ -82,20 +63,10 @@ const Alerts = () => {
         </Card>
 
         {/* No Sale Today */}
-        <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingDown className="w-4 h-4 text-sky-500" />
-              <CardTitle className="text-sm font-bold text-foreground">Dormant Branch Locations</CardTitle>
-            </div>
-            <Badge
-              variant="outline"
-              className={`text-xs font-semibold ${
-                noSalesCount > 0
-                  ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
+        <Card className="min-h-96">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-lg font-bold">No Sale Today</CardTitle>
+            <Badge variant={noSalesCount > 0 ? "destructive" : "secondary"}>
               {noSalesCount} {noSalesCount === 1 ? 'Branch' : 'Branches'}
             </Badge>
           </CardHeader>
@@ -105,20 +76,10 @@ const Alerts = () => {
         </Card>
 
         {/* Refund Spike */}
-        <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertOctagon className="w-4 h-4 text-destructive" />
-              <CardTitle className="text-sm font-bold text-foreground">Refund & Void Anomalies</CardTitle>
-            </div>
-            <Badge
-              variant="outline"
-              className={`text-xs font-semibold ${
-                refundCount > 0
-                  ? "bg-destructive/10 text-destructive border-destructive/20"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
+        <Card className="min-h-96">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-lg font-bold">Refund Spike Alerts</CardTitle>
+            <Badge variant={refundCount > 0 ? "destructive" : "secondary"}>
               {refundCount} {refundCount === 1 ? 'Alert' : 'Alerts'}
             </Badge>
           </CardHeader>

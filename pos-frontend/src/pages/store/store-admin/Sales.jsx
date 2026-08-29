@@ -1,25 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, BarChart, Bar } from "recharts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { 
-  CreditCard, 
-  DollarSign, 
-  User, 
-  Store, 
-  Eye, 
-  TrendingUp, 
-  ShoppingBag, 
-  Loader2, 
-  Receipt,
-  ArrowUpRight,
-  ArrowDownRight
-} from "lucide-react";
+import { Search, Filter, Calendar, Download, Plus, Edit, Trash2, CreditCard, DollarSign, User, Store, Eye } from "lucide-react";
 import { 
   getStoreOverview, 
   getDailySales, 
@@ -28,20 +17,19 @@ import {
 import { getPaginatedOrders } from "@/Redux Toolkit/features/order/orderThunks";
 import { useToast } from "@/components/ui/use-toast";
 import { useCurrencyFormatter } from "@/utils/currencyUtils";
-import { Badge } from "@/components/ui/badge";
 
 export default function Sales() {
   const dispatch = useDispatch();
   const { toast } = useToast();
   const { format: formatCurrency, symbol: currencySymbol } = useCurrencyFormatter();
-  const { userProfile } = useSelector((state) => state.user || {});
+  const { userProfile } = useSelector((state) => state.user);
   const { store } = useSelector((state) => state.store || {});
   const { 
     storeOverview, 
     dailySales, 
     salesByPaymentMethod, 
     loading 
-  } = useSelector((state) => state.storeAnalytics || {});
+  } = useSelector((state) => state.storeAnalytics);
 
   const [page, setPage] = useState(0);
   const [paymentTypeFilter, setPaymentTypeFilter] = useState("ALL");
@@ -52,19 +40,29 @@ export default function Sales() {
   const [totalElements, setTotalElements] = useState(0);
   const [tableLoading, setTableLoading] = useState(false);
 
-  useEffect(() => {
-    if (userProfile?.id) {
-      fetchSalesData();
+  const fetchSalesData = useCallback(async () => {
+    if (!userProfile?.id) return;
+    try {
+      await Promise.all([
+        dispatch(getStoreOverview(userProfile.id)).unwrap(),
+        dispatch(getDailySales(userProfile.id)).unwrap(),
+        dispatch(getSalesByPaymentMethod(userProfile.id)).unwrap(),
+      ]);
+    } catch (err) {
+      console.error("Sales data fetch error:", err);
+      if (!window.salesErrorShown) {
+        window.salesErrorShown = true;
+        toast({
+          description: err || "Failed to load some sales data.",
+          duration: 5000,
+        });
+        setTimeout(() => { window.salesErrorShown = false; }, 5000);
+      }
     }
-  }, [userProfile?.id]);
+  }, [dispatch, userProfile?.id, toast]);
 
-  useEffect(() => {
-    if (userProfile?.id) {
-      fetchPaginatedOrders();
-    }
-  }, [userProfile?.id, page, paymentTypeFilter, statusFilter]);
-
-  const fetchPaginatedOrders = async () => {
+  const fetchPaginatedOrders = useCallback(async () => {
+    if (!userProfile?.id) return;
     setTableLoading(true);
     try {
       const targetId = store?.id || userProfile?.store?.id || userProfile?.id;
@@ -84,28 +82,17 @@ export default function Sales() {
     } finally {
       setTableLoading(false);
     }
-  };
+  }, [dispatch, store?.id, userProfile?.store?.id, userProfile?.id, page, paymentTypeFilter, statusFilter]);
 
-  const fetchSalesData = async () => {
-    try {
-      await Promise.all([
-        dispatch(getStoreOverview(userProfile.id)).unwrap(),
-        dispatch(getDailySales(userProfile.id)).unwrap(),
-        dispatch(getSalesByPaymentMethod(userProfile.id)).unwrap(),
-      ]);
-    } catch (err) {
-      console.error("Sales data fetch error:", err);
-      if (!window.salesErrorShown) {
-        window.salesErrorShown = true;
-        toast({
-          description: err || "Failed to load sales metrics.",
-          duration: 5000,
-        });
-        setTimeout(() => { window.salesErrorShown = false; }, 5000);
-      }
-    }
-  };
+  useEffect(() => {
+    fetchSalesData();
+  }, [fetchSalesData]);
 
+  useEffect(() => {
+    fetchPaginatedOrders();
+  }, [fetchPaginatedOrders]);
+
+  // Format percentage change
   const formatChange = (current, previous) => {
     if (current === undefined || current === null) return "+0%";
     if (!previous || previous === 0) {
@@ -116,9 +103,10 @@ export default function Sales() {
     return `${percentage >= 0 ? "+" : ""}${percentage.toFixed(1)}%`;
   };
 
+  // Format cashier comparison vs yesterday
   const formatCashierChange = (today, yesterday) => {
     if (today === undefined || yesterday === undefined || today === null || yesterday === null) {
-      return "0 from yesterday";
+      return "Same as yesterday";
     }
     if (today === yesterday) return "Same as yesterday";
     const diff = today - yesterday;
@@ -137,154 +125,165 @@ export default function Sales() {
 
   const salesConfig = {
     sales: {
-      label: "Revenue",
-      color: "hsl(var(--primary))",
+      label: "Sales",
+      color: "#10b981",
     },
   };
 
   const paymentConfig = {
     value: {
-      label: "Volume",
-      color: "hsl(var(--primary))",
+      label: "Amount",
+      color: "#10b981",
     },
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Sales & Transactions</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Real-time transaction tracking, payment split analysis, and digital receipts.
-        </p>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">Sales Management</h1>
       </div>
 
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="rounded-2xl border-border/80 shadow-2xs">
-          <CardContent className="p-5">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">Total Revenue</p>
-                <h3 className="text-xl font-bold font-mono text-foreground mt-1">
+                <p className="text-sm font-medium text-gray-500">Total Sales</p>
+                <h3 className="text-2xl font-bold mt-1">
                   {loading ? (
-                    <div className="h-7 w-24 bg-muted animate-pulse rounded-lg"></div>
+                    <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
                     formatCurrency(storeOverview?.totalSales || 0)
                   )}
                 </h3>
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
-                  <TrendingUp className="w-3 h-3" />
-                  <span>{formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales)} vs prev week</span>
+                <div className="text-xs text-emerald-500 mt-1">
+                  {loading ? (
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  ) : (
+                    formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales) + " from last week"
+                  )}
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <DollarSign className="w-5 h-5" />
+              <div className="p-3 bg-emerald-100 rounded-full">
+                <DollarSign className="w-8 h-8 text-emerald-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-border/80 shadow-2xs">
-          <CardContent className="p-5">
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">Orders Today</p>
-                <h3 className="text-xl font-bold font-mono text-foreground mt-1">
+                <p className="text-sm font-medium text-gray-500">Orders Today</p>
+                <h3 className="text-2xl font-bold mt-1">
                   {loading ? (
-                    <div className="h-7 w-16 bg-muted animate-pulse rounded-lg"></div>
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
                     storeOverview?.todayOrders || 0
                   )}
                 </h3>
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-primary mt-1">
-                  <ShoppingBag className="w-3 h-3" />
-                  <span>{formatChange(storeOverview?.todayOrders, storeOverview?.yesterdayOrders)} vs yesterday</span>
+                <div className="text-xs text-emerald-500 mt-1">
+                  {loading ? (
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  ) : (
+                    formatChange(storeOverview?.todayOrders, storeOverview?.yesterdayOrders) + " from yesterday"
+                  )}
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-                <Store className="w-5 h-5" />
+              <div className="p-3 bg-blue-100 rounded-full">
+                <Store className="w-8 h-8 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-border/80 shadow-2xs">
-          <CardContent className="p-5">
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">Active Terminals</p>
-                <h3 className="text-xl font-bold font-mono text-foreground mt-1">
+                <p className="text-sm font-medium text-gray-500">Active Cashiers</p>
+                <h3 className="text-2xl font-bold mt-1">
                   {loading ? (
-                    <div className="h-7 w-16 bg-muted animate-pulse rounded-lg"></div>
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
                     storeOverview?.activeCashiers || 0
                   )}
                 </h3>
-                <div className="text-[11px] text-muted-foreground font-medium mt-1">
-                  {formatCashierChange(storeOverview?.activeCashiers, storeOverview?.yesterdayActiveCashiers)}
+                <div className="text-xs text-gray-500 mt-1">
+                  {loading ? (
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  ) : (
+                    formatCashierChange(storeOverview?.activeCashiers, storeOverview?.yesterdayActiveCashiers)
+                  )}
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                <User className="w-5 h-5" />
+              <div className="p-3 bg-purple-100 rounded-full">
+                <User className="w-8 h-8 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-border/80 shadow-2xs">
-          <CardContent className="p-5">
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">Average Ticket</p>
-                <h3 className="text-xl font-bold font-mono text-foreground mt-1">
+                <p className="text-sm font-medium text-gray-500">Avg. Order Value</p>
+                <h3 className="text-2xl font-bold mt-1">
                   {loading ? (
-                    <div className="h-7 w-20 bg-muted animate-pulse rounded-lg"></div>
+                    <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
                   ) : storeOverview?.todayOrders === 0 ? (
                     formatCurrency(0)
                   ) : (
                     formatCurrency(storeOverview?.averageOrderValue || 0)
                   )}
                 </h3>
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
-                  <TrendingUp className="w-3 h-3" />
-                  <span>{formatChange(storeOverview?.averageOrderValue, storeOverview?.previousPeriodAverageOrderValue)} vs avg</span>
+                <div className="text-xs text-emerald-500 mt-1">
+                  {loading ? (
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  ) : (
+                    formatChange(storeOverview?.averageOrderValue, storeOverview?.previousPeriodAverageOrderValue) + " from last week"
+                  )}
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <CreditCard className="w-5 h-5" />
+              <div className="p-3 bg-orange-100 rounded-full">
+                <CreditCard className="w-8 h-8 text-orange-600" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Visual Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6">
-            <CardTitle className="text-sm font-bold text-foreground">7-Day Sales Trend</CardTitle>
+      {/* Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Daily Sales (Last 7 Days)</CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent>
             {loading ? (
-              <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin mr-2 text-primary" /> Loading sales chart...
+              <div className="h-80 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="mt-2 text-gray-500">Loading chart data...</p>
+                </div>
               </div>
             ) : dailySalesData.length > 0 ? (
               <ChartContainer config={salesConfig}>
-                <ResponsiveContainer width="100%" height={260}>
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={dailySalesData}>
                     <XAxis
                       dataKey="date"
-                      stroke="currentColor"
-                      className="text-muted-foreground"
-                      fontSize={11}
+                      stroke="#888888"
+                      fontSize={12}
                       tickLine={false}
                       axisLine={false}
                     />
                     <YAxis
-                      stroke="currentColor"
-                      className="text-muted-foreground"
-                      fontSize={11}
+                      stroke="#888888"
+                      fontSize={12}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(value) => `${currencySymbol}${value}`}
@@ -301,47 +300,48 @@ export default function Sales() {
                     <Line
                       type="monotone"
                       dataKey="sales"
-                      stroke="#10b981"
-                      strokeWidth={2.5}
-                      dot={{ r: 3, fill: "#10b981" }}
-                      activeDot={{ r: 6, fill: "#10b981" }}
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      className="stroke-emerald-500"
+                      activeDot={{ r: 8, fill: "#10b981" }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </ChartContainer>
             ) : (
-              <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
-                No revenue recorded in this period.
+              <div className="h-80 flex items-center justify-center">
+                <p className="text-gray-500">No sales data available</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6">
-            <CardTitle className="text-sm font-bold text-foreground">Payment Method Distribution</CardTitle>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Payment Methods</CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent>
             {loading ? (
-              <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin mr-2 text-primary" /> Loading payment breakdown...
+              <div className="h-80 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="mt-2 text-gray-500">Loading chart data...</p>
+                </div>
               </div>
             ) : paymentMethodData.length > 0 ? (
               <ChartContainer config={paymentConfig}>
-                <ResponsiveContainer width="100%" height={260}>
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={paymentMethodData}>
                     <XAxis
                       dataKey="name"
-                      stroke="currentColor"
-                      className="text-muted-foreground"
-                      fontSize={11}
+                      stroke="#888888"
+                      fontSize={12}
                       tickLine={false}
                       axisLine={false}
                     />
                     <YAxis
-                      stroke="currentColor"
-                      className="text-muted-foreground"
-                      fontSize={11}
+                      stroke="#888888"
+                      fontSize={12}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(value) => `${currencySymbol}${value}`}
@@ -351,50 +351,53 @@ export default function Sales() {
                         <ChartTooltipContent
                           active={active}
                           payload={payload}
-                          formatter={(value) => [formatCurrency(value), "Volume"]}
+                          formatter={(value) => [formatCurrency(value), "Amount"]}
                         />
                       )}
                     />
                     <Bar
                       dataKey="value"
-                      fill="#10b981"
-                      radius={[6, 6, 0, 0]}
+                      fill="currentColor"
+                      radius={[4, 4, 0, 0]}
+                      className="fill-emerald-500"
                     />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
             ) : (
-              <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
-                No transaction data available.
+              <div className="h-80 flex items-center justify-center">
+                <p className="text-gray-500">No payment data available</p>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Transactions Table Card */}
-      <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b border-border/60 py-3.5 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <CardTitle className="text-sm font-bold text-foreground">Sales Transaction Journal</CardTitle>
-          <div className="flex items-center gap-2">
+      {/* Sales Transactions Order History Table */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle className="text-xl font-bold">Sales Transactions</CardTitle>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Payment Method Filter */}
             <Select value={paymentTypeFilter} onValueChange={(val) => { setPaymentTypeFilter(val); setPage(0); }}>
-              <SelectTrigger className="w-[125px] h-8 text-xs rounded-xl">
+              <SelectTrigger className="w-[140px] text-xs">
                 <SelectValue placeholder="Payment Method" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl text-xs">
-                <SelectItem value="ALL">All Tender</SelectItem>
+              <SelectContent>
+                <SelectItem value="ALL">All Payments</SelectItem>
                 <SelectItem value="CASH">Cash</SelectItem>
                 <SelectItem value="CARD">Card</SelectItem>
                 <SelectItem value="UPI">UPI</SelectItem>
               </SelectContent>
             </Select>
 
+            {/* Status Filter */}
             <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(0); }}>
-              <SelectTrigger className="w-[125px] h-8 text-xs rounded-xl">
+              <SelectTrigger className="w-[140px] text-xs">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl text-xs">
-                <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectContent>
+                <SelectItem value="ALL">All Status</SelectItem>
                 <SelectItem value="COMPLETED">Completed</SelectItem>
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>
@@ -402,96 +405,81 @@ export default function Sales() {
             </Select>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40 border-b border-border/60">
-                  <TableHead className="text-xs font-bold text-foreground py-3.5 pl-6">Invoice #</TableHead>
-                  <TableHead className="text-xs font-bold text-foreground py-3.5">Timestamp</TableHead>
-                  <TableHead className="text-xs font-bold text-foreground py-3.5">Branch</TableHead>
-                  <TableHead className="text-xs font-bold text-foreground py-3.5">Cashier</TableHead>
-                  <TableHead className="text-xs font-bold text-foreground py-3.5">Customer</TableHead>
-                  <TableHead className="text-xs font-bold text-foreground py-3.5">Method</TableHead>
-                  <TableHead className="text-xs font-bold text-foreground py-3.5">Net Amount</TableHead>
-                  <TableHead className="text-xs font-bold text-foreground py-3.5">Status</TableHead>
-                  <TableHead className="text-xs font-bold text-foreground py-3.5 pr-6 text-right">Receipt</TableHead>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Invoice #</TableHead>
+                <TableHead>Date & Time</TableHead>
+                <TableHead>Branch</TableHead>
+                <TableHead>Cashier</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tableLoading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8">
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin h-5 w-5 border-2 border-emerald-600 border-t-transparent rounded-full mr-2"></div>
+                      Loading transactions...
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tableLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-xs text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin inline-block mr-2 text-primary" />
-                      Loading sales transactions...
+              ) : ordersList.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    No transactions found for the selected filters.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                ordersList.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-mono text-xs font-semibold">#{order.id}</TableCell>
+                    <TableCell className="text-xs text-gray-600">
+                      {order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN') : 'N/A'}
+                    </TableCell>
+                    <TableCell className="font-medium text-xs">{order.branchName || order.branch?.name || 'Main Branch'}</TableCell>
+                    <TableCell className="text-xs">{order.cashierName || order.cashier?.fullName || 'Cashier'}</TableCell>
+                    <TableCell className="text-xs">{order.customerName || order.customer?.fullName || 'Walk-in Customer'}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700">
+                        {order.paymentType || 'CASH'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-semibold text-emerald-700">{formatCurrency(order.totalAmount)}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        order.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {order.status || 'COMPLETED'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        onClick={() => setSelectedReceipt(order)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" /> View
+                      </Button>
                     </TableCell>
                   </TableRow>
-                ) : ordersList.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-xs text-muted-foreground">
-                      No transactions found matching the selected filters.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  ordersList.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-muted/30 transition-colors border-b border-border/40">
-                      <TableCell className="pl-6 py-3.5 font-mono text-xs font-semibold text-foreground">
-                        #{order.id}
-                      </TableCell>
-                      <TableCell className="py-3.5 text-xs text-muted-foreground">
-                        {order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN') : '—'}
-                      </TableCell>
-                      <TableCell className="py-3.5 font-medium text-xs text-foreground">
-                        {order.branchName || order.branch?.name || 'Main Store'}
-                      </TableCell>
-                      <TableCell className="py-3.5 text-xs text-muted-foreground">
-                        {order.cashierName || order.cashier?.fullName || 'Cashier'}
-                      </TableCell>
-                      <TableCell className="py-3.5 text-xs text-muted-foreground">
-                        {order.customerName || order.customer?.fullName || 'Walk-in'}
-                      </TableCell>
-                      <TableCell className="py-3.5">
-                        <Badge variant="outline" className="text-[10px] font-semibold bg-muted/60">
-                          {order.paymentType || 'CASH'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-3.5 font-bold font-mono text-xs text-foreground">
-                        {formatCurrency(order.totalAmount)}
-                      </TableCell>
-                      <TableCell className="py-3.5">
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] font-semibold ${
-                            order.status === 'COMPLETED'
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                          }`}
-                        >
-                          {order.status || 'COMPLETED'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="pr-6 py-3.5 text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary"
-                          onClick={() => setSelectedReceipt(order)}
-                          title="View Digital Receipt"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
+          {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3.5 border-t border-border/60">
-              <p className="text-xs text-muted-foreground">
-                Page <span className="font-semibold text-foreground">{page + 1}</span> of <span className="font-semibold text-foreground">{totalPages}</span> ({totalElements} records)
+            <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
+              <p className="text-xs text-gray-500">
+                Showing Page <span className="font-medium">{page + 1}</span> of <span className="font-medium">{totalPages}</span> ({totalElements} total orders)
               </p>
               <div className="flex gap-2">
                 <Button
@@ -499,7 +487,6 @@ export default function Sales() {
                   size="sm"
                   disabled={page === 0 || tableLoading}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  className="rounded-xl text-xs font-semibold h-8"
                 >
                   Previous
                 </Button>
@@ -508,7 +495,6 @@ export default function Sales() {
                   size="sm"
                   disabled={page >= totalPages - 1 || tableLoading}
                   onClick={() => setPage((p) => p + 1)}
-                  className="rounded-xl text-xs font-semibold h-8"
                 >
                   Next
                 </Button>
@@ -518,56 +504,39 @@ export default function Sales() {
         </CardContent>
       </Card>
 
-      {/* Digital Receipt Modal */}
+      {/* Receipt Modal */}
       <Dialog open={Boolean(selectedReceipt)} onOpenChange={() => setSelectedReceipt(null)}>
-        <DialogContent className="sm:max-w-[420px] rounded-2xl p-6">
+        <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary mx-auto mb-2">
-              <Receipt className="w-5 h-5" />
-            </div>
-            <DialogTitle className="text-center font-bold text-base text-foreground">
-              NexPOS Digital Receipt
-            </DialogTitle>
-            <DialogDescription className="text-center text-xs text-muted-foreground">
-              Invoice #{selectedReceipt?.id}
-            </DialogDescription>
+            <DialogTitle className="text-center font-bold text-xl">Order Receipt #{selectedReceipt?.id}</DialogTitle>
           </DialogHeader>
           {selectedReceipt && (
-            <div className="space-y-4 text-xs pt-2">
-              <div className="flex justify-between border-b border-border/60 pb-2.5 text-muted-foreground font-mono">
-                <span>{new Date(selectedReceipt.createdAt).toLocaleString('en-IN')}</span>
-                <span className="font-semibold text-foreground">{selectedReceipt.paymentType}</span>
+            <div className="space-y-4 text-sm py-2">
+              <div className="flex justify-between border-b pb-2 text-xs text-gray-500">
+                <span>Date: {new Date(selectedReceipt.createdAt).toLocaleString('en-IN')}</span>
+                <span>Payment: {selectedReceipt.paymentType}</span>
               </div>
-              <div className="space-y-1 text-muted-foreground">
-                <div className="flex justify-between">
-                  <span>Location:</span>
-                  <span className="font-semibold text-foreground">{selectedReceipt.branchName || 'Main Store'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Terminal / Cashier:</span>
-                  <span className="font-semibold text-foreground">{selectedReceipt.cashierName || 'Admin'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Customer:</span>
-                  <span className="font-semibold text-foreground">{selectedReceipt.customerName || 'Walk-in'}</span>
-                </div>
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500">Branch: <span className="font-medium text-gray-900">{selectedReceipt.branchName || 'Main'}</span></p>
+                <p className="text-xs text-gray-500">Cashier: <span className="font-medium text-gray-900">{selectedReceipt.cashierName || 'Admin'}</span></p>
+                <p className="text-xs text-gray-500">Customer: <span className="font-medium text-gray-900">{selectedReceipt.customerName || 'Walk-in'}</span></p>
               </div>
 
               {selectedReceipt.items && selectedReceipt.items.length > 0 && (
-                <div className="border-t border-b border-border/60 py-3 space-y-2">
-                  <p className="font-bold text-foreground">Items</p>
+                <div className="border-t border-b py-2 space-y-2">
+                  <p className="font-semibold text-xs text-gray-700">Items Purchased</p>
                   {selectedReceipt.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-muted-foreground">
-                      <span className="text-foreground">{item.productName || item.product?.name || `SKU #${item.productId}`} <span className="text-muted-foreground font-mono">×{item.quantity}</span></span>
-                      <span className="font-mono font-semibold text-foreground">{formatCurrency(item.price)}</span>
+                    <div key={idx} className="flex justify-between text-xs">
+                      <span>{item.productName || item.product?.name || `Product #${item.productId}`} x{item.quantity}</span>
+                      <span className="font-medium">{formatCurrency(item.price)}</span>
                     </div>
                   ))}
                 </div>
               )}
 
-              <div className="flex justify-between font-bold text-sm pt-1">
-                <span className="text-foreground">Total Settled:</span>
-                <span className="font-mono text-primary text-base">{formatCurrency(selectedReceipt.totalAmount)}</span>
+              <div className="flex justify-between font-bold text-base pt-2">
+                <span>Total Paid:</span>
+                <span className="text-emerald-700">{formatCurrency(selectedReceipt.totalAmount)}</span>
               </div>
             </div>
           )}

@@ -1,10 +1,13 @@
 import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Save, Loader2, Clock, AlertTriangle, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const SecuritySettingsForm = ({ settings, onChange, onSave, isSubmitting, isSubscriptionActive, isReadOnly }) => {
   const [errors, setErrors] = useState({});
@@ -48,56 +51,73 @@ const SecuritySettingsForm = ({ settings, onChange, onSave, isSubmitting, isSubs
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Shield className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">Access & Authentication Policies</h3>
-        </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          Enforce password rotations, terminal inactivity timeouts, and session limits.
-        </p>
-
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="w-5 h-5" />
+          Security Settings
+        </CardTitle>
+        <CardDescription>
+          Configure security options for your store
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
         {isReadOnly && (
-          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 p-3 rounded-xl flex items-center gap-2 text-xs font-semibold mb-4">
-            <Lock className="w-3.5 h-3.5 shrink-0 text-amber-600" />
-            <span>Security policy is read-only for Store Managers. Store Admin privileges required.</span>
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-3 rounded-lg flex items-center gap-2 text-sm font-medium">
+            <Lock className="w-4 h-4 shrink-0" />
+            Security settings policy is read-only for Store Managers. Only Store Admins can alter security policies.
           </div>
         )}
 
-        <div className="divide-y divide-border/60 border border-border/60 rounded-2xl p-4 bg-muted/20 space-y-3">
-          {/* Two-Factor Authentication - Coming Soon */}
-          <div className="flex items-center justify-between opacity-60 pt-1">
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-semibold text-foreground">Multi-Factor Authentication (MFA)</h4>
-                <Badge variant="outline" className="text-[10px] font-semibold">Coming Soon</Badge>
+        {/* Two-Factor Authentication - Coming Soon */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center justify-between opacity-60">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium">Two-Factor Authentication</h4>
+                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                    Coming Soon
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
               </div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Require OTP verification for cashier login</p>
+              <Switch checked={false} disabled={true} />
             </div>
-            <Switch checked={false} disabled={true} />
-          </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="start" className="max-w-xs">
+            <p>Two-Factor Authentication is not yet available. This feature is coming soon and will be enabled in a future release.</p>
+          </TooltipContent>
+        </Tooltip>
+        <Separator />
 
-          {/* IP Restriction - Coming Soon */}
-          <div className="flex items-center justify-between opacity-60 pt-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-semibold text-foreground">Terminal IP Allowlist</h4>
-                <Badge variant="outline" className="text-[10px] font-semibold">Coming Soon</Badge>
+        {/* IP Restriction - Coming Soon */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center justify-between opacity-60">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium">IP Restriction</h4>
+                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                    Coming Soon
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">Limit access to specific IP addresses</p>
               </div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Restrict POS login strictly to in-store Wi-Fi network IPs</p>
+              <Switch checked={false} disabled={true} />
             </div>
-            <Switch checked={false} disabled={true} />
-          </div>
-        </div>
-      </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="start" className="max-w-xs">
+            <p>IP Restriction is not yet available. This feature is coming soon and will be enabled in a future release.</p>
+          </TooltipContent>
+        </Tooltip>
+        <Separator />
 
-      {/* Numeric Policy Controls */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/60">
-        <div className="space-y-1.5">
-          <Label htmlFor="passwordExpiry" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-            Password Expiry Cycle (Days)
+        {/* Password Expiry */}
+        <div className="space-y-2">
+          <Label htmlFor="passwordExpiry" className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            Password Expiry (days)
           </Label>
           <Input
             id="passwordExpiry"
@@ -107,19 +127,20 @@ const SecuritySettingsForm = ({ settings, onChange, onSave, isSubmitting, isSubs
             value={settings.passwordExpiry}
             onChange={(e) => handleInputChange("passwordExpiry", e.target.value)}
             disabled={disabled}
-            className={`h-9 rounded-xl text-xs ${errors.passwordExpiry ? "border-destructive" : ""}`}
+            className={errors.passwordExpiry ? "border-red-500" : ""}
           />
           {errors.passwordExpiry && (
-            <p className="text-[11px] text-destructive flex items-center gap-1">
+            <p className="text-sm text-red-500 flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" /> {errors.passwordExpiry}
             </p>
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="sessionTimeout" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-            Terminal Inactivity Timeout (Minutes)
+        {/* Session Timeout */}
+        <div className="space-y-2">
+          <Label htmlFor="sessionTimeout" className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            Session Timeout (minutes)
           </Label>
           <Input
             id="sessionTimeout"
@@ -129,32 +150,29 @@ const SecuritySettingsForm = ({ settings, onChange, onSave, isSubmitting, isSubs
             value={settings.sessionTimeout}
             onChange={(e) => handleInputChange("sessionTimeout", e.target.value)}
             disabled={disabled}
-            className={`h-9 rounded-xl text-xs ${errors.sessionTimeout ? "border-destructive" : ""}`}
+            className={errors.sessionTimeout ? "border-red-500" : ""}
           />
           {errors.sessionTimeout && (
-            <p className="text-[11px] text-destructive flex items-center gap-1">
+            <p className="text-sm text-red-500 flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" /> {errors.sessionTimeout}
             </p>
           )}
+          <p className="text-xs text-muted-foreground">
+            After this period of inactivity, users will be automatically logged out
+          </p>
         </div>
-      </div>
 
-      <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} disabled={isSubmitting || disabled} size="sm" className="rounded-xl text-xs font-semibold h-9 gap-1.5">
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>Saving...</span>
-            </>
-          ) : (
-            <>
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Security Policy</span>
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
+        {!isReadOnly && (
+          <Button onClick={handleSave} disabled={isSubmitting || disabled} className="flex items-center gap-2">
+            {isSubmitting ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+            ) : (
+              <><Save className="w-4 h-4" /> Save Security Settings</>
+            )}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

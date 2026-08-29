@@ -10,109 +10,126 @@ const ProductDetails = ({ product }) => {
   if (!product) return null;
 
   return (
-    <div className="overflow-hidden rounded-2xl">
-      <div className="bg-muted/40 border-b border-border/60 p-5">
-        <h3 className="text-base font-bold text-foreground">{product.name}</h3>
+    <Card className="overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100 pb-4">
+        <CardTitle className="text-2xl font-bold">{product.name}</CardTitle>
         {product.brand && (
-          <p className="text-xs font-semibold text-primary mt-0.5">
+          <CardDescription className="text-sm font-medium text-emerald-700">
             {product.brand}
-          </p>
+          </CardDescription>
         )}
-      </div>
-
-      <div className="p-5 sm:p-6 space-y-5">
+      </CardHeader>
+      <CardContent className="p-6 space-y-6">
         {/* Product Image */}
         {product.image && (
-          <div className="flex justify-center">
-            <div className="relative w-full max-w-sm h-48 rounded-xl overflow-hidden border border-border/60 bg-muted/20">
+          <div className="mb-6 flex justify-center">
+            <div className="relative w-full max-w-md h-64 rounded-lg overflow-hidden border border-gray-200">
               <img 
                 src={product.image} 
                 alt={product.name} 
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.target.style.display = 'none';
+                  e.target.onerror = null;
+                  e.target.src = 'https://placehold.co/400x300?text=No+Image';
                 }}
               />
             </div>
           </div>
         )}
 
-        {/* Product Details Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-3 bg-muted/20 border border-border/40 rounded-xl space-y-1">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-              <Barcode className="h-3.5 w-3.5 text-primary" />
-              <span>SKU / Product Code</span>
+        {/* Product Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Barcode className="h-5 w-5 text-gray-500" />
+              <div>
+                <div className="text-sm text-gray-500">SKU</div>
+                <div className="font-medium">{product.sku || 'N/A'}</div>
+              </div>
             </div>
-            <div className="text-xs font-mono font-bold text-foreground">{product.sku || 'N/A'}</div>
+
+            <div className="flex items-center gap-2">
+              <Tag className="h-5 w-5 text-gray-500" />
+              <div>
+                <div className="text-sm text-gray-500">Category</div>
+                <div className="font-medium">{product.category || 'Uncategorized'}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-gray-500" />
+              <div>
+                <div className="text-sm text-gray-500">Color</div>
+                <div className="font-medium">{product.color || 'N/A'}</div>
+              </div>
+            </div>
           </div>
 
-          <div className="p-3 bg-muted/20 border border-border/40 rounded-xl space-y-1">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-              <Tag className="h-3.5 w-3.5 text-primary" />
-              <span>Category</span>
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm text-gray-500">Price</div>
+              <div className="font-medium flex items-center gap-2 flex-wrap">
+                <span className="text-lg font-bold text-emerald-700">
+                  {formatCurrency(product.sellingPrice)}
+                </span>
+                {(() => {
+                  const mrp = Number(product.mrp);
+                  const sellingPrice = Number(product.sellingPrice);
+                  if (mrp > 0 && sellingPrice > 0 && mrp > sellingPrice) {
+                    const discountPercent = Math.round(((mrp - sellingPrice) / mrp) * 100);
+                    if (discountPercent > 0) {
+                      return (
+                        <>
+                          <span className="text-sm line-through text-gray-400">
+                            {formatCurrency(mrp)}
+                          </span>
+                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 font-semibold text-xs">
+                            {discountPercent}% OFF
+                          </Badge>
+                        </>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+              </div>
             </div>
-            <div className="text-xs font-semibold text-foreground">{product.category || 'Uncategorized'}</div>
-          </div>
 
-          <div className="p-3 bg-muted/20 border border-border/40 rounded-xl space-y-1">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-              <Palette className="h-3.5 w-3.5 text-primary" />
-              <span>Variant / Color</span>
-            </div>
-            <div className="text-xs font-semibold text-foreground">{product.color || 'Standard'}</div>
-          </div>
-
-          <div className="p-3 bg-muted/20 border border-border/40 rounded-xl space-y-1">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-              <Package className="h-3.5 w-3.5 text-primary" />
-              <span>Current Stock Balance</span>
-            </div>
-            <div className="text-xs font-semibold text-foreground">
-              {product.stock !== undefined ? (
-                <span className="font-mono font-bold text-foreground">{product.stock} units</span>
-              ) : 'N/A'}
-            </div>
-          </div>
-        </div>
-
-        {/* Price Box */}
-        <div className="p-4 bg-muted/30 border border-border/60 rounded-xl flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-muted-foreground block">Selling Price</span>
-            <span className="text-base font-bold font-mono text-foreground">
-              {formatCurrency(product.sellingPrice)}
-            </span>
-          </div>
-          {(() => {
-            const mrp = Number(product.mrp);
-            const sellingPrice = Number(product.sellingPrice);
-            if (mrp > 0 && sellingPrice > 0 && mrp > sellingPrice) {
-              const discountPercent = Math.round(((mrp - sellingPrice) / mrp) * 100);
-              return (
-                <div className="text-right">
-                  <span className="text-[11px] text-muted-foreground/60 line-through font-mono block">
-                    MRP {formatCurrency(mrp)}
-                  </span>
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                    {discountPercent}% OFF
-                  </span>
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-gray-500" />
+              <div>
+                <div className="text-sm text-gray-500">Stock</div>
+                <div className="font-medium">
+                  {product.stock !== undefined ? (
+                    <Badge className={product.stock > 10 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}>
+                      {product.stock} in stock
+                    </Badge>
+                  ) : 'N/A'}
                 </div>
-              );
-            }
-            return null;
-          })()}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-gray-500" />
+              <div>
+                <div className="text-sm text-gray-500">Last Updated</div>
+                <div className="font-medium">
+                  {product.updatedAt ? new Date(product.updatedAt).toLocaleDateString() : 'N/A'}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Description */}
         {product.description && (
-          <div className="pt-3 border-t border-border/60">
-            <h4 className="text-xs font-bold text-foreground mb-1">Product Description</h4>
-            <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{product.description}</p>
+          <div className="mt-6 pt-6 border-t border-gray-100">
+            <h3 className="text-lg font-medium mb-2">Description</h3>
+            <p className="text-gray-700 whitespace-pre-line">{product.description}</p>
           </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

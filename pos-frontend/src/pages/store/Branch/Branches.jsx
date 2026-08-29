@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Building2 } from "lucide-react";
+import { Plus, Store, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { toast } from "@/components/ui/use-toast";
-import {
-  getAllBranchesByStore,
-} from "@/Redux Toolkit/features/branch/branchThunks";
+import { getAllBranchesByStore } from "@/Redux Toolkit/features/branch/branchThunks";
 import { getStoreOverview } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -23,11 +18,11 @@ import BranchForm from "./BranchForm";
 
 export default function Branches() {
   const dispatch = useDispatch();
-  const { branches, loading, error } = useSelector((state) => state.branch || {});
-  const { store } = useSelector((state) => state.store || {});
-  const { user, userProfile } = useSelector((state) => state.user || {});
-  const { storeOverview } = useSelector((state) => state.storeAnalytics || {});
-  const { statusResponse } = useSelector((state) => state.storeSubscription || {});
+  const { branches, loading, error } = useSelector((state) => state.branch);
+  const { store } = useSelector((state) => state.store);
+  const { user, userProfile } = useSelector((state) => state.user);
+  const { storeOverview } = useSelector((state) => state.storeAnalytics);
+  const { statusResponse } = useSelector((state) => state.storeSubscription);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -35,7 +30,6 @@ export default function Branches() {
 
   const activeStoreId = store?.id || userProfile?.store?.id;
 
-  // Fetch branches when component mounts
   useEffect(() => {
     if (activeStoreId) {
       dispatch(
@@ -47,7 +41,6 @@ export default function Branches() {
     }
   }, [dispatch, activeStoreId, user]);
 
-  // Fetch store overview for usage-vs-limit badge if not already loaded
   useEffect(() => {
     if (userProfile?.id && !storeOverview) {
       dispatch(getStoreOverview(userProfile.id));
@@ -57,96 +50,110 @@ export default function Branches() {
   const maxBranches = statusResponse?.currentPlan?.maxBranches;
   const totalBranches = storeOverview?.totalBranches;
   const showBranchLimit = storeOverview && maxBranches != null && maxBranches > 0;
-  const currentUserRole = userProfile?.role || user?.role;
-  const canManageBranch = currentUserRole === "ROLE_STORE_ADMIN" || currentUserRole === "ROLE_ADMIN";
+  const isBranchLimitReached = showBranchLimit && totalBranches >= maxBranches;
 
-  const handleAddBranchSuccess = () => {
-    setIsAddDialogOpen(false);
-  };
-
-  const handleEditBranchSuccess = () => {
-    setIsEditDialogOpen(false);
-    setCurrentBranch(null);
-  };
-
-  const openEditDialog = (branch) => {
+  const handleEdit = (branch) => {
     setCurrentBranch(branch);
     setIsEditDialogOpen(true);
   };
 
+  const handleFormSubmit = () => {
+    setIsAddDialogOpen(false);
+    setIsEditDialogOpen(false);
+    setCurrentBranch(null);
+    if (activeStoreId) {
+      dispatch(
+        getAllBranchesByStore({
+          storeId: activeStoreId,
+          jwt: localStorage.getItem("jwt"),
+        })
+      );
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Retail Branch Locations</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage store branches, cashier terminals, and branch manager assignments.
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Branch Outlets
+            </h2>
+            {showBranchLimit && (
+              <Badge
+                variant={isBranchLimitReached ? "destructive" : "outline"}
+                className="text-xs font-mono"
+              >
+                {totalBranches} / {maxBranches} Outlets
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Manage physical retail locations, assigned managers, and outlet addresses
           </p>
         </div>
 
-        {error && (
-          <Alert variant="destructive" className="mb-2">
-            <AlertDescription className="text-xs">{error}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="flex items-center gap-2.5">
-          {showBranchLimit && (
-            <Badge variant="outline" className="text-xs font-mono px-2.5 py-1 rounded-xl">
-              {totalBranches} / {maxBranches} Quota
-            </Badge>
-          )}
-          {canManageBranch && (
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="rounded-xl text-xs font-semibold h-9 gap-1.5 shadow-2xs">
-                  <Plus className="h-3.5 w-3.5" /> Add New Branch
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[540px] max-h-[85vh] overflow-y-auto rounded-2xl">
-                <DialogHeader>
-                  <DialogTitle className="text-base font-bold text-foreground">Add Retail Branch</DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground">
-                    Register a new store location and assign a branch manager.
-                  </DialogDescription>
-                </DialogHeader>
-                <BranchForm
-                  onSubmit={handleAddBranchSuccess}
-                  onCancel={() => setIsAddDialogOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
-
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[540px] max-h-[85vh] overflow-y-auto rounded-2xl">
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              disabled={isBranchLimitReached}
+              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold h-10 px-4 rounded-xl shadow-xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Add Branch Outlet
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md rounded-2xl">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-foreground">Edit Retail Branch</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Update branch location details, contact number, or manager assignment.
-              </DialogDescription>
+              <DialogTitle className="text-base font-bold text-foreground">
+                Add New Branch Outlet
+              </DialogTitle>
             </DialogHeader>
             <BranchForm
-              initialValues={currentBranch}
-              onSubmit={handleEditBranchSuccess}
-              onCancel={() => setIsEditDialogOpen(false)}
-              isEditing={true}
+              onSubmit={handleFormSubmit}
+              onCancel={() => setIsAddDialogOpen(false)}
             />
           </DialogContent>
         </Dialog>
       </div>
 
-      <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-        <CardContent className="p-0">
-          <BranchTable
-            branches={branches}
-            loading={loading}
-            onEdit={openEditDialog}
-            canManageBranch={canManageBranch}
+      {isBranchLimitReached && (
+        <Alert variant="destructive" className="rounded-xl border-amber-300 bg-amber-50/50 text-amber-900">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-xs font-medium">
+            You have reached your subscription plan's maximum branch limit ({maxBranches} branches). Upgrade your plan to add additional store branches.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert variant="destructive" className="rounded-xl">
+          <AlertDescription className="text-xs font-medium">{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <BranchTable
+        branches={branches}
+        loading={loading}
+        onEdit={handleEdit}
+        activeStoreId={activeStoreId}
+      />
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-foreground">
+              Edit Branch Outlet
+            </DialogTitle>
+          </DialogHeader>
+          <BranchForm
+            initialValues={currentBranch}
+            onSubmit={handleFormSubmit}
+            onCancel={() => setIsEditDialogOpen(false)}
+            isEditing
           />
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

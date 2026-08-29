@@ -1,4 +1,5 @@
 import React from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { HelpCircle, Mail, Phone, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -6,8 +7,8 @@ const HelpSupportForm = () => {
   const supportItems = [
     {
       icon: Mail,
-      title: "Email Support Hotline",
-      description: "Direct assistance from the NexPOS operations engineering team",
+      title: "Email Support",
+      description: "Get help via email",
       value: "aniketmeshram455@gmail.com",
       action: "Send Email",
       link: "mailto:aniketmeshram455@gmail.com",
@@ -15,77 +16,75 @@ const HelpSupportForm = () => {
     },
     {
       icon: Phone,
-      title: "Direct Phone Support",
-      description: "Live merchant technical help and payment terminal setup",
+      title: "Phone Support",
+      description: "Call our support team",
       value: "+91 70281 43749",
-      action: "Call Desk",
+      action: "Call Now",
       link: "tel:+917028143749",
       isExternal: false,
     },
     {
       icon: FileText,
-      title: "Documentation & Codebase",
-      description: "Browse guides, release notes, and developer APIs",
-      value: "Official NexPOS Repository",
-      action: "Open Repository",
+      title: "Documentation",
+      description: "Browse our documentation",
+      value: "Official Repository & Documentation",
+      action: "View Docs",
       link: "https://github.com/aniket080808/POS-SYSTEM",
       isExternal: true,
     },
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <HelpCircle className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">Merchant Support Channels</h3>
-        </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          Contact support engineers for hardware integrations, terminal onboarding, or account recovery.
-        </p>
-
-        <div className="space-y-3">
-          {supportItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.title} className="flex items-center justify-between p-3.5 border border-border/60 rounded-2xl bg-muted/20 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-card border border-border/40 rounded-xl shrink-0 text-primary">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-foreground">{item.title}</h4>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{item.description}</p>
-                    <p className="text-xs font-mono font-bold text-foreground mt-1 select-all">{item.value}</p>
-                  </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <HelpCircle className="w-5 h-5" />
+          Help & Support
+        </CardTitle>
+        <CardDescription>
+          Get assistance with your store settings and account
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {supportItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.title} className="flex items-start justify-between p-4 border rounded-lg flex-wrap gap-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-muted rounded-lg shrink-0">
+                  <Icon className="w-5 h-5 text-muted-foreground" />
                 </div>
-                <Button variant="outline" size="sm" asChild className="rounded-xl text-xs font-semibold h-8 shrink-0">
-                  <a
-                    href={item.link}
-                    target={item.isExternal ? "_blank" : undefined}
-                    rel={item.isExternal ? "noopener noreferrer" : undefined}
-                    className="flex items-center gap-1.5"
-                  >
-                    <span>{item.action}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </Button>
+                <div>
+                  <h4 className="font-medium">{item.title}</h4>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                  <p className="text-sm font-medium mt-1 select-all">{item.value}</p>
+                </div>
               </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-5 p-4 bg-muted/30 border border-border/40 rounded-2xl">
-          <h4 className="text-xs font-bold text-foreground mb-2">Frequently Answered Guidelines</h4>
-          <ul className="space-y-1.5 text-xs text-muted-foreground">
-            <li>• <strong>Store Profile:</strong> Update brand name, GSTIN, PAN, and address in the Store tab.</li>
-            <li>• <strong>Terminal Tender:</strong> Enable or disable Cash, UPI, and Card checkout on the Payments tab.</li>
-            <li>• <strong>Security Inactivity:</strong> Adjust session logout duration on the Security tab.</li>
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href={item.link}
+                  target={item.isExternal ? "_blank" : undefined}
+                  rel={item.isExternal ? "noopener noreferrer" : undefined}
+                  className="flex items-center gap-1"
+                >
+                  {item.action} <ExternalLink className="w-3 h-3 ml-1" />
+                </a>
+              </Button>
+            </div>
+          );
+        })}
+        <div className="p-4 bg-muted rounded-lg">
+          <h4 className="font-medium mb-2">Frequently Asked Questions</h4>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>• How do I update my store information? — Go to the Store tab in Settings.</li>
+            <li>• How do I change my currency? — Update the Currency field in Store Settings.</li>
+            <li>• How do I manage payment methods? — Use the Payments tab to enable/disable methods.</li>
+            <li>• How do I configure notifications? — Use the Notifications tab to toggle alerts.</li>
           </ul>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
-export default HelpSupportForm;
+export default HelpSupportForm;
