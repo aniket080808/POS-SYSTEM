@@ -1,120 +1,71 @@
 import React from 'react';
-import { Facebook, Twitter, Instagram, Linkedin, Youtube, Mail, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Store, Mail, Phone, MapPin } from 'lucide-react';
+import { Link } from 'react-router';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="bg-card text-card-foreground border-t">
-      {/* Main Footer */}
+    <footer className="bg-card text-card-foreground border-t border-border/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-          {/* Company Info */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center mb-4">
-              <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center mr-2">
-                <span className="text-primary-foreground font-bold text-lg">P</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 items-start">
+          {/* Company Brand */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-xs">
+                <Store className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="text-foreground font-bold text-xl">POSPro</span>
+              <span className="text-xl font-bold tracking-tight text-foreground">NexPOS</span>
             </div>
-            <p className="mb-4 text-muted-foreground max-w-md">
-              Empowering retailers with smart point-of-sale solutions that streamline operations, 
-              boost sales, and enhance customer experiences.
+            <p className="text-xs text-muted-foreground max-w-sm leading-relaxed">
+              Modern, multi-branch Point of Sale and inventory engine for retail businesses, supermarkets, and chain outlets.
             </p>
-            <div className="flex space-x-4 mb-6">
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Linkedin className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Youtube className="h-5 w-5" />
-              </a>
-            </div>
-            
-            {/* Newsletter */}
-            <div>
-              <h4 className="text-foreground font-medium mb-3">Subscribe to our newsletter</h4>
-              <div className="flex">
-                <input 
-                  type="email" 
-                  placeholder="Your email address" 
-                  className="bg-background text-foreground px-4 py-2 rounded-l-md focus:outline-none focus:ring-1 focus:ring-primary flex-grow border border-input"
-                />
-                <Button className="rounded-l-none">
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
+            <div className="pt-2 text-xs text-muted-foreground space-y-1">
+              <p className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-primary" />
+                <span className="font-mono">support@nexpos.com</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-primary" />
+                <span className="font-mono">+91 1800-NEXPOS-00</span>
+              </p>
             </div>
           </div>
           
           {/* Quick Links */}
-          <div>
-            <h4 className="text-foreground font-medium text-lg mb-4">Quick Links</h4>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Home</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">About Us</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Features</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Testimonials</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a></li>
+          <div className="lg:col-span-3 space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Navigation</h4>
+            <ul className="space-y-2 text-xs">
+              <li><a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Core Capabilities</a></li>
+              <li><a href="#demo" className="text-muted-foreground hover:text-foreground transition-colors">Interactive Terminal</a></li>
+              <li><a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Subscription Plans</a></li>
+              <li><a href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">Platform FAQ</a></li>
+              <li><a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact Engineering</a></li>
             </ul>
           </div>
           
-          {/* Resources */}
-          <div>
-            <h4 className="text-foreground font-medium text-lg mb-4">Resources</h4>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Blog</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Help Center</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Documentation</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">API Reference</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Download App</a></li>
-              <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Partners</a></li>
-            </ul>
-          </div>
-          
-          {/* Contact */}
-          <div>
-            <h4 className="text-foreground font-medium text-lg mb-4">Contact</h4>
-            <ul className="space-y-3">
-              <li className="flex items-start">
-                <Mail className="h-5 w-5 mr-2 mt-0.5 text-muted-foreground" />
-                <span className="text-muted-foreground">support@pospro.com</span>
-              </li>
-              <li className="text-muted-foreground">
-                <p>123 Tech Park, Whitefield</p>
-                <p>Bangalore, Karnataka 560066</p>
-              </li>
-              <li className="text-muted-foreground">
-                <p>+91 98765 43210</p>
-              </li>
+          {/* Portals Access */}
+          <div className="lg:col-span-4 space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Portals & Terminals</h4>
+            <ul className="space-y-2 text-xs">
+              <li><Link to="/auth/login" className="text-muted-foreground hover:text-foreground transition-colors">Cashier Terminal Login</Link></li>
+              <li><Link to="/auth/login" className="text-muted-foreground hover:text-foreground transition-colors">Branch Manager Portal</Link></li>
+              <li><Link to="/auth/login" className="text-muted-foreground hover:text-foreground transition-colors">Store Admin Dashboard</Link></li>
+              <li><Link to="/auth/login" className="text-muted-foreground hover:text-foreground transition-colors">Super Admin Center</Link></li>
+              <li><Link to="/auth/onboarding" className="text-primary hover:underline font-semibold">Store Registration & Onboarding</Link></li>
             </ul>
           </div>
         </div>
       </div>
       
       {/* Bottom Footer */}
-      <div className="border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="md:flex md:items-center md:justify-between">
-            <div className="text-sm text-muted-foreground">
-              <p>&copy; {currentYear} POSPro. All rights reserved.</p>
-            </div>
-            <div className="flex space-x-6 mt-4 md:mt-0 text-sm">
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Cookie Policy</a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Sitemap</a>
-            </div>
+      <div className="border-t border-border/60 bg-muted/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+          <p>&copy; {currentYear} NexPOS Systems Inc. All rights reserved.</p>
+          <div className="flex items-center space-x-6">
+            <span>256-Bit SSL Encrypted</span>
+            <span>Multi-Tenant Architecture</span>
+            <span>Zero Lock-in Contract</span>
           </div>
         </div>
       </div>

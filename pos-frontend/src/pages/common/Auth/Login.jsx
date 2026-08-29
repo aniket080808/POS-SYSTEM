@@ -7,9 +7,10 @@ import {
   EyeOff, 
   Mail, 
   Lock, 
-  ShoppingCart, 
+  Store, 
   ArrowLeft,
-  CheckCircle
+  CheckCircle,
+  ArrowRight
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { useDispatch, useSelector } from 'react-redux'
@@ -35,7 +36,7 @@ const Login = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { error, loading } = useSelector((state) => state.auth)
+  const { error, loading, forgotPasswordLoading } = useSelector((state) => state.auth)
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -56,18 +57,18 @@ const Login = () => {
           description: "Login successful!",
         })
 
-        const user=resultAction.payload.user;
+        const user = resultAction.payload.user;
 
         console.log('Login success:', resultAction.payload.user.role)
-        dispatch(getUserProfile(resultAction.payload.jwt)); 
-        
+        await dispatch(getUserProfile(resultAction.payload.jwt)); 
         
         // Redirect based on user role
         const userRole = user.role
-        if (userRole === 'ROLE_BRANCH_CASHIER') {
+        if (userRole === 'ROLE_ADMIN') {
+          navigate('/super-admin')
+        } else if (userRole === 'ROLE_BRANCH_CASHIER') {
           navigate('/cashier')
           dispatch(startShift(user.branchId))
-        
         } else if (userRole === 'ROLE_STORE_ADMIN' || userRole === 'ROLE_STORE_MANAGER') {
           navigate('/store')
         } else if (userRole === 'ROLE_BRANCH_MANAGER' || userRole === 'ROLE_BRANCH_ADMIN') {
@@ -99,31 +100,27 @@ const Login = () => {
 
     try {
       const resultAction = await dispatch(forgotPassword(forgotEmail))
-       if (forgotPassword.fulfilled.match(resultAction)) {
+      if (forgotPassword.fulfilled.match(resultAction)) {
+        setEmailSent(true)
         toast({
           title: "Success",
-          description: "Password reset email sent!",
+          description: "Password reset instructions sent to your email!",
         })
-      }else{
-        console.log("error", error)
+      } else {
+        const errorMsg = resultAction.payload || 'Failed to send reset email'
         toast({
-        title: "Error",
-        description: error || 'Failed to send reset email',
-        variant: "destructive",
-      })
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive",
+        })
       }
-    } catch (error) {
-      console.log("error", error)
+    } catch (err) {
       toast({
         title: "Error",
-        description: error || 'Failed to send reset email',
+        description: err?.message || 'Failed to send reset email',
         variant: "destructive",
       })
-      return
     }
-
-    
-    
   }
 
   const resetForgotPassword = () => {
@@ -133,45 +130,47 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary/10 flex items-center justify-center p-4 relative">
-      {/* Theme Toggle */}
-      <div className="absolute top-4 right-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative selection:bg-primary/20">
+      {/* Background Subtle Accent */}
+      <div className="absolute inset-0 bg-radial from-primary/5 via-transparent to-transparent pointer-events-none" />
+
+      {/* Theme Toggle - Functional preservation */}
+      <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
       </div>
       
-      <div className="w-full max-w-md">
-        {/* Logo and Back Button */}
+      <div className="w-full max-w-md relative z-10">
+        {/* Brand Header */}
         <div className="text-center mb-8">
-         
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-6 h-6 text-primary-foreground" />
+          <div className="inline-flex items-center justify-center gap-2.5 mb-3 px-3.5 py-1.5 rounded-2xl bg-muted/60 border border-border/80 shadow-2xs">
+            <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-xs">
+              <Store className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold text-foreground">POS Pro</span>
+            <span className="text-xl font-bold tracking-tight text-foreground">NexPOS</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {showForgotPassword ? 'Reset Password' : 'Welcome Back'}
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {showForgotPassword ? 'Reset Password' : 'Sign In to NexPOS'}
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mt-1">
             {showForgotPassword 
-              ? 'Enter your email to receive reset instructions'
-              : 'Sign in to your account to continue'
+              ? 'Enter your email to receive a password reset link'
+              : 'Enter your credentials to access your terminal'
             }
           </p>
         </div>
 
-        {/* Login Form */}
+        {/* Login Form Card */}
         {!showForgotPassword && !emailSent && (
-          <div className="bg-card rounded-2xl shadow-xl p-8">
-            <form onSubmit={handleLogin} className="space-y-6">
+          <div className="bg-card rounded-2xl shadow-sm border border-border/80 p-8 transition-all">
+            <form onSubmit={handleLogin} className="space-y-5">
               {/* Email Field */}
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                   Email Address
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                    <Mail className="h-5 w-5 text-muted-foreground" />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                    <Mail className="h-4 w-4" />
                   </div>
                   <Input
                     type="email"
@@ -179,8 +178,8 @@ const Login = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="pl-10"
-                    placeholder="Enter your email"
+                    className="pl-10 h-11 rounded-xl"
+                    placeholder="name@business.com"
                     required
                   />
                 </div>
@@ -188,12 +187,21 @@ const Login = () => {
 
               {/* Password Field */}
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-xs font-medium text-primary hover:underline transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                    <Lock className="h-5 w-5 text-muted-foreground" />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                    <Lock className="h-4 w-4" />
                   </div>
                   <Input
                     type={showPassword ? "text" : "password"}
@@ -201,123 +209,106 @@ const Login = () => {
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="pl-10 pr-12"
-                    placeholder="Enter your password"
+                    className="pl-10 pr-11 h-11 rounded-xl"
+                    placeholder="••••••••"
                     required
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center z-10"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                      <Eye className="h-4 w-4" />
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* Remember Me and Forgot Password */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  />
-                  <label htmlFor="remember-me" className="ml-2 block text-sm text-foreground">
-                    Remember me
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(true)}
-                  className="text-sm text-primary hover:text-primary/80 transition-colors"
-                >
-                  Forgot password?
-                </button>
+              {/* Remember Me */}
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 text-primary focus:ring-primary border-border rounded cursor-pointer"
+                />
+                <label htmlFor="remember-me" className="ml-2.5 block text-xs text-muted-foreground cursor-pointer select-none">
+                  Remember this device for 30 days
+                </label>
               </div>
 
-              {/* Login Button */}
+              {/* Login Submit Button */}
               <Button
                 type="submit"
-                className="w-full py-3 text-lg font-medium"
+                className="w-full h-11 text-sm font-semibold rounded-xl gap-2 mt-2"
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Signing in...
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>Signing in...</span>
                   </div>
                 ) : (
-                  'Sign In'
+                  <>
+                    <span>Sign In to Terminal</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
                 )}
               </Button>
             </form>
-
-            {/* Divider */}
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-card text-muted-foreground">Or continue with</span>
-                </div>
-              </div>
-            </div>
-
           </div>
         )}
 
         {/* Forgot Password Form */}
         {showForgotPassword && !emailSent && (
-          <div className="bg-card rounded-2xl shadow-xl p-8">
-            <form onSubmit={handleForgotPassword} className="space-y-6">
+          <div className="bg-card rounded-2xl shadow-sm border border-border/80 p-8 transition-all">
+            <form onSubmit={handleForgotPassword} className="space-y-5">
               <div>
-                <label htmlFor="forgot-email" className="block text-sm font-medium text-foreground mb-2">
-                  Email Address
+                <label htmlFor="forgot-email" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  Registered Email Address
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                    <Mail className="h-5 w-5 text-muted-foreground" />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                    <Mail className="h-4 w-4" />
                   </div>
                   <Input
                     type="email"
                     id="forgot-email"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    className="pl-10"
-                    placeholder="Enter your email"
+                    className="pl-10 h-11 rounded-xl"
+                    placeholder="name@business.com"
                     required
                   />
                 </div>
               </div>
 
-              <div className="flex space-x-3">
+              <div className="flex items-center gap-3 pt-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 h-11 rounded-xl"
                   onClick={resetForgotPassword}
                 >
-                  Back to Login
+                  <ArrowLeft className="w-4 h-4 mr-1.5" />
+                  Back
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1"
-                  disabled={loading}
+                  className="flex-1 h-11 rounded-xl"
+                  disabled={forgotPasswordLoading}
                 >
-                  {loading ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mr-2"></div>
-                      Sending...
+                  {forgotPasswordLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Sending...</span>
                     </div>
                   ) : (
-                    'Send Reset Link'
+                    'Send Link'
                   )}
                 </Button>
               </div>
@@ -325,30 +316,30 @@ const Login = () => {
           </div>
         )}
 
-        {/* Email Sent Success */}
+        {/* Email Sent Success Screen */}
         {emailSent && (
-          <div className="bg-card rounded-2xl shadow-xl p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className="bg-card rounded-2xl shadow-sm border border-border/80 p-8 text-center transition-all">
+            <div className="w-14 h-14 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle className="w-7 h-7" />
             </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Check Your Email
+            <h3 className="text-lg font-bold text-foreground mb-1">
+              Check Your Inbox
             </h3>
-            <p className="text-muted-foreground mb-6">
-              We've sent password reset instructions to <strong>{forgotEmail}</strong>
+            <p className="text-sm text-muted-foreground mb-6">
+              We've sent a 5-minute password reset link to <strong className="text-foreground">{forgotEmail}</strong>
             </p>
             <div className="space-y-3">
               <Button
                 onClick={resetForgotPassword}
-                className="w-full"
+                className="w-full h-11 rounded-xl"
               >
-                Back to Login
+                Back to Sign In
               </Button>
-              <p className="text-sm text-muted-foreground">
-                Didn't receive the email? Check your spam folder or{' '}
+              <p className="text-xs text-muted-foreground">
+                Didn't receive the email? Check spam or{' '}
                 <button
                   onClick={() => setEmailSent(false)}
-                  className="text-primary hover:text-primary/80"
+                  className="text-primary hover:underline font-medium cursor-pointer"
                 >
                   try again
                 </button>
@@ -357,12 +348,12 @@ const Login = () => {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-muted-foreground">
-            Don't have an account?{' '}
-            <Link to="/auth/onboarding" className="text-primary hover:text-primary/80 font-medium">
-              Sign up
+        {/* Signup Link */}
+        <div className="text-center mt-6">
+          <p className="text-xs text-muted-foreground">
+            New store owner?{' '}
+            <Link to="/auth/onboarding" className="text-primary hover:underline font-semibold">
+              Register store & owner account
             </Link>
           </p>
         </div>

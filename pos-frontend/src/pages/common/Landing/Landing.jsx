@@ -1,78 +1,46 @@
-import { Button } from "@/components/ui/button";
-import {
-  ShoppingCart,
-  BarChart3,
-  Users,
-  Shield,
-  FileText,
-  Store,
-  CheckCircle,
-  Play,
-  Star,
-  ArrowDown,
-} from "lucide-react";
+import React from "react";
 import Header from "./Header";
 import HeroSection from "./HeroSection";
-import TrustedLogos from "./TrustedLogos";
-import PricingCalculator from "./PricingCalculator";
-// import FeatureComparisonSection from './FeatureComparison'
-import MobileAppShowcase from "./MobileAppShowcase";
-import TestimonialCarousel from "./TestimonialCarousel";
+import KeyFeaturesSection from "./KeyFeaturesSection";
+import WhyChooseUsSection from "./WhyChooseUsSection";
 import LiveDemoSection from "./LiveDemoSection";
+import PricingSection from "./PricingSection";
 import FAQSection from "./FAQSection";
 import ContactSection from "./ContactSection";
 import Footer from "./Footer";
-import PricingSection from "./PricingSection";
-import WhyChooseUsSection from "./WhyChooseUsSection";
-import KeyFeaturesSection from "./KeyFeaturesSection";
-import FeatureComparisonSection from "./FeatureComparisonSection";
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header / Navbar */}
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
+      {/* Header / Navbar with ThemeToggle */}
       <Header />
 
       {/* Hero Section */}
       <HeroSection />
 
-      {/* Trusted Logos Section */}
-      <TrustedLogos />
-
-      {/* Key Features Section */}
+      {/* Key Architecture Features */}
       <KeyFeaturesSection />
 
-      {/* Why Choose Us Section */}
+      {/* Why Choose NexPOS */}
       <WhyChooseUsSection />
 
-      {/* Live Demo Section */}
+      {/* Interactive Terminal Demo */}
       <LiveDemoSection />
 
-      {/* Testimonials Section */}
-      <TestimonialCarousel />
-
-      {/* Pricing Section */}
+      {/* Pricing Plans */}
       <PricingSection />
 
-      {/*<PricingCalculator /> */}
-      <PricingCalculator />
-
-      {/* Feature Comparison Section */}
-      <FeatureComparisonSection />
-
-      {/* Mobile App Showcase */}
-      <MobileAppShowcase />
-
-      {/* FAQ Section */}
+      {/* Platform FAQ */}
       <FAQSection />
 
-      {/* Contact Section */}
-      <ContactSection id="contact" />
+      {/* Direct Contact */}
+      <ContactSection />
 
-      {/* Footer */}
+      {/* Standardized Footer */}
       <Footer />
     </div>
   );
 }
 
 export default Landing;
+

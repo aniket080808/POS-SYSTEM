@@ -1,131 +1,130 @@
 import React from "react";
-import PricingCalculator from "./PricingCalculator";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle2, ArrowRight } from "lucide-react";
 import { Button } from "../../../components/ui/button";
+import { useNavigate } from "react-router";
 
 const pricingPlans = [
   {
-    name: "Basic",
+    name: "Starter Branch",
     price: "₹999",
     period: "/month",
+    description: "Ideal for single retail outlets and emerging boutique shops.",
     features: [
-      "Single store",
-      "Basic reporting",
-      "Email support",
-      "Mobile app",
-      "Unlimited products",
-      "Cloud backup",
+      "1 Store Location & Branch",
+      "Cashier Terminal Access",
+      "Barcode Scanning & Thermal Invoices",
+      "Basic Shift Reports & Summaries",
+      "Standard CSV/Excel Exports",
     ],
     popular: false,
   },
   {
-    name: "Pro",
+    name: "Growth Multi-Branch",
     price: "₹1,999",
     period: "/month",
+    description: "Complete operational suite for multi-branch retailers.",
     features: [
-      "Multi-store",
-      "Advanced analytics",
-      "Priority support",
-      "API access",
-      "Custom integrations",
-      "Staff management",
+      "Up to 5 Branch Locations",
+      "Unlimited Cashier Staff & Managers",
+      "Centralized Inventory Catalog",
+      "Advanced Sales & Shift Analytics",
+      "Automated Low-Stock Thresholds",
+      "Full PDF & Excel Financial Reports",
     ],
     popular: true,
   },
   {
-    name: "Enterprise",
+    name: "Enterprise Chain",
     price: "Custom",
     period: "",
+    description: "Dedicated deployment for large supermarket and mall chains.",
     features: [
-      "Unlimited stores",
-      "Dedicated support",
-      "Custom development",
-      "White-label options",
-      "On-premise deployment",
-      "SLA guarantee",
+      "Unlimited Branches & Terminals",
+      "Super Admin Tenant Oversight",
+      "Dedicated Database Optimization",
+      "Priority Technical SLA",
+      "Custom Return & Refund Workflows",
     ],
     popular: false,
   },
 ];
 
 const PricingSection = () => {
+  const navigate = useNavigate();
+
   return (
-    <section id="pricing" className="py-16 bg-muted/50">
+    <section id="pricing" className="py-20 bg-muted/30 border-y border-border/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Choose Your Plan
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-xs font-semibold uppercase tracking-wider text-primary mb-2 block">
+            Subscription Plans
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
+            Transparent Pricing for Growing Retailers
           </h2>
-          <p className="text-xl text-muted-foreground">
-            Flexible pricing plans designed for businesses of all sizes
+          <p className="text-base text-muted-foreground">
+            Scale your physical stores with predictable monthly plans and zero hidden hardware fees.
           </p>
         </div>
 
-        {/* <div className="grid grid-cols-1 lg:grid-cols-12 gap-8"> */}
-          {/* <div className="lg:col-span-12"> */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {pricingPlans.map((plan, index) => (
-                <div
-                  key={index}
-                  className={`bg-card rounded-2xl p-8 shadow-lg border ${
-                    plan.popular ? "ring-2 ring-primary relative" : ""
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                      <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium">
-                        Most Popular
-                      </span>
-                    </div>
-                  )}
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-foreground mb-2">
-                      {plan.name}
-                    </h3>
-                    <div className="flex items-baseline justify-center">
-                      <span className="text-4xl font-bold text-foreground">
-                        {plan.price}
-                      </span>
-                      <span className="text-muted-foreground ml-1">
-                        {plan.period}
-                      </span>
-                    </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
+          {pricingPlans.map((plan, index) => (
+            <div
+              key={index}
+              className={`bg-card rounded-2xl p-8 border flex flex-col justify-between transition-all duration-200 ${
+                plan.popular
+                  ? "border-primary shadow-md ring-2 ring-primary/20 relative"
+                  : "border-border/80 shadow-2xs hover:shadow-md"
+              }`}
+            >
+              {plan.popular && (
+                <div className="absolute -top-3.5 left-1/2 transform -translate-x-1/2">
+                  <span className="bg-primary text-primary-foreground px-3.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider shadow-xs">
+                    Recommended
+                  </span>
+                </div>
+              )}
+              
+              <div>
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-foreground mb-1">
+                    {plan.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground min-h-[32px]">
+                    {plan.description}
+                  </p>
+                  <div className="flex items-baseline mt-4">
+                    <span className="text-4xl font-extrabold font-mono text-foreground">
+                      {plan.price}
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-1 font-mono">
+                      {plan.period}
+                    </span>
                   </div>
-                  <ul className="space-y-4 mb-8">
+                </div>
+
+                <div className="border-t border-border/60 pt-6 mb-8">
+                  <ul className="space-y-3">
                     {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center">
-                        <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                        <span className="text-muted-foreground">{feature}</span>
+                      <li key={featureIndex} className="flex items-start text-xs text-foreground/90">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mr-2 flex-shrink-0 mt-0.5" />
+                        <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    className={`w-full ${
-                      plan.popular ? "" : "variant-outline"
-                    }`}
-                  >
-                    {plan.name === "Enterprise"
-                      ? "Contact Sales"
-                      : "Start Trial"}
-                  </Button>
                 </div>
-              ))}
+              </div>
+
+              <Button
+                onClick={() => navigate("/auth/onboarding")}
+                variant={plan.popular ? "default" : "outline"}
+                className="w-full h-11 rounded-xl text-sm font-semibold gap-2"
+              >
+                <span>{plan.name === "Enterprise Chain" ? "Contact Enterprise" : "Start Setup"}</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
             </div>
-          {/* </div> */}
-
-       
-        {/* </div> */}
-
-        <div className="mt-16 text-center">
-          <p className="text-muted-foreground mb-4">
-            All plans include a 14-day free trial. No credit card required.
-          </p>
-          <div className="inline-flex items-center space-x-2 bg-primary/5 rounded-full px-4 py-2">
-            <CheckCircle className="w-5 h-5 text-primary" />
-            <span className="text-muted-foreground">
-              100% money-back guarantee for 30 days
-            </span>
-          </div>
+          ))}
         </div>
       </div>
     </section>
@@ -133,3 +132,4 @@ const PricingSection = () => {
 };
 
 export default PricingSection;
+

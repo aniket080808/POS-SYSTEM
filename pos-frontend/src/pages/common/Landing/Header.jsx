@@ -1,167 +1,178 @@
-import { ShoppingCart, Menu, X, ChevronDown } from 'lucide-react'
+import { Store, Menu, X, ArrowRight } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import { Button } from '../../../components/ui/button'
 import { useNavigate } from 'react-router'
 import { ThemeToggle } from '../../../components/theme-toggle'
 
 const Header = () => {
-    const [isMenuOpen, setIsMenuOpen] = useState(false)
-    const [isScrolled, setIsScrolled] = useState(false)
-    const [activeDropdown, setActiveDropdown] = useState(null)
-    const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+  const navigate = useNavigate()
 
-    // Handle scroll effect for header
-    useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 10)
-        }
-        
-        window.addEventListener('scroll', handleScroll)
-        return () => window.removeEventListener('scroll', handleScroll)
-    }, [])
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
-    const handleLoginButtonClick = () => {
-        navigate('/auth/login');
-    }
-    
-    const toggleDropdown = (name) => {
-        setActiveDropdown(activeDropdown === name ? null : name)
-    }
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-background/95 shadow-md backdrop-blur-sm border-b' : 'bg-transparent'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Logo */}
-            <div className="flex items-center">
-              <div className="flex items-center space-x-2 group cursor-pointer" onClick={() => navigate('/')}>
-                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 transform group-hover:scale-105">
-                  <ShoppingCart className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">POS Pro</span>
-              </div>
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled
+          ? 'bg-background/90 backdrop-blur-md border-b border-border/80 shadow-2xs'
+          : 'bg-transparent'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16 md:h-20">
+          {/* Logo */}
+          <div
+            className="flex items-center gap-2.5 cursor-pointer select-none"
+            onClick={() => navigate('/')}
+          >
+            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-xs">
+              <Store className="w-4 h-4 text-primary-foreground" />
             </div>
-
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-6">
-              {/* Features Dropdown */}
-              <div className="relative group">
-                <button 
-                  onClick={() => toggleDropdown('features')} 
-                  className="flex items-center space-x-1 text-muted-foreground hover:text-primary transition-colors py-2"
-                >
-                  <span>Features</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'features' ? 'rotate-180' : ''}`} />
-                </button>
-                {activeDropdown === 'features' && (
-                  <div className="absolute left-0 mt-2 w-48 bg-popover rounded-lg shadow-lg border border-border py-2 z-50">
-                    <a href="#features" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">Overview</a>
-                    <a href="#" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">Inventory Management</a>
-                    <a href="#" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">Billing & Checkout</a>
-                    <a href="#" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">Analytics & Reports</a>
-                  </div>
-                )}
-              </div>
-              
-              <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors py-2">Pricing</a>
-              <a href="#testimonials" className="text-muted-foreground hover:text-primary transition-colors py-2">Testimonials</a>
-              
-              {/* Resources Dropdown */}
-              <div className="relative group">
-                <button 
-                  onClick={() => toggleDropdown('resources')} 
-                  className="flex items-center space-x-1 text-muted-foreground hover:text-primary transition-colors py-2"
-                >
-                  <span>Resources</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'resources' ? 'rotate-180' : ''}`} />
-                </button>
-                {activeDropdown === 'resources' && (
-                  <div className="absolute left-0 mt-2 w-48 bg-popover rounded-lg shadow-lg border border-border py-2 z-50">
-                    <a href="#" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">Help Center</a>
-                    <a href="#" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">Documentation</a>
-                    <a href="#" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">API Reference</a>
-                    <a href="#" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">Blog</a>
-                  </div>
-                )}
-              </div>
-              
-              <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors py-2">Contact</a>
-            </nav>
-
-            {/* CTA Button */}
-            <div className="hidden md:flex items-center space-x-4">
-              <ThemeToggle />
-              <Button onClick={handleLoginButtonClick} variant="outline" className="font-medium">Sign In</Button>
-              <Button className="font-medium shadow-md hover:shadow-lg transition-shadow">Request Demo</Button>
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="md:hidden flex items-center space-x-2">
-              <ThemeToggle />
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-muted-foreground hover:text-primary p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </button>
-            </div>
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              NexPOS
+            </span>
           </div>
 
-          {/* Mobile Navigation */}
-          {isMenuOpen && (
-            <div className="md:hidden py-4 border-t border-border bg-background">
-              <nav className="flex flex-col">
-                {/* Mobile Features Dropdown */}
-                <div className="py-2 border-b border-border">
-                  <button 
-                    onClick={() => toggleDropdown('mobile-features')} 
-                    className="flex items-center justify-between w-full px-4 py-2 text-muted-foreground hover:text-primary"
-                  >
-                    <span>Features</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'mobile-features' ? 'rotate-180' : ''}`} />
-                  </button>
-                  {activeDropdown === 'mobile-features' && (
-                    <div className="mt-2 pl-8 space-y-2">
-                      <a href="#features" className="block py-2 text-sm text-muted-foreground hover:text-primary">Overview</a>
-                      <a href="#" className="block py-2 text-sm text-muted-foreground hover:text-primary">Inventory Management</a>
-                      <a href="#" className="block py-2 text-sm text-muted-foreground hover:text-primary">Billing & Checkout</a>
-                      <a href="#" className="block py-2 text-sm text-muted-foreground hover:text-primary">Analytics & Reports</a>
-                    </div>
-                  )}
-                </div>
-                
-                <a href="#pricing" className="px-4 py-4 text-muted-foreground hover:text-primary border-b border-border">Pricing</a>
-                <a href="#testimonials" className="px-4 py-4 text-muted-foreground hover:text-primary border-b border-border">Testimonials</a>
-                
-                {/* Mobile Resources Dropdown */}
-                <div className="py-2 border-b border-border">
-                  <button 
-                    onClick={() => toggleDropdown('mobile-resources')} 
-                    className="flex items-center justify-between w-full px-4 py-2 text-muted-foreground hover:text-primary"
-                  >
-                    <span>Resources</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'mobile-resources' ? 'rotate-180' : ''}`} />
-                  </button>
-                  {activeDropdown === 'mobile-resources' && (
-                    <div className="mt-2 pl-8 space-y-2">
-                      <a href="#" className="block py-2 text-sm text-muted-foreground hover:text-primary">Help Center</a>
-                      <a href="#" className="block py-2 text-sm text-muted-foreground hover:text-primary">Documentation</a>
-                      <a href="#" className="block py-2 text-sm text-muted-foreground hover:text-primary">API Reference</a>
-                      <a href="#" className="block py-2 text-sm text-muted-foreground hover:text-primary">Blog</a>
-                    </div>
-                  )}
-                </div>
-                
-                <a href="#contact" className="px-4 py-4 text-muted-foreground hover:text-primary border-b border-border">Contact</a>
-                
-                <div className="flex flex-col space-y-3 p-4">
-                  <Button onClick={handleLoginButtonClick} variant="outline" className="w-full">Sign In</Button>
-                  <Button className="w-full">Request Demo</Button>
-                </div>
-              </nav>
-            </div>
-          )}
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium">
+            <a
+              href="#features"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Capabilities
+            </a>
+            <a
+              href="#demo"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Interactive Terminal
+            </a>
+            <a
+              href="#pricing"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Plans
+            </a>
+            <a
+              href="#faq"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              FAQ
+            </a>
+            <a
+              href="#contact"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Contact
+            </a>
+          </nav>
+
+          {/* Action CTAs */}
+          <div className="hidden md:flex items-center space-x-3">
+            <ThemeToggle />
+            <Button
+              onClick={() => navigate('/auth/login')}
+              variant="outline"
+              size="sm"
+              className="h-9 px-4 rounded-xl font-medium"
+            >
+              Sign In
+            </Button>
+            <Button
+              onClick={() => navigate('/auth/onboarding')}
+              size="sm"
+              className="h-9 px-4 rounded-xl font-medium gap-1.5 shadow-xs"
+            >
+              <span>Get Started</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
+          {/* Mobile Menu & Theme Toggle */}
+          <div className="md:hidden flex items-center space-x-2">
+            <ThemeToggle />
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-foreground p-2 rounded-xl border border-border bg-card"
+              aria-label="Toggle Navigation Menu"
+            >
+              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
-      </header>
+
+        {/* Mobile Navigation Dropdown */}
+        {isMenuOpen && (
+          <div className="md:hidden py-4 border-t border-border bg-background/95 backdrop-blur-md rounded-b-2xl shadow-xl px-2 space-y-3">
+            <nav className="flex flex-col space-y-2 text-sm font-medium">
+              <a
+                href="#features"
+                onClick={() => setIsMenuOpen(false)}
+                className="px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Capabilities
+              </a>
+              <a
+                href="#demo"
+                onClick={() => setIsMenuOpen(false)}
+                className="px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Interactive Terminal
+              </a>
+              <a
+                href="#pricing"
+                onClick={() => setIsMenuOpen(false)}
+                className="px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Plans
+              </a>
+              <a
+                href="#faq"
+                onClick={() => setIsMenuOpen(false)}
+                className="px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                FAQ
+              </a>
+              <a
+                href="#contact"
+                onClick={() => setIsMenuOpen(false)}
+                className="px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Contact
+              </a>
+            </nav>
+            <div className="flex flex-col gap-2 pt-2 border-t border-border">
+              <Button
+                onClick={() => {
+                  setIsMenuOpen(false)
+                  navigate('/auth/login')
+                }}
+                variant="outline"
+                className="w-full h-10 rounded-xl"
+              >
+                Sign In
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsMenuOpen(false)
+                  navigate('/auth/onboarding')
+                }}
+                className="w-full h-10 rounded-xl"
+              >
+                Get Started
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
   )
 }
 

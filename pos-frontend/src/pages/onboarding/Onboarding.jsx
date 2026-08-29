@@ -6,11 +6,15 @@ import StoreDetailsForm from './StoreDetailsForm';
 import { completeOnboarding } from '../../Redux Toolkit/features/onboarding/onboardingThunk';
 import { getStoreByAdmin } from '../../Redux Toolkit/features/store/storeThunks';
 import { getUserProfile } from '../../Redux Toolkit/features/user/userThunks';
-import { useNavigate } from 'react-router';
+import { useNavigate, Link } from 'react-router';
+import { useToast } from '../../components/ui/use-toast';
+import { ThemeToggle } from '../../components/theme-toggle';
+import { Store, ShieldCheck, Check, Layers, BarChart3, Receipt, Sparkles } from 'lucide-react';
 
 const Onboarding = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { loading, error, isCompleted } = useSelector((state) => state.onboarding);
   
   const [step, setStep] = useState(1);
@@ -42,43 +46,39 @@ const Onboarding = () => {
             try {
               const storeRes = await dispatch(getStoreByAdmin(jwt)).unwrap();
               if (storeRes && storeRes.id) {
-                // Store exists, redirect to dashboard or show message
                 navigate('/store');
-                
                 return;
               } else {
-                // No store, skip to store details
                 setStep(2);
               }
             } catch (err) {
-              // No store found, skip to store details
               setStep(2);
             }
           }
         } catch (err) {
-          // Invalid jwt or error, clear jwt and stay on step 1
           localStorage.removeItem('jwt');
         }
         setLocalLoading(false);
       }
     };
     checkOnboarding();
-    // eslint-disable-next-line
-  }, [dispatch]);
+  }, [dispatch, navigate]);
 
   const handleStepSubmit = async (stepData) => {
     setLocalError(null);
     const updatedFormData = { ...formData, ...stepData };
     setFormData(updatedFormData);
     if (step === 1) {
-      // Step 1: Save owner details locally and advance to Step 2 without API call
+      if (updatedFormData.password && updatedFormData.confirmPassword && updatedFormData.password !== updatedFormData.confirmPassword) {
+        setLocalError("Passwords do not match");
+        return;
+      }
       setFadeIn(false);
       setTimeout(() => {
         setStep(2);
         setFadeIn(true);
       }, 150);
     } else if (step === 2) {
-      // Step 2: Atomic onboarding request creating both Store Admin User and Store in one transaction
       setLocalLoading(true);
       try {
         await dispatch(completeOnboarding({
@@ -89,7 +89,6 @@ const Onboarding = () => {
           storeType: updatedFormData.storeType,
           storeAddress: updatedFormData.storeAddress,
         })).unwrap();
-        // On success, redirect to dashboard/store
         navigate('/store');
       } catch (err) {
         const msg = typeof err === 'string' ? err : (err?.message || 'Onboarding failed');
@@ -101,7 +100,6 @@ const Onboarding = () => {
 
   const handleStepBack = () => {
     if (step > 1) {
-      // Fade out current step
       setFadeIn(false);
       setTimeout(() => {
         setStep(step - 1);
@@ -110,15 +108,16 @@ const Onboarding = () => {
     }
   };
 
-
-
   // Handle successful completion
   useEffect(() => {
     if (isCompleted) {
-      alert('Onboarding completed successfully!');
+      toast({
+        title: "Success",
+        description: "Onboarding completed successfully!",
+      });
       navigate('/store');
     }
-  }, [isCompleted]);
+  }, [isCompleted, toast, navigate]);
 
   const renderStep = () => {
     switch (step) {
@@ -153,167 +152,135 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-indigo-50">
-      <div className="flex min-h-screen">
-        {/* Mobile Header - Only visible on small screens */}
-        <div className="lg:hidden absolute top-0 left-0 right-0 bg-gradient-to-r from-primary to-purple-600 text-white p-6 z-20">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-sm">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row relative selection:bg-primary/20">
+      {/* Theme Toggle Top Right */}
+      <div className="absolute top-4 right-4 z-30">
+        <ThemeToggle />
+      </div>
+
+      {/* Left Feature Showcase Banner (Desktop) */}
+      <div className="hidden lg:flex lg:w-5/12 bg-muted/40 border-r border-border/70 flex-col justify-between p-12 relative overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-card border border-border shadow-2xs mb-8">
+            <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-xs">
+              <Store className="w-4 h-4 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">
-              Welcome to Your POS System
-            </h1>
-            <p className="text-primary/80 text-sm">
-              Set up your business profile in minutes
-            </p>
+            <span className="text-xl font-bold tracking-tight text-foreground">NexPOS</span>
+          </div>
+
+          <h2 className="text-3xl font-bold tracking-tight text-foreground mb-4">
+            Power your business with an enterprise-ready retail engine
+          </h2>
+          <p className="text-muted-foreground text-sm leading-relaxed mb-8">
+            Join modern merchants managing multi-terminal checkouts, inventory tracking, branch shifts, and realtime revenue analytics.
+          </p>
+
+          {/* Capabilities based on real codebase features */}
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Receipt className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">High-Speed POS Terminal</h4>
+                <p className="text-xs text-muted-foreground">Barcode scanning, cash drawer management, and instant invoice receipts.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Multi-Branch Architecture</h4>
+                <p className="text-xs text-muted-foreground">Manage centralized catalogs with branch-level inventory control & staff roles.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Financial & Shift Analytics</h4>
+                <p className="text-xs text-muted-foreground">Comprehensive PDF/Excel export reports, cashier shift summaries, and metrics.</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Left Side - Image Section */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-600 via-[#047857] to-[#022c22] relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-72 h-72 bg-white rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
-            <div className="absolute top-0 right-0 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse animation-delay-2000"></div>
-            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse animation-delay-4000"></div>
+        <div className="relative z-10 pt-8 border-t border-border/60">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>256-bit SSL encrypted & role-gated POS system</span>
           </div>
-          
-          {/* Content */}
-          <div className="relative z-10 flex flex-col justify-center items-center text-white px-12">
-            <div className="text-center max-w-md">
-              {/* Icon */}
-              <div className="mb-8">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
-              </div>
-              
-              {/* Title */}
-              <h1 className="text-4xl font-bold mb-6 leading-tight">
-                Welcome to Your
-                <span className="block text-yellow-300">POS System</span>
-              </h1>
-              
-              {/* Description */}
-              <p className="text-lg text-primary/80 mb-8 leading-relaxed">
-                Set up your business profile and start managing your store efficiently. 
-                It only takes a few minutes to get everything configured.
+        </div>
+      </div>
+
+      {/* Right Form Card */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 min-h-screen">
+        <div className="w-full max-w-md">
+          {/* Progress Indicator */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Step {step} of 2
+              </span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {step === 1 ? '1. Owner Credentials' : '2. Store Details'}
+              </span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-primary h-1.5 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${(step / 2) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Form Card Container */}
+          <Card className="border border-border/80 shadow-sm rounded-2xl bg-card">
+            <CardHeader className="text-left pb-4 pt-6 px-6">
+              <CardTitle className="text-xl font-bold tracking-tight text-foreground">
+                {step === 1 ? 'Create Store Admin Account' : 'Set Up Store Profile'}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                {step === 1
+                  ? 'Enter your administrative credentials to manage your store.'
+                  : 'Enter your business details to configure your primary branch.'}
               </p>
-              
-              {/* Features List */}
-              <div className="space-y-4 text-left">
-                <div className="flex items-center">
-                  <div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-primary/80">Easy inventory management</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-primary/80">Real-time sales tracking</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-primary/80">Secure payment processing</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side - Form Section */}
-        <div className="flex-1 flex items-center justify-center p-8 lg:p-8 pt-32 lg:pt-8 lg:h-screen lg:overflow-y-auto">
-          <div className="w-full max-w-md">
-            {/* Progress Indicator */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Step {step} of 2
-                </h2>
-                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                  {step === 1 ? 'Owner Details' : 'Store Details'}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-green-600 to-[#022c22] h-2 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${(step / 2) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Error Display */}
-            {(error || localError) && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
+            </CardHeader>
+            <CardContent className="px-6 pb-6 pt-0">
+              {/* Error Notice */}
+              {(error || localError) && (
+                <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
                   {typeof (error || localError) === 'object'
                     ? ((error || localError)?.message || String(error || localError))
                     : (error || localError)}
                 </div>
+              )}
+
+              <div
+                className={`transition-all duration-200 ${
+                  fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+                }`}
+              >
+                {renderStep()}
               </div>
-            )}
+            </CardContent>
+          </Card>
 
-            {/* Loading Overlay */}
-            {localLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-50">
-                <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </div>
-            )}
-
-            {/* Form Card */}
-            <Card className="w-full shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="text-center pb-6">
-                <CardTitle className="text-2xl font-bold text-gray-900">
-                  {step === 1 ? 'Create Your Account' : 'Store Information'}
-                </CardTitle>
-                <p className="text-gray-600 mt-2">
-                  {step === 1 
-                    ? 'Let\'s start by setting up your account details' 
-                    : 'Tell us about your business'
-                  }
-                </p>
-              </CardHeader>
-              <CardContent className="px-8 pb-8">
-                <div
-                  className={`transition-all duration-300 ease-in-out ${
-                    fadeIn ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
-                  }`}
-                >
-                  {renderStep()}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Footer */}
-            <div className="mt-8 text-center">
-              <p className="text-sm text-gray-500">
-                Already have an account?{' '}
-                <a href="/login" className="text-primary hover:text-green-900 font-medium">
-                  Sign in here
-                </a>
-              </p>
-            </div>
+          {/* Footer Back to Login */}
+          <div className="mt-6 text-center">
+            <p className="text-xs text-muted-foreground">
+              Already registered?{' '}
+              <Link to="/auth/login" className="text-primary font-semibold hover:underline">
+                Sign in to your account
+              </Link>
+            </p>
           </div>
         </div>
       </div>
