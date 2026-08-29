@@ -3,15 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { useToast } from "@/components/ui/use-toast";
 import {
   getAllCustomers,
-  
+  addLoyaltyPoints,
 } from "@/Redux Toolkit/features/customer/customerThunks";
 import {
   getOrdersByCustomer,
 } from "@/Redux Toolkit/features/order/orderThunks";
 import {
   filterCustomers,
- 
-  validatePoints,
   calculateCustomerStats,
 } from "./utils/customerUtils";
 import {
@@ -81,43 +79,42 @@ const CustomerLookupPage = () => {
 
   const handleSelectCustomer = async (customer) => {
     setSelectedCustomer(customer);
-    // Clear previous customer orders
     dispatch(clearCustomerOrders());
-    // Fetch customer orders
-    if (customer.id) {
+    if (customer?.id) {
       dispatch(getOrdersByCustomer(customer.id));
     }
   };
 
-  const handleAddPoints = () => {
-    const error = validatePoints(pointsToAdd);
-    if (error) {
+  const handleAddPoints = async () => {
+    const pts = parseInt(pointsToAdd, 10);
+    if (isNaN(pts) || pts <= 0) {
       toast({
         title: "Invalid Points",
-        description: error,
+        description: "Please enter a valid positive number of loyalty points.",
         variant: "destructive",
       });
       return;
     }
 
-    // In a real app, this would update the customer's loyalty points in the database
-    toast({
-      title: "Points Added",
-      description: `${pointsToAdd} points added to ${
-        selectedCustomer.fullName || selectedCustomer.name
-      }'s account`,
-    });
+    if (!selectedCustomer?.id) return;
 
-    setShowAddPointsDialog(false);
-    setPointsToAdd(0);
-  };
-
-
-  useEffect(() => {
-    if (selectedCustomer) {
-      dispatch(getOrdersByCustomer(selectedCustomer.id));
+    try {
+      const result = await dispatch(addLoyaltyPoints({ id: selectedCustomer.id, points: pts })).unwrap();
+      setSelectedCustomer((prev) => ({ ...prev, ...result }));
+      toast({
+        title: "Loyalty Points Added",
+        description: `Successfully awarded ${pts} points to ${selectedCustomer?.fullName || "customer"}.`,
+      });
+      setShowAddPointsDialog(false);
+      setPointsToAdd(0);
+    } catch (err) {
+      toast({
+        title: "Failed to Add Points",
+        description: typeof err === "string" ? err : (err?.message || "Failed to update loyalty points"),
+        variant: "destructive",
+      });
     }
-  }, [selectedCustomer]);
+  };
 
   // Calculate customer stats from orders
   const customerStats = selectedCustomer

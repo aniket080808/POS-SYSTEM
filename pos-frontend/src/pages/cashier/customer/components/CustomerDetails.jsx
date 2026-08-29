@@ -3,8 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StarIcon, PlusIcon, Loader2, UserIcon } from 'lucide-react';
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const CustomerDetails = ({ customer, onAddPoints, loading = false }) => {
+  const { format: formatCurrency } = useCurrencyFormatter();
+
   if (!customer) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
@@ -70,7 +73,7 @@ const CustomerDetails = ({ customer, onAddPoints, loading = false }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <span className="text-2xl font-bold">₹{(customer.totalSpent || 0).toFixed(2)}</span>
+            <span className="text-2xl font-bold">{formatCurrency(customer.totalSpent || 0)}</span>
           </CardContent>
         </Card>
       </div>
@@ -81,7 +84,7 @@ const CustomerDetails = ({ customer, onAddPoints, loading = false }) => {
             <CardTitle>Average Order Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <span className="text-2xl font-bold">₹{customer.averageOrderValue.toFixed(2)}</span>
+            <span className="text-2xl font-bold">{formatCurrency(customer.averageOrderValue)}</span>
           </CardContent>
         </Card>
       )}

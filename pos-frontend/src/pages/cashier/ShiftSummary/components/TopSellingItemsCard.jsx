@@ -1,7 +1,10 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const TopSellingItemsCard = ({ shiftData }) => {
+  const { format: formatCurrency } = useCurrencyFormatter();
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -15,7 +18,7 @@ const TopSellingItemsCard = ({ shiftData }) => {
               <div className="flex-1">
                 <div className="flex justify-between">
                   <span className="font-medium">{item.name}</span>
-                  <span className="font-bold">₹{item.sellingPrice?.toFixed(2)}</span>
+                  <span className="font-bold">{formatCurrency(item.sellingPrice)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>{item.quantity} units sold</span>

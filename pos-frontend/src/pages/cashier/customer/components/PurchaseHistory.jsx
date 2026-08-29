@@ -1,10 +1,12 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ShoppingBagIcon, CalendarIcon, IndianRupee } from 'lucide-react';
+import { Loader2, ShoppingBagIcon, CalendarIcon } from 'lucide-react';
 import { formatDate, getStatusColor } from '../../order/data';
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const PurchaseHistory = ({ orders, loading = false }) => {
+  const { format: formatCurrency } = useCurrencyFormatter();
 
 
   if (loading) {
@@ -52,8 +54,7 @@ const PurchaseHistory = ({ orders, loading = false }) => {
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-2 mb-1">
-                      <IndianRupee className="h-4 w-4" />
-                      <span className="font-bold">₹{order.totalAmount?.toFixed(2) || '0.00'}</span>
+                      <span className="font-bold">{formatCurrency(order.totalAmount || 0)}</span>
                     </div>
                     {order.status && (
                       <Badge className={getStatusColor(order.status)}>
@@ -77,7 +78,7 @@ const PurchaseHistory = ({ orders, loading = false }) => {
                         <div key={index} className="flex justify-between text-sm">
                           <span>{item.product.name || item.productName || 'Unknown Product'}</span>
                           <span className="text-muted-foreground">
-                            {item.quantity || 1} × ₹{(item.price || 0).toFixed(2)}
+                            {item.quantity || 1} × {formatCurrency(item.price || 0)}
                           </span>
                         </div>
                       ))}

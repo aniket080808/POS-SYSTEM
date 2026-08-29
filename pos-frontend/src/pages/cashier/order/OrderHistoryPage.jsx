@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import { handleDownloadOrderPDF } from "./pdf/pdfUtils";
 
 const OrderHistoryPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { userProfile } = useSelector((state) => state.user);
   const { orders, loading, error } = useSelector((state) => state.order);
@@ -64,30 +66,68 @@ const OrderHistoryPage = () => {
   }, [error, toast]);
 
   // Get current date for filtering
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay());
+  const weekStart = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - today.getDay());
+    return d;
+  }, [today]);
+
+  const filteredOrders = useMemo(() => {
+    return (orders || []).filter((order) => {
+      // Search filter
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        const matchesId = String(order.id).toLowerCase().includes(term);
+        const matchesCustomer =
+          order.customer?.fullName?.toLowerCase().includes(term) ||
+          order.customer?.name?.toLowerCase().includes(term);
+        if (!matchesId && !matchesCustomer) return false;
+      }
+
+      // Date filter
+      if (!order.createdAt) return true;
+      const orderDate = new Date(order.createdAt);
+
+      if (dateFilter === "today") {
+        return orderDate >= today;
+      } else if (dateFilter === "week") {
+        return orderDate >= weekStart;
+      } else if (dateFilter === "month") {
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        return orderDate >= monthStart;
+      } else if (dateFilter === "custom") {
+        if (customDateRange.start) {
+          const start = new Date(customDateRange.start);
+          start.setHours(0, 0, 0, 0);
+          if (orderDate < start) return false;
+        }
+        if (customDateRange.end) {
+          const end = new Date(customDateRange.end);
+          end.setHours(23, 59, 59, 999);
+          if (orderDate > end) return false;
+        }
+      }
+      return true;
+    });
+  }, [orders, searchTerm, dateFilter, customDateRange, today, weekStart]);
 
   const handleViewOrder = (order) => {
     setSelectedOrder(order);
     setShowOrderDetailsDialog(true);
   };
 
-  const handlePrintInvoice = (order) => {
-    toast({
-      title: "Printing Invoice",
-      description: `Printing invoice for order ${order.id}`,
-    });
+  const handlePrintInvoice = async (order) => {
+    await handleDownloadOrderPDF(order, toast);
   };
 
   const handleInitiateReturn = (order) => {
-    // In a real app, this would navigate to the return page with the order pre-selected
-    toast({
-      title: "Initiating Return",
-      description: `Navigating to returns page for order ${order.id}`,
-    });
+    navigate("/cashier/returns", { state: { selectedOrder: order } });
   };
 
   
@@ -211,9 +251,9 @@ const OrderHistoryPage = () => {
             <Loader2 className="animate-spin h-16 w-16 text-primary" />
             <p className="mt-4">Loading orders...</p>
           </div>
-        ) : orders.length > 0 ? (
+        ) : filteredOrders.length > 0 ? (
           <OrderTable
-            orders={orders}
+            orders={filteredOrders}
             handleInitiateReturn={handleInitiateReturn}
             handlePrintInvoice={handlePrintInvoice}
             handleViewOrder={handleViewOrder}

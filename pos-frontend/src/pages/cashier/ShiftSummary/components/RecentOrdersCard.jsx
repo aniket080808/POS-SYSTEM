@@ -4,8 +4,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { formatTime } from '../../../../utils/formateDate';
 import { getPaymentIcon } from '../../../../utils/getPaymentIcon';
 import { getPaymentMethodLabel } from '../../../../utils/paymentMethodLable';
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const RecentOrdersCard = ({ shiftData }) => {
+  const { format: formatCurrency } = useCurrencyFormatter();
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -27,11 +30,11 @@ const RecentOrdersCard = ({ shiftData }) => {
                 <TableCell className="flex items-center gap-1">
                  {order.paymentType? <>
                        {getPaymentIcon(order.paymentType)}
-                  <span>{(order.paymentType)}</span>
+                  <span>{getPaymentMethodLabel(order.paymentType)}</span>
                   </>:"UNKNOWN"
              }
                 </TableCell>
-                <TableCell className="text-right">₹{order.totalAmount?.toFixed(2)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(order.totalAmount)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

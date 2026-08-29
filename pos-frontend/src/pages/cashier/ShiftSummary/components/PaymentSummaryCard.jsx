@@ -2,8 +2,11 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { getPaymentIcon } from '../../../../utils/getPaymentIcon';
 import { getPaymentMethodLabel } from '../../../../utils/paymentMethodLable';
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const PaymentSummaryCard = ({ shiftData }) => {
+  const { format: formatCurrency } = useCurrencyFormatter();
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -16,12 +19,12 @@ const PaymentSummaryCard = ({ shiftData }) => {
               </div>
               <div className="flex-1">
                 <div className="flex justify-between">
-                  <span className="font-medium">{(payment.type)}</span>
-                  <span className="font-bold">₹{payment.totalAmount?.toFixed(2)}</span>
+                  <span className="font-medium">{getPaymentMethodLabel(payment.type)}</span>
+                  <span className="font-bold">{formatCurrency(payment.totalAmount)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>{payment.transactionCount} transactions</span>
-                  <span>{((payment.totalAmount / shiftData.totalSales) * 100)?.toFixed(1)}%</span>
+                  <span>{shiftData.totalSales > 0 ? ((payment.totalAmount / shiftData.totalSales) * 100).toFixed(1) : (payment.percentage ? Number(payment.percentage).toFixed(1) : "0.0")}%</span>
                 </div>
               </div>
             </div>

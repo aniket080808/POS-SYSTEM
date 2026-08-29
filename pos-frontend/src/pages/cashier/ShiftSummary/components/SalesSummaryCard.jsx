@@ -1,7 +1,10 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const SalesSummaryCard = ({ shiftData }) => {
+  const { format: formatCurrency } = useCurrencyFormatter();
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -13,15 +16,15 @@ const SalesSummaryCard = ({ shiftData }) => {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Total Sales:</span>
-            <span className="font-medium">₹{shiftData.totalSales?.toFixed(2)}</span>
+            <span className="font-medium">{formatCurrency(shiftData.totalSales)}</span>
           </div>
           <div className="flex justify-between text-destructive">
             <span>Total Refunds:</span>
-            <span>-₹{shiftData.totalRefunds?.toFixed(2)}</span>
+            <span>-{formatCurrency(shiftData.totalRefunds)}</span>
           </div>
           <div className="flex justify-between font-bold pt-2 border-t">
             <span>Net Sales:</span>
-            <span>₹{shiftData.netSales?.toFixed(2)}</span>
+            <span>{formatCurrency(shiftData.netSales)}</span>
           </div>
         </div>
       </CardContent>

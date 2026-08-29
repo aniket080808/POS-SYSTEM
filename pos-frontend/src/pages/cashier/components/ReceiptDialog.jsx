@@ -8,20 +8,21 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Receipt } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import {
   resetOrder,
   selectPaymentMethod,
   selectTotal,
 } from "../../../Redux Toolkit/features/cart/cartSlice";
-import { useDispatch } from "react-redux";
 import { useToast } from "../../../components/ui/use-toast";
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const ReceiptDialog = ({ showReceiptDialog, setShowReceiptDialog }) => {
   const paymentMethod = useSelector(selectPaymentMethod);
   const total = useSelector(selectTotal);
   const dispatch = useDispatch();
   const { toast } = useToast();
+  const { format: formatCurrency } = useCurrencyFormatter();
 
   const finishOrder = () => {
     setShowReceiptDialog(false);
@@ -52,7 +53,7 @@ const ReceiptDialog = ({ showReceiptDialog, setShowReceiptDialog }) => {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Order Total:</span>
-                <span className="font-semibold">₹{total.toFixed(2)}</span>
+                <span className="font-semibold">{formatCurrency(total)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Payment Method:</span>

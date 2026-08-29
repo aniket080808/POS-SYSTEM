@@ -13,6 +13,7 @@ import { Button } from "../../../components/ui/button";
 import { EyeIcon } from "lucide-react";
 import { PrinterIcon } from "lucide-react";
 import { RotateCcwIcon } from "lucide-react";
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const OrderTable = ({
   orders,
@@ -20,6 +21,8 @@ const OrderTable = ({
   handlePrintInvoice,
   handleInitiateReturn,
 }) => {
+  const { format: formatCurrency } = useCurrencyFormatter();
+
   return (
     <Table>
       <TableHeader>
@@ -41,8 +44,8 @@ const OrderTable = ({
             <TableCell>
               {order.customer?.fullName || "Walk-in Customer"}
             </TableCell>
-            <TableCell>₹{order.totalAmount?.toFixed(2) || "0.00"}</TableCell>
-            <TableCell>{(order.paymentType)}</TableCell>
+            <TableCell>{formatCurrency(order.totalAmount)}</TableCell>
+            <TableCell>{getPaymentModeLabel(order.paymentType)}</TableCell>
             <TableCell>
               <Badge
                 variant={getStatusBadgeVariant(order.status)}

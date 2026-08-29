@@ -9,7 +9,6 @@ import CartSection from "./cart/CartSection";
 import CustomerPaymentSection from "./payment/CustomerPaymentSection";
 
 import PaymentDialog from "./payment/PaymentDialog";
-import ReceiptDialog from "./components/ReceiptDialog";
 import HeldOrdersDialog from "./components/HeldOrdersDialog";
 import CustomerDialog from "./customer/CustomerDialog";
 import InvoiceDialog from "./order/OrderDetails/InvoiceDialog";
@@ -73,14 +72,9 @@ const CreateOrderPage = () => {
         setShowReceiptDialog={setShowReceiptDialog}
       />
 
-      {/* <ReceiptDialog
-        showReceiptDialog={showReceiptDialog}
-        setShowReceiptDialog={setShowReceiptDialog}
-      /> */}
       <InvoiceDialog
         showInvoiceDialog={showReceiptDialog}
         setShowInvoiceDialog={setShowReceiptDialog}
-        
       />
 
       <HeldOrdersDialog

@@ -24,6 +24,7 @@ import { useSelector } from "react-redux";
 import { createRefund } from "../../../../Redux Toolkit/features/refund/refundThunks";
 import { useDispatch } from "react-redux";
 import { useState } from "react";
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const returnReasons = [
   "Damaged product",
@@ -39,30 +40,37 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog }) => {
   const { userProfile } = useSelector((state) => state.user);
   const { branch } = useSelector((state) => state.branch);
   const dispatch = useDispatch();
+  const { format: formatCurrency } = useCurrencyFormatter();
 
   const [returnReason, setReturnReason] = useState("");
   const [otherReason, setOtherReason] = useState("");
   const [refundMethod, setRefundMethod] = useState("");
 
-  const processRefund = async () => {
-    // setShowRefundDialog(false);
-    setShowReceiptDialog(true);
+  const effectiveBranchId =
+    branch?.id ||
+    branch?.branch?.id ||
+    userProfile?.branchId ||
+    userProfile?.branch?.id ||
+    selectedOrder?.branchId ||
+    selectedOrder?.branch?.id;
 
+  const processRefund = async () => {
     // Prepare refundDTO for API
     const refundDTO = {
       orderId: selectedOrder.id,
-      branchId: branch?.id,
+      branchId: effectiveBranchId,
       cashierId: userProfile?.id,
 
       reason: returnReason === "Other" ? otherReason : returnReason,
       refundMethod:
-        refundMethod === "original" ? selectedOrder.paymentType : refundMethod,
+        refundMethod === "original" ? (selectedOrder.paymentType || selectedOrder.paymentMode) : refundMethod,
     };
     try {
       await dispatch(createRefund(refundDTO)).unwrap();
+      setShowReceiptDialog(true);
       toast({
         title: "Refund Processed",
-        description: `Refund of ₹${selectedOrder.totalAmount} processed via ${refundDTO.refundMethod}`,
+        description: `Refund of ${formatCurrency(selectedOrder.totalAmount)} processed via ${refundDTO.refundMethod || "Original Payment Method"}`,
       });
     } catch (error) {
       toast({
@@ -121,10 +129,10 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="original">
-                    Original Payment Method ({selectedOrder.paymentMode})
+                    Original Payment Method ({selectedOrder.paymentType || selectedOrder.paymentMode || "CASH"})
                   </SelectItem>
                   <SelectItem value="cash">Cash</SelectItem>
-                  {selectedOrder.paymentMode !== "card" && (
+                  {(selectedOrder.paymentType || selectedOrder.paymentMode) !== "CARD" && (
                     <SelectItem value="card">Card</SelectItem>
                   )}
                 </SelectContent>
@@ -133,7 +141,7 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog }) => {
             <div className="pt-4 border-t">
               <div className="flex justify-between text-lg font-semibold">
                 <span>Total Refund Amount:</span>
-                <span>₹{selectedOrder.totalAmount}</span>
+                <span>{formatCurrency(selectedOrder.totalAmount)}</span>
               </div>
             </div>
             <Button className="w-full" onClick={processRefund}>
