@@ -19,7 +19,7 @@ const InventoryTable = ({ rows, onEdit }) => (
         rows.map((row) => (
           <TableRow key={row?.id}>
             <TableCell className="font-medium">{row.sku}</TableCell>
-            <TableCell>{row.name.slice(0,70)}...</TableCell>
+            <TableCell>{row.name ? (row.name.length > 70 ? `${row.name.slice(0, 70)}...` : row.name) : "Unknown Product"}</TableCell>
             <TableCell>{row.quantity}</TableCell>
             <TableCell>{row.category}</TableCell>
             <TableCell>

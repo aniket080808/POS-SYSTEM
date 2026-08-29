@@ -1,14 +1,13 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-
-
-
-// Import chart components
+import { Button } from "@/components/ui/button";
+import { RotateCcw, Store } from "lucide-react";
 import SalesChart from "./SalesChart";
 import TopProducts from "./TopProducts";
 import CashierPerformance from "./CashierPerformance";
 import RecentOrders from "./RecentOrders";
-import { getTodayOverview, getPaymentBreakdown } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
+import { getTodayOverview, getPaymentBreakdown, getDailySalesChart, getTopProductsByQuantity, getTopCashiersByRevenue } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
+import { getRecentOrdersByBranch } from "@/Redux Toolkit/features/order/orderThunks";
 import PaymentBreakdown from "./PaymentBreakdown";
 import TodayOverview from "./TodayOverview";
 
@@ -16,38 +15,74 @@ export default function Dashboard() {
   const dispatch = useDispatch();
   const { branch } = useSelector((state) => state.branch);
   const branchId = branch?.id;
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  const loadAllData = React.useCallback(() => {
     if (branchId) {
-      dispatch(getTodayOverview(branchId));
+      setRefreshing(true);
       const today = new Date().toISOString().slice(0, 10);
-      dispatch(getPaymentBreakdown({ branchId, date: today }));
+      Promise.all([
+        dispatch(getTodayOverview(branchId)),
+        dispatch(getPaymentBreakdown({ branchId, date: today })),
+        dispatch(getDailySalesChart({ branchId, days: 7 })),
+        dispatch(getTopProductsByQuantity(branchId)),
+        dispatch(getTopCashiersByRevenue(branchId)),
+        dispatch(getRecentOrdersByBranch(branchId)),
+      ]).finally(() => {
+        setRefreshing(false);
+      });
     }
   }, [branchId, dispatch]);
 
-  // Helper to determine changeType
- 
-  // KPIs from todayOverview (new API fields)
-
+  useEffect(() => {
+    if (branchId) {
+      loadAllData();
+    }
+  }, [branchId, loadAllData]);
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Branch Dashboard</h1>
-        <p className="text-gray-500">{branch?.name || "Loading branch..."}</p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Branch Dashboard
+          </h1>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+            <Store className="w-4 h-4 text-primary" />
+            <span>{branch?.name || "Loading branch..."}</span>
+            {branch?.branchCode && (
+              <span className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+                {branch.branchCode}
+              </span>
+            )}
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={loadAllData}
+          disabled={refreshing}
+          className="gap-2 self-start sm:self-auto"
+        >
+          <RotateCcw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Refresh Data'}
+        </Button>
       </div>
+
       {/* KPI Cards */}
-      <TodayOverview/>
+      <TodayOverview />
       
       {/* Payment Breakdown */}
-      <PaymentBreakdown/>
+      <PaymentBreakdown />
       
       {/* Charts Section */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SalesChart />
         <TopProducts />
       </div>
-      {/* Additional Data */}
+
+      {/* Staff & Orders */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <CashierPerformance />
         <RecentOrders />

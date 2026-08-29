@@ -55,42 +55,29 @@ const InventoryFormDialog = ({
                 className="col-span-3"
               />
             ) : (
-              <>
-                {/* <Select
-                  value={selectedProductId}
-                  onValueChange={(value) => setSelectedProductId(value)}
+              <Select
+                value={selectedProductId ? String(selectedProductId) : ""}
+                onValueChange={(value) => setSelectedProductId(value)}
+              >
+                <SelectTrigger
+                  className="w-full col-span-3"
                 >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select a product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((product) => (
+                  <SelectValue placeholder="Select a Product" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 overflow-y-auto">
+                  {products && products.length > 0 ? (
+                    products.map((product) => (
                       <SelectItem key={product.id} value={String(product.id)}>
                         {product.name} ({product.sku})
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select> */}
-                <Select
-                  value={selectedProductId}
-                  onValueChange={(value) => setSelectedProductId(value)}
-                >
-                  <SelectTrigger
-                    startIcon={<Filter className="h-4 w-4 text-gray-500" />}
-                    className="w-full col-span-3"
-                  >
-                    <SelectValue placeholder="Select a Product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Products</SelectItem>
-                    {products.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.sku}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>
+                      No products available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             )}
           </div>
           <div className="grid grid-cols-4 items-center gap-4">

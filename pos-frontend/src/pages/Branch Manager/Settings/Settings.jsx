@@ -29,67 +29,114 @@ import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import { getBranchById } from "@/Redux Toolkit/features/branch/branchThunks";
 import BranchInfo from "./BranchInfo";
+import { useToast } from "@/components/ui/use-toast";
+import api from "@/utils/api";
 
 const Settings = () => {
   const dispatch = useDispatch();
+  const { toast } = useToast();
   const { userProfile } = useSelector((state) => state.user);
-  // const { branch} = useSelector((state) => state.branch);
-
-  // const [branchInfo, setBranchInfo] = useState({
-  //   name: "",
-  //   address: "",
-  //   phone: "",
-  //   email: "",
-  //   openingTime: "",
-  //   closingTime: "",
-  //   workingDays: [],
-  // });
+  const activeBranchId = userProfile?.branchId || userProfile?.branch?.id;
 
   useEffect(() => {
-    if (userProfile?.branchId && localStorage.getItem("jwt")) {
+    if (activeBranchId && localStorage.getItem("jwt")) {
       dispatch(
         getBranchById({
-          id: userProfile.branchId,
+          id: activeBranchId,
           jwt: localStorage.getItem("jwt"),
         })
       );
+
+      // Load persistent branch settings from backend
+      api.get(`/api/branches/${activeBranchId}/settings`)
+        .then((res) => {
+          if (res.data) {
+            if (res.data.printerSettings) {
+              try { setPrinterSettings(JSON.parse(res.data.printerSettings)); } catch { /* ignore parse error */ }
+            }
+            if (res.data.taxSettings) {
+              try { setTaxSettings(JSON.parse(res.data.taxSettings)); } catch { /* ignore parse error */ }
+            }
+            if (res.data.paymentSettings) {
+              try { setPaymentSettings(JSON.parse(res.data.paymentSettings)); } catch { /* ignore parse error */ }
+            }
+            if (res.data.discountSettings) {
+              try { setDiscountSettings(JSON.parse(res.data.discountSettings)); } catch { /* ignore parse error */ }
+            }
+          }
+        })
+        .catch(() => {
+          // fallback to localStorage if network/backend error
+        });
     }
-  }, [dispatch, userProfile]);
+  }, [dispatch, activeBranchId]);
 
-  const [printerSettings, setPrinterSettings] = useState({
-    printerName: "Epson TM-T88VI",
-    paperSize: "80mm",
-    printLogo: true,
-    printCustomerDetails: true,
-    printItemizedTax: true,
-    footerText: "Thank you for shopping with us!",
+  const [printerSettings, setPrinterSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pos_branch_printer_settings");
+      if (saved) return JSON.parse(saved);
+    } catch {
+      /* ignore */
+    }
+    return {
+      printerName: "Epson TM-T88VI",
+      paperSize: "80mm",
+      printLogo: true,
+      printCustomerDetails: true,
+      printItemizedTax: true,
+      footerText: "Thank you for shopping with us!",
+    };
   });
 
-  const [taxSettings, setTaxSettings] = useState({
-    gstEnabled: true,
-    gstPercentage: 18,
-    applyGstToAll: true,
-    showTaxBreakdown: true,
+  const [taxSettings, setTaxSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pos_branch_tax_settings");
+      if (saved) return JSON.parse(saved);
+    } catch {
+      /* ignore */
+    }
+    return {
+      gstEnabled: true,
+      gstPercentage: 18,
+      applyGstToAll: true,
+      showTaxBreakdown: true,
+    };
   });
 
-  const [paymentSettings, setPaymentSettings] = useState({
-    acceptCash: true,
-    acceptUPI: true,
-    acceptCard: true,
-    upiId: "example@upi",
-    cardTerminalId: "TERM12345",
+  const [paymentSettings, setPaymentSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pos_branch_payment_settings");
+      if (saved) return JSON.parse(saved);
+    } catch {
+      /* ignore */
+    }
+    return {
+      acceptCash: true,
+      acceptUPI: true,
+      acceptCard: true,
+      upiId: "example@upi",
+      cardTerminalId: "TERM12345",
+    };
   });
 
-  const [discountSettings, setDiscountSettings] = useState({
-    allowDiscount: true,
-    maxDiscountPercentage: 10,
-    requireManagerApproval: true,
-    discountReasons: [
-      "Damaged Product",
-      "Bulk Purchase",
-      "Regular Customer",
-      "Promotional Offer",
-    ],
+  const [discountSettings, setDiscountSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pos_branch_discount_settings");
+      if (saved) return JSON.parse(saved);
+    } catch {
+      /* ignore */
+    }
+    return {
+      allowDiscount: true,
+      maxDiscountPercentage: 10,
+      requireManagerApproval: true,
+      discountReasons: [
+        "Damaged Product",
+        "Bulk Purchase",
+        "Regular Customer",
+        "Promotional Offer",
+      ],
+    };
   });
 
   const handlePrinterSettingsChange = (field, value) => {
@@ -120,8 +167,37 @@ const Settings = () => {
     });
   };
 
-  const handleSaveSettings = (settingType) => {
-    console.log(`Saving ${settingType} settings`);
+  const handleSaveSettings = async (settingType) => {
+    try {
+      if (settingType === "printer") {
+        localStorage.setItem("pos_branch_printer_settings", JSON.stringify(printerSettings));
+      } else if (settingType === "tax") {
+        localStorage.setItem("pos_branch_tax_settings", JSON.stringify(taxSettings));
+      } else if (settingType === "payment") {
+        localStorage.setItem("pos_branch_payment_settings", JSON.stringify(paymentSettings));
+      } else if (settingType === "discount") {
+        localStorage.setItem("pos_branch_discount_settings", JSON.stringify(discountSettings));
+      }
+
+      if (activeBranchId) {
+        await api.put(`/api/branches/${activeBranchId}/settings`, {
+          printerSettings: JSON.stringify(printerSettings),
+          taxSettings: JSON.stringify(taxSettings),
+          paymentSettings: JSON.stringify(paymentSettings),
+          discountSettings: JSON.stringify(discountSettings),
+        });
+      }
+
+      toast({
+        title: "Settings Saved",
+        description: `${settingType.charAt(0).toUpperCase() + settingType.slice(1)} settings updated successfully.`,
+      });
+    } catch {
+      toast({
+        title: "Settings Saved Locally",
+        description: `${settingType.charAt(0).toUpperCase() + settingType.slice(1)} settings saved to local cache.`,
+      });
+    }
   };
 
   return (

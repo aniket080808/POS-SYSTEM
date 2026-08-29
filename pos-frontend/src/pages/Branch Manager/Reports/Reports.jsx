@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Download, FileText, BarChart2, TrendingUp, Users } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, PieChart as RPieChart, Pie, Cell } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
+import * as XLSX from "xlsx";
+import { useToast } from "@/components/ui/use-toast";
 import {
   getDailySalesChart,
   getPaymentBreakdown,
@@ -17,6 +19,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 const Reports = () => {
   const dispatch = useDispatch();
+  const { toast } = useToast();
   const branchId = useSelector((state) => state.branch.branch?.id);
   const {
     dailySales,
@@ -95,9 +98,83 @@ const Reports = () => {
     }).format(amount);
   };
 
-  const handleExport = (type, format) => {
-    console.log(`Exporting ${type} report in ${format} format`);
-    // Implement export functionality
+  const handleExport = (type = 'all') => {
+    try {
+      const wb = XLSX.utils.book_new();
+      let hasData = false;
+
+      if (type === 'sales' || type === 'all') {
+        const salesRows = salesData.map((item) => ({
+          Date: item.date,
+          'Total Sales (₹)': item.sales,
+        }));
+        if (salesRows.length > 0) {
+          const ws = XLSX.utils.json_to_sheet(salesRows);
+          XLSX.utils.book_append_sheet(wb, ws, 'Daily Sales');
+          hasData = true;
+        }
+      }
+
+      if (type === 'payments' || type === 'all') {
+        const paymentRows = paymentData.map((item) => ({
+          'Payment Method': item.name,
+          'Percentage (%)': item.value,
+        }));
+        if (paymentRows.length > 0) {
+          const ws = XLSX.utils.json_to_sheet(paymentRows);
+          XLSX.utils.book_append_sheet(wb, ws, 'Payment Breakdown');
+          hasData = true;
+        }
+      }
+
+      if (type === 'products' || type === 'all') {
+        const catRows = categoryData.map((item) => ({
+          Category: item.name,
+          'Total Sales (₹)': item.value,
+        }));
+        if (catRows.length > 0) {
+          const ws = XLSX.utils.json_to_sheet(catRows);
+          XLSX.utils.book_append_sheet(wb, ws, 'Category Sales');
+          hasData = true;
+        }
+      }
+
+      if (type === 'cashier' || type === 'all') {
+        const cashierRows = cashierData.map((item) => ({
+          'Cashier Name': item.name,
+          'Revenue (₹)': item.sales,
+        }));
+        if (cashierRows.length > 0) {
+          const ws = XLSX.utils.json_to_sheet(cashierRows);
+          XLSX.utils.book_append_sheet(wb, ws, 'Cashier Performance');
+          hasData = true;
+        }
+      }
+
+      if (!hasData) {
+        toast({
+          title: 'No Data',
+          description: 'No analytics data available to export.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      XLSX.writeFile(
+        wb,
+        `Branch_Analytics_${type}_${new Date().toISOString().split('T')[0]}.xlsx`
+      );
+      toast({
+        title: 'Success',
+        description: `Exported ${type.toUpperCase()} report successfully.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Export Failed',
+        description: err.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -107,11 +184,13 @@ const Reports = () => {
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
             <Calendar className="h-4 w-4 mr-1" />
-            {/* Date range selection can be added here */}
-            {/* {dateRange.startDate} - {dateRange.endDate} */}
             Today
           </Button>
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleExport('all', 'excel')}
+          >
             <Download className="h-4 w-4 mr-1" />
             Export All
           </Button>

@@ -16,20 +16,23 @@ import { Phone } from "lucide-react";
 import { Mail } from "lucide-react";
 import { Clock } from "lucide-react";
 import { Save } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Separator } from "../../../components/ui/separator";
 import { Checkbox } from "../../../components/ui/checkbox";
+import { toast } from "sonner";
 
 const BranchInfo = () => {
   const dispatch = useDispatch();
   const { branch } = useSelector((state) => state.branch);
+  const [saving, setSaving] = useState(false);
   const [branchInfo, setBranchInfo] = useState({
     name: "",
     address: "",
     phone: "",
     email: "",
-    openingTime: "",
-    closingTime: "",
+    openTime: "",
+    closeTime: "",
     workingDays: [],
   });
 
@@ -40,8 +43,8 @@ const BranchInfo = () => {
         address: branch.address || "",
         phone: branch.phone || "",
         email: branch.email || "",
-        openingTime: branch.openingTime || "",
-        closingTime: branch.closingTime || "",
+        openTime: branch.openTime || "",
+        closeTime: branch.closeTime || "",
         workingDays: branch.workingDays || [],
       });
     }
@@ -53,18 +56,23 @@ const BranchInfo = () => {
     });
   };
 
-  const handleSaveSettings = (settingType) => {
-    // In a real app, this would make an API call to save the settings
-    console.log(`Saving ${settingType} settings`);
+  const handleSaveSettings = async (settingType) => {
     if (settingType === "branch-info") {
-      dispatch(
-        updateBranch({
-          id: branch.id,
-          dto: branchInfo,
-          jwt: localStorage.getItem("jwt"),
-        })
-      );
-      console.log("Saving branch info:", branchInfo);
+      setSaving(true);
+      try {
+        await dispatch(
+          updateBranch({
+            id: branch.id,
+            dto: branchInfo,
+            jwt: localStorage.getItem("jwt"),
+          })
+        ).unwrap();
+        toast.success("Branch info updated successfully!");
+      } catch (err) {
+        toast.error(err || "Failed to update branch info");
+      } finally {
+        setSaving(false);
+      }
     }
   };
   return (
@@ -150,9 +158,9 @@ const BranchInfo = () => {
                 <Input
                   id="opening-time"
                   type="time"
-                  value={branchInfo.openingTime}
+                  value={branchInfo.openTime}
                   onChange={(e) =>
-                    handleBranchInfoChange("openingTime", e.target.value)
+                    handleBranchInfoChange("openTime", e.target.value)
                   }
                 />
               </div>
@@ -166,9 +174,9 @@ const BranchInfo = () => {
                 <Input
                   id="closing-time"
                   type="time"
-                  value={branchInfo.closingTime}
+                  value={branchInfo.closeTime}
                   onChange={(e) =>
-                    handleBranchInfoChange("closingTime", e.target.value)
+                    handleBranchInfoChange("closeTime", e.target.value)
                   }
                 />
               </div>
@@ -189,6 +197,7 @@ const BranchInfo = () => {
               ].map((day) => (
                 <div key={day} className="flex items-center space-x-2">
                   <Checkbox
+                    id={`day-${day}`}
                     checked={branchInfo.workingDays.includes(day)}
                     onCheckedChange={(checked) => {
                       if (checked) {
@@ -221,9 +230,14 @@ const BranchInfo = () => {
           <Button
             className="gap-2"
             onClick={() => handleSaveSettings("branch-info")}
+            disabled={saving}
           >
-            <Save className="h-4 w-4" />
-            Save Changes
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </CardContent>

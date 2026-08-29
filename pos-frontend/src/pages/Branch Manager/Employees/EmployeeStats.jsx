@@ -22,7 +22,7 @@ const EmployeeStats = ({ employees }) => {
               Active Employees
             </h3>
             <p className="text-3xl font-bold mt-2 text-green-600">
-              {employees.length}
+              {employees?.filter((e) => e.enabled !== false).length || 0}
             </p>
           </div>
         </CardContent>

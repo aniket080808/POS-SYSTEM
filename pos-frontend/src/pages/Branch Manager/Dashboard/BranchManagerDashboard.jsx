@@ -8,21 +8,26 @@ import BranchManagerTopbar from "./BranchManagerTopbar";
 export default function BranchManagerDashboard({ children }) {
   const dispatch = useDispatch();
   const { userProfile } = useSelector((state) => state.user);
-  
+
   useEffect(() => {
-    // Fetch branch data when component mounts
-    if (localStorage.getItem("jwt") && userProfile?.branchId) {
-      dispatch(getBranchById({ id: userProfile.branchId, jwt: localStorage.getItem("jwt") }));
+    const jwt = localStorage.getItem("jwt");
+    if (jwt && userProfile?.branchId) {
+      dispatch(getBranchById({ id: userProfile.branchId, jwt }));
     }
   }, [dispatch, userProfile]);
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10">
+    <div className="flex h-screen w-full bg-background overflow-hidden selection:bg-accent selection:text-accent-foreground">
+      {/* Executive Charcoal Slate Sidebar */}
       <BranchManagerSidebar />
-      <div className="flex-1 flex flex-col">
+
+      {/* Main Content Canvas */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-muted/20">
         <BranchManagerTopbar />
-        <main className="flex-1 overflow-y-auto p-8 md:p-10 lg:p-12 bg-background/80 rounded-tl-3xl shadow-xl m-4">
-          {children || <Outlet />}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 min-w-0">
+          <div className="max-w-7xl mx-auto">
+            {children || <Outlet />}
+          </div>
         </main>
       </div>
     </div>
