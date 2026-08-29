@@ -3,7 +3,6 @@ import Header from "./Header";
 import HeroSection from "./HeroSection";
 import KeyFeaturesSection from "./KeyFeaturesSection";
 import WhyChooseUsSection from "./WhyChooseUsSection";
-import LiveDemoSection from "./LiveDemoSection";
 import PricingSection from "./PricingSection";
 import FAQSection from "./FAQSection";
 import ContactSection from "./ContactSection";
@@ -11,36 +10,32 @@ import Footer from "./Footer";
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
-      {/* Header / Navbar with ThemeToggle */}
+    <div className="min-h-screen bg-background text-foreground selection:bg-accent selection:text-accent-foreground">
+      {/* Header / Navbar */}
       <Header />
 
       {/* Hero Section */}
       <HeroSection />
 
-      {/* Key Architecture Features */}
+      {/* Core Platform Modules */}
       <KeyFeaturesSection />
 
-      {/* Why Choose NexPOS */}
+      {/* Technical Architecture & Operational Advantages */}
       <WhyChooseUsSection />
 
-      {/* Interactive Terminal Demo */}
-      <LiveDemoSection />
-
-      {/* Pricing Plans */}
+      {/* Subscription Pricing */}
       <PricingSection />
 
-      {/* Platform FAQ */}
+      {/* Frequently Asked Questions */}
       <FAQSection />
 
-      {/* Direct Contact */}
-      <ContactSection />
+      {/* Contact & Enterprise Inquiries */}
+      <ContactSection id="contact" />
 
-      {/* Standardized Footer */}
+      {/* Footer */}
       <Footer />
     </div>
   );
 }
 
 export default Landing;
-

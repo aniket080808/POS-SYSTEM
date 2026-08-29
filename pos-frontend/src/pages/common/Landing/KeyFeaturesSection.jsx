@@ -1,85 +1,102 @@
-import React from 'react'
+import React from "react";
 import {
-  BarChart3,
-  ShieldCheck,
+  ShoppingCart,
   Store,
-  FileSpreadsheet,
-  Users,
-  ScanBarcode,
   Layers,
-  ReceiptText,
-} from 'lucide-react'
+  FileSpreadsheet,
+  BellRing,
+  Clock3,
+} from "lucide-react";
 
-const keyFeatures = [
+const realPlatformModules = [
   {
-    icon: <ScanBarcode className="w-6 h-6" />,
-    title: "Barcode Scanning & Checkout",
-    description: "Instant barcode and SKU lookup with continuous item scanning and real-time total computation."
+    icon: <ShoppingCart className="w-6 h-6 text-accent" />,
+    title: "Cashier Terminal & Quick Tender",
+    description:
+      "Barcode & SKU searching, dynamic cart calculation, percentage and fixed discounts, partial tenders, and automated thermal/PDF invoice rendering.",
+    tag: "Cashier Portal",
   },
   {
-    icon: <Layers className="w-6 h-6" />,
-    title: "Multi-Branch Inventory",
-    description: "Track separate branch inventory allocations, low stock warnings, and out-of-stock guardrails."
+    icon: <Store className="w-6 h-6 text-accent" />,
+    title: "Multi-Branch Inventory Synchronization",
+    description:
+      "Maintain a centralized master product catalog with branch-specific stock levels, price variations, SKU lookups, and branch operational hours.",
+    tag: "Store Admin",
   },
   {
-    icon: <ReceiptText className="w-6 h-6" />,
-    title: "Thermal Receipts & Invoices",
-    description: "Generate instant print-ready receipts with discount line items and branch tax information."
+    icon: <Clock3 className="w-6 h-6 text-accent" />,
+    title: "Shift Auditing & Cash Reconciliation",
+    description:
+      "Track shift opening amounts, cash-in/cash-out drawer transactions, real-time sales tallies, refund logs, and end-of-shift reconciliation reports.",
+    tag: "Shift Management",
   },
   {
-    icon: <ShieldCheck className="w-6 h-6" />,
-    title: "5-Tier Role Access Control",
-    description: "Strictly isolated views for Super Admins, Store Admins, Managers, and Cashier terminals."
+    icon: <Layers className="w-6 h-6 text-accent" />,
+    title: "5-Tier Role-Based Access Control",
+    description:
+      "Strict route gating and API permission boundaries across Super Admin, Store Admin, Store Manager, Branch Manager, and Branch Cashier roles.",
+    tag: "Security & Auth",
   },
   {
-    icon: <FileSpreadsheet className="w-6 h-6" />,
-    title: "PDF & Excel Report Exports",
-    description: "One-click export of sales records, employee lists, branch breakdowns, and return reports."
+    icon: <BellRing className="w-6 h-6 text-accent" />,
+    title: "STOMP WebSocket Operational Alerts",
+    description:
+      "Instant live push notifications for low inventory thresholds, inactive cashier alerts, daily branch opening status, and refund anomalies.",
+    tag: "Live Alerts",
   },
   {
-    icon: <Store className="w-6 h-6" />,
-    title: "Cashier Shift Reconciliation",
-    description: "Shift opening & closing cash drawer audits, expected vs actual cash tracking, and refund logs."
-  }
-]
+    icon: <FileSpreadsheet className="w-6 h-6 text-accent" />,
+    title: "Analytics & Multi-Format Exports",
+    description:
+      "Comprehensive daily/monthly sales volume breakdowns, cashier performance metrics, customer histories, and formatted Excel & PDF downloads.",
+    tag: "Reporting Engine",
+  },
+];
 
 const KeyFeaturesSection = () => {
   return (
-    <section id="features" className="py-20 bg-muted/30 border-y border-border/60">
+    <section id="features" className="py-20 bg-muted/30 border-b border-border/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-semibold uppercase tracking-wider text-primary mb-2 block">
-            Core Architecture
+          <span className="text-xs font-bold uppercase tracking-wider text-accent">
+            Core Modules
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
-            Everything Built for Real Retail Operations
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight mt-2 mb-4">
+            Built for High-Throughput Retail Operations
           </h2>
-          <p className="text-base text-muted-foreground">
-            Engineered from ground up with specialized workflows for store owners, branch managers, and checkout cashiers.
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            Every feature is natively integrated into the NexPOS platform to eliminate redundant tooling and maintain operational data integrity.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {keyFeatures.map((feature, index) => (
+          {realPlatformModules.map((feature, index) => (
             <div
               key={index}
-              className="bg-card rounded-2xl p-7 border border-border/80 shadow-2xs hover:shadow-md hover:border-primary/40 transition-all duration-200 group"
+              className="bg-card rounded-2xl p-6 shadow-xs hover:shadow-md transition-shadow border border-border/80 flex flex-col justify-between"
             >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-5 group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-200">
-                {feature.icon}
+              <div>
+                <div className="flex items-center justify-between mb-5">
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center border border-border/60">
+                    {feature.icon}
+                  </div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground border border-border/60">
+                    {feature.tag}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-foreground mb-2">
+                  {feature.title}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {feature.description}
+                </p>
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">
-                {feature.title}
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {feature.description}
-              </p>
             </div>
           ))}
         </div>
       </div>
     </section>
-  )
-}
+  );
+};
 
-export default KeyFeaturesSection
+export default KeyFeaturesSection;

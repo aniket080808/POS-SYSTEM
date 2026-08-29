@@ -1,119 +1,103 @@
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "../../../components/ui/button";
-import {
-  Play,
-  ArrowRight,
-  X,
-  CheckCircle,
-  Store,
-  BarChart3,
-  Shield,
-  Layers,
-  Sparkles,
-  Terminal,
-  Receipt,
-  Users
-} from "lucide-react";
+import { ArrowRight, ShoppingCart, BarChart3, Shield, Zap, RefreshCw, Layers } from "lucide-react";
 import { useNavigate } from "react-router";
-import { TypewriterText } from "./components";
 
 const HeroSection = () => {
   const navigate = useNavigate();
-  const [showVideo, setShowVideo] = useState(false);
 
   return (
-    <section className="pt-28 pb-20 bg-background relative overflow-hidden selection:bg-primary/20">
-      {/* Background Accent Gradients */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-gradient-to-b from-primary/10 via-primary/5 to-transparent blur-3xl pointer-events-none" />
-
+    <section className="pt-32 pb-20 bg-linear-to-b from-muted/60 via-background to-background relative overflow-hidden border-b border-border/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center max-w-4xl mx-auto">
-          {/* Release Badge */}
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-wider mb-6">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Next-Generation Retail & Multi-Branch POS</span>
+          {/* Badge Pill */}
+          <div className="inline-flex items-center gap-2 bg-accent/15 border border-accent/30 text-foreground px-4 py-1.5 rounded-full text-xs font-bold mb-8 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            NexPOS Enterprise Retail Architecture
           </div>
 
-          {/* Heading */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
-            Unified Point of Sale for{" "}
-            <span className="bg-gradient-to-r from-primary via-teal-500 to-emerald-600 bg-clip-text text-transparent block sm:inline">
-              Modern Enterprise Retail
+          {/* Main Headline */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight leading-[1.15] mb-6">
+            Multi-Branch Point of Sale & <br className="hidden sm:inline" />
+            <span className="text-accent underline decoration-accent/40 decoration-wavy underline-offset-8">
+              Real-Time Store Operations
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Fast barcode checkouts, branch-level inventory control, cashier shift auditing, and automated financial reports — all unified in one cloud terminal.
+          <p className="text-base sm:text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+            Unified retail operations: high-speed barcode checkout, live inventory synchronization, automated cashier shift auditing, 5-tier role-based security, and instant financial reports.
           </p>
 
-          {/* Feature Badges */}
-          <div className="flex flex-wrap justify-center gap-2.5 mb-9">
-            {[
-              { icon: <Terminal className="w-3.5 h-3.5" />, text: "Tablet-Ready Cashier Terminal" },
-              { icon: <Layers className="w-3.5 h-3.5" />, text: "Multi-Branch Catalog Sync" },
-              { icon: <Receipt className="w-3.5 h-3.5" />, text: "Instant Thermal Invoicing" },
-              { icon: <Shield className="w-3.5 h-3.5" />, text: "Role-Based Gated Portals" },
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-1.5 bg-card/80 backdrop-blur-sm rounded-full px-3.5 py-1 text-xs font-medium text-foreground shadow-2xs border border-border/80"
-              >
-                <span className="text-primary">{feature.icon}</span>
-                <span>{feature.text}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row gap-3.5 justify-center items-center">
+          {/* CTA Group */}
+          <div className="flex flex-col sm:flex-row gap-3.5 justify-center items-center mb-14">
             <Button
               onClick={() => navigate("/auth/onboarding")}
               size="lg"
-              className="h-12 px-7 text-sm font-semibold rounded-xl gap-2 shadow-sm cursor-pointer"
+              className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 h-12 rounded-xl shadow-sm text-sm"
             >
-              <span>Get Started</span>
-              <ArrowRight className="w-4 h-4" />
+              Start Free Store Setup
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
             <Button
               variant="outline"
               size="lg"
-              className="h-12 px-7 text-sm font-semibold rounded-xl gap-2 cursor-pointer"
-              onClick={() => {
-                const el = document.getElementById("demo");
-                if (el) el.scrollIntoView({ behavior: "smooth" });
-              }}
+              className="w-full sm:w-auto font-semibold px-8 h-12 rounded-xl border-border bg-card text-foreground hover:bg-muted text-sm shadow-2xs"
+              onClick={() => navigate("/auth/login")}
             >
-              <Terminal className="w-4 h-4 text-primary" />
-              <span>Explore Interactive Terminal</span>
+              Cashier & Admin Sign In
             </Button>
           </div>
-        </div>
 
-        {/* Real Architecture Pillar Highlights */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto mt-16 pt-8 border-t border-border/60">
-          <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-5 border border-border/80 text-center shadow-2xs">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
-              <Users className="w-5 h-5" />
+          {/* Real Capability Badges */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 text-left max-w-4xl mx-auto">
+            <div className="bg-card border border-border/80 rounded-xl p-4 shadow-2xs">
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <div className="w-8 h-8 rounded-lg bg-accent/15 text-accent-foreground flex items-center justify-center font-bold">
+                  <ShoppingCart className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Fast Terminal</h4>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Barcode scanning, quick discounts, and instant PDF invoice generation.
+              </p>
             </div>
-            <div className="text-xl font-bold font-mono text-foreground">5 Dedicated Portals</div>
-            <div className="text-xs text-muted-foreground mt-1">Super Admin, Store Admin, Store Manager, Branch Manager & Cashier</div>
-          </div>
 
-          <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-5 border border-border/80 text-center shadow-2xs">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
-              <Store className="w-5 h-5" />
+            <div className="bg-card border border-border/80 rounded-xl p-4 shadow-2xs">
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+                  <RefreshCw className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Live WebSocket</h4>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                STOMP live alerts for low inventory thresholds and branch activity.
+              </p>
             </div>
-            <div className="text-xl font-bold font-mono text-foreground">Branch Inventory Hub</div>
-            <div className="text-xs text-muted-foreground mt-1">Independent branch stock levels, alert thresholds, and product catalog controls</div>
-          </div>
 
-          <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-5 border border-border/80 text-center shadow-2xs">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
-              <BarChart3 className="w-5 h-5" />
+            <div className="bg-card border border-border/80 rounded-xl p-4 shadow-2xs">
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <div className="w-8 h-8 rounded-lg bg-accent/15 text-accent-foreground flex items-center justify-center font-bold">
+                  <Shield className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">5-Tier RBAC</h4>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Super Admin, Store Admin, Store Manager, Branch Manager & Cashier.
+              </p>
             </div>
-            <div className="text-xl font-bold font-mono text-foreground">Shift & Report Auditing</div>
-            <div className="text-xs text-muted-foreground mt-1">Opening/closing drawer totals, payment breakdowns, and PDF/Excel export reports</div>
+
+            <div className="bg-card border border-border/80 rounded-xl p-4 shadow-2xs">
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+                  <BarChart3 className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Data Exports</h4>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Sales analytics with one-click multi-format PDF and Excel reports.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -122,4 +106,3 @@ const HeroSection = () => {
 };
 
 export default HeroSection;
-
