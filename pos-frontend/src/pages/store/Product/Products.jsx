@@ -294,7 +294,7 @@ export default function Products() {
             size="sm"
             onClick={() => setIsAiScanModalOpen(true)}
             className="text-xs h-10 gap-1.5 cursor-pointer border-[#C9A227]/50 text-[#C9A227] hover:bg-[#C9A227]/10 font-bold shadow-2xs"
-            title="Scan paper or PDF invoice using Gemini AI"
+            title="Scan paper or PDF invoice using Groq AI"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#C9A227]" /> AI Invoice OCR
           </Button>
@@ -427,7 +427,7 @@ export default function Products() {
         </CardContent>
       </Card>
 
-      {/* Gemini AI Invoice Vision OCR Modal */}
+      {/* Groq AI Invoice Vision OCR Modal */}
       <AiInvoiceScannerModal
         open={isAiScanModalOpen}
         onOpenChange={setIsAiScanModalOpen}

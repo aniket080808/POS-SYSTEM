@@ -324,8 +324,8 @@ const AiCopilotWidget = () => {
                   <Bot className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-secondary border border-border">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B8860B]" />
-                  <span>Gemini is analyzing retail data...</span>
+                  <Sparkles className="w-3.5 h-3.5 text-[#C9A227] animate-spin" />
+                  <span>Groq AI is analyzing retail data...</span>
                 </div>
               </div>
             )}

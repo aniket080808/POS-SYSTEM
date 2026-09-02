@@ -44,13 +44,13 @@ public class GroqAiServiceImpl implements AiService {
     @Value("${groq.api.url:https://api.groq.com/openai/v1/chat/completions}")
     private String groqApiUrl;
 
-    @Value("${groq.model:llama-3.3-70b-versatile}")
+    @Value("${groq.model:openai/gpt-oss-120b}")
     private String groqModel;
 
-    @Value("${groq.fast-model:llama-3.1-8b-instant}")
+    @Value("${groq.fast-model:openai/gpt-oss-20b}")
     private String groqFastModel;
 
-    @Value("${groq.vision-model:llama-3.2-11b-vision-preview}")
+    @Value("${groq.vision-model:openai/gpt-oss-120b}")
     private String groqVisionModel;
 
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");

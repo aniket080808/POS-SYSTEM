@@ -240,7 +240,7 @@ const AiInvoiceScannerModal = ({ open, onOpenChange, storeId }) => {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-bold text-foreground">
-                  Gemini AI Vision is Analyzing Document...
+                  Groq Vision is Analyzing Document...
                 </p>
                 <p className="text-xs text-muted-foreground max-w-sm">
                   Detecting item names, wholesale cost, selling prices, tax rates, batch numbers, and expiry dates.

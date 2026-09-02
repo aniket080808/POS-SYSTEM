@@ -1,7 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 
-// 1. Scan Supplier Invoice using Gemini Vision OCR
+// 1. Scan Supplier Invoice using Groq Vision OCR
 export const scanSupplierInvoice = createAsyncThunk(
   "ai/scanSupplierInvoice",
   async (formData, { rejectWithValue }) => {
@@ -26,7 +26,7 @@ export const scanSupplierInvoice = createAsyncThunk(
   }
 );
 
-// 2. Query Gemini Retail Copilot
+// 2. Query Groq Retail Copilot
 export const queryCopilot = createAsyncThunk(
   "ai/queryCopilot",
   async (payload, { rejectWithValue }) => {
