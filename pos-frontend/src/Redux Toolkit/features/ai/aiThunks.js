@@ -26,26 +26,6 @@ export const scanSupplierInvoice = createAsyncThunk(
   }
 );
 
-// 2. Query Groq Retail Copilot
-export const queryCopilot = createAsyncThunk(
-  "ai/queryCopilot",
-  async (payload, { rejectWithValue }) => {
-    try {
-      const response = await api.post("/api/ai/copilot-query", payload);
-      if (response.data && response.data.success) {
-        return response.data;
-      }
-      return rejectWithValue(response.data?.errorMessage || "Could not generate AI insights");
-    } catch (error) {
-      const message =
-        error.response?.data?.errorMessage ||
-        error.response?.data?.message ||
-        error.message ||
-        "Copilot query failed";
-      return rejectWithValue(message);
-    }
-  }
-);
 
 // 3. Get Cart Upsell / Cross-sell Recommendations
 export const getUpsellSuggestions = createAsyncThunk(

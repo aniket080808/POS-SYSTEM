@@ -14,7 +14,6 @@ import Onboarding from "./pages/onboarding/Onboarding";
 import { getStoreByAdmin } from "./Redux Toolkit/features/store/storeThunks";
 import SuperAdminRoutes from "./routes/SuperAdminRoutes";
 import PageNotFound from "./pages/common/PageNotFound";
-import AiCopilotWidget from "./components/ai/AiCopilotWidget";
 
 const App = () => {
   const dispatch = useDispatch();
@@ -148,12 +147,7 @@ const App = () => {
     );
   }
 
-  return (
-    <>
-      {content}
-      {userProfile && <AiCopilotWidget />}
-    </>
-  );
+  return content;
 };
 
 export default App;

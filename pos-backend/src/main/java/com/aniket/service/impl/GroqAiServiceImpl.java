@@ -1,12 +1,7 @@
 package com.aniket.service.impl;
 
-import com.aniket.domain.ApprovalRequestStatus;
-import com.aniket.domain.UserRole;
-import com.aniket.modal.*;
 import com.aniket.payload.dto.ai.*;
-import com.aniket.repository.*;
 import com.aniket.service.AiService;
-import com.aniket.service.UserService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,18 +22,6 @@ public class GroqAiServiceImpl implements AiService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    private final UserService userService;
-    private final StoreRepository storeRepository;
-    private final BranchRepository branchRepository;
-    private final UserRepository userRepository;
-    private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
-    private final BranchInventoryRepository branchInventoryRepository;
-    private final ProductRepository productRepository;
-    private final CustomerRepository customerRepository;
-    private final SubscriptionPlanRepository subscriptionPlanRepository;
-    private final StoreSubscriptionRepository storeSubscriptionRepository;
-    private final ApprovalRequestRepository approvalRequestRepository;
 
     @Value("${groq.api.key:}")
     private String groqApiKey;
@@ -58,18 +37,6 @@ public class GroqAiServiceImpl implements AiService {
 
     @Value("${groq.vision-model:openai/gpt-oss-120b}")
     private String groqVisionModel;
-
-    private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
-
-    // Concurrent In-Memory DB Load Shield Cache (TTL = 90 seconds)
-    private static final long CACHE_TTL_MILLIS = 90_000L;
-    private final Map<String, CachedContextEntry> roleContextCache = new java.util.concurrent.ConcurrentHashMap<>();
-
-    private record CachedContextEntry(Map<String, Object> data, long timestamp) {
-        boolean isExpired() {
-            return System.currentTimeMillis() - timestamp > CACHE_TTL_MILLIS;
-        }
-    }
 
     @Override
     public InvoiceExtractionResponse scanSupplierInvoice(MultipartFile file) {
@@ -98,62 +65,53 @@ public class GroqAiServiceImpl implements AiService {
             String base64Content = Base64.getEncoder().encodeToString(fileBytes);
             String dataUrl = "data:" + mimeType + ";base64," + base64Content;
 
-            String systemPrompt = """
-                    You are an expert Supermarket and Retail POS Invoice Ingestion Assistant.
-                    Analyze this supplier invoice image. Extract all line items and header details precisely into valid JSON.
-                    
-                    Return ONLY a valid JSON object strictly matching this schema with no markdown formatting or extra text:
+            String prompt = """
+                    Extract all items, quantities, prices, taxes, supplier info, and invoice details from this supplier invoice image.
+                    Return pure JSON strictly with this schema:
                     {
-                      "supplierName": "String or null",
-                      "invoiceNumber": "String or null",
-                      "invoiceDate": "YYYY-MM-DD or null",
-                      "totalAmount": 0.0,
-                      "totalTax": 0.0,
-                      "rawSummary": "Brief 1-2 sentence summary of the invoice",
+                      "supplierName": "Supplier / Wholesaler Name",
+                      "invoiceNumber": "INV-12345",
+                      "invoiceDate": "YYYY-MM-DD",
+                      "totalAmount": 12500.50,
+                      "totalTax": 1500.00,
                       "items": [
                         {
                           "name": "Product Name",
-                          "sku": "SKU or null",
-                          "barcode": "Barcode or null",
-                          "category": "Category name (e.g. Dairy, Grocery, Snacks, Beverage, Bakery, Produce, Personal Care)",
-                          "mrp": 0.0,
-                          "sellingPrice": 0.0,
-                          "costPrice": 0.0,
-                          "quantity": 1,
-                          "unit": "PCS, KG, PACK, GM, LTR",
-                          "batchNumber": "Batch or Lot number or null",
-                          "expiryDate": "YYYY-MM-DD or null",
-                          "manufacturingDate": "YYYY-MM-DD or null",
-                          "taxRate": 0.0,
-                          "hsnCode": "HSN code or null",
-                          "description": "Short item description"
+                          "sku": "PROD-SKU",
+                          "barcode": "Barcode if visible",
+                          "category": "Dairy / Snacks / Beverages / Grocery",
+                          "mrp": 100.0,
+                          "sellingPrice": 95.0,
+                          "costPrice": 80.0,
+                          "quantity": 50,
+                          "unit": "PCS / KG / PACK",
+                          "taxRate": 5.0
                         }
-                      ]
+                      ],
+                      "rawSummary": "Brief overview of items on invoice"
                     }
-                    All numeric fields must be numbers, not strings.
                     """;
 
-            List<Map<String, Object>> contentParts = new ArrayList<>();
-
+            List<Map<String, Object>> contentList = new ArrayList<>();
             Map<String, Object> textPart = new HashMap<>();
             textPart.put("type", "text");
-            textPart.put("text", systemPrompt);
-            contentParts.add(textPart);
+            textPart.put("text", prompt);
+            contentList.add(textPart);
 
-            Map<String, Object> imgPart = new HashMap<>();
-            imgPart.put("type", "image_url");
-            Map<String, String> imgUrl = new HashMap<>();
-            imgUrl.put("url", dataUrl);
-            imgPart.put("image_url", imgUrl);
-            contentParts.add(imgPart);
+            Map<String, Object> imagePart = new HashMap<>();
+            imagePart.put("type", "image_url");
+            Map<String, String> imageUrl = new HashMap<>();
+            imageUrl.put("url", dataUrl);
+            imagePart.put("image_url", imageUrl);
+            contentList.add(imagePart);
 
-            Map<String, Object> message = new HashMap<>();
-            message.put("role", "user");
-            message.put("content", contentParts);
+            Map<String, Object> userMsg = new HashMap<>();
+            userMsg.put("role", "user");
+            userMsg.put("content", contentList);
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", groqVisionModel);
-            requestBody.put("messages", List.of(message));
+            requestBody.put("messages", List.of(userMsg));
             requestBody.put("temperature", 0.1);
             Map<String, String> responseFormat = new HashMap<>();
             responseFormat.put("type", "json_object");
@@ -165,7 +123,9 @@ public class GroqAiServiceImpl implements AiService {
                 JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
                 if (!contentNode.isMissingNode()) {
                     String jsonText = cleanJsonString(contentNode.asText());
-                    return objectMapper.readValue(jsonText, InvoiceExtractionResponse.class);
+                    InvoiceExtractionResponse response = objectMapper.readValue(jsonText, InvoiceExtractionResponse.class);
+                    response.setSuccess(true);
+                    return response;
                 }
             }
         } catch (Exception e) {
@@ -173,95 +133,6 @@ public class GroqAiServiceImpl implements AiService {
         }
 
         return buildMockInvoiceExtraction();
-    }
-
-    @Override
-    public AiCopilotResponse processCopilotQuery(AiCopilotRequest request) {
-        if (request == null || request.getQuery() == null || request.getQuery().trim().isEmpty()) {
-            return AiCopilotResponse.builder()
-                    .success(false)
-                    .intent("GENERAL_ADVICE")
-                    .answerMarkdown("Please provide a question or request for the AI Copilot.")
-                    .build();
-        }
-
-        // 1. Gather STRICT role-scoped live data from database
-        Map<String, Object> liveContext = gatherStrictRoleScopedContext();
-
-        // 2. Query Groq LPU inference
-        if (groqApiKey != null && !groqApiKey.trim().isEmpty() && !groqApiKey.contains("your_groq_api_key")) {
-            try {
-                String systemPrompt = buildSystemPrompt(liveContext);
-
-                List<Map<String, Object>> groqMessages = new ArrayList<>();
-                Map<String, Object> sysMsg = new HashMap<>();
-                sysMsg.put("role", "system");
-                sysMsg.put("content", systemPrompt);
-                groqMessages.add(sysMsg);
-
-                // Multi-turn context memory: Add last 6 message turns from conversation history
-                if (request.getMessages() != null && !request.getMessages().isEmpty()) {
-                    int total = request.getMessages().size();
-                    int startIdx = Math.max(0, total - 6);
-                    for (int i = startIdx; i < total; i++) {
-                        AiCopilotRequest.ChatMessageDto prev = request.getMessages().get(i);
-                        if (prev != null && prev.getContent() != null && !prev.getContent().trim().isEmpty()) {
-                            String msgRole = "assistant".equalsIgnoreCase(prev.getRole()) ? "assistant" : "user";
-                            Map<String, Object> turnMsg = new HashMap<>();
-                            turnMsg.put("role", msgRole);
-                            turnMsg.put("content", prev.getContent().trim());
-                            groqMessages.add(turnMsg);
-                        }
-                    }
-                }
-
-                // Current user query
-                Map<String, Object> userMsg = new HashMap<>();
-                userMsg.put("role", "user");
-                userMsg.put("content", request.getQuery());
-                groqMessages.add(userMsg);
-
-                Map<String, Object> requestBody = new HashMap<>();
-                requestBody.put("model", groqModel);
-                requestBody.put("messages", groqMessages);
-                requestBody.put("temperature", 0.3);
-                Map<String, String> responseFormat = new HashMap<>();
-                responseFormat.put("type", "json_object");
-                requestBody.put("response_format", responseFormat);
-
-                String responseBody = executeGroqCall(requestBody, groqModel);
-                if (responseBody != null) {
-                    JsonNode root = objectMapper.readTree(responseBody);
-                    JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
-                    if (!contentNode.isMissingNode()) {
-                        String jsonText = cleanJsonString(contentNode.asText());
-                        JsonNode parsed = objectMapper.readTree(jsonText);
-
-                        String intent = parsed.path("intent").asText("GENERAL_ADVICE");
-                        String answerMarkdown = parsed.path("answerMarkdown").asText();
-                        List<String> followUps = new ArrayList<>();
-                        if (parsed.has("suggestedFollowUps") && parsed.get("suggestedFollowUps").isArray()) {
-                            for (JsonNode f : parsed.get("suggestedFollowUps")) {
-                                followUps.add(f.asText());
-                            }
-                        }
-
-                        return AiCopilotResponse.builder()
-                                .success(true)
-                                .intent(intent)
-                                .answerMarkdown(answerMarkdown)
-                                .dataSnapshot(liveContext)
-                                .suggestedFollowUps(followUps)
-                                .build();
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Groq LPU API call failed, falling back to role-scoped intelligence: {}", e.getMessage());
-            }
-        }
-
-        // High-Precision Role-Scoped Database Intelligence Fallback
-        return generateLocalStoreCopilotInsight(request.getQuery(), liveContext);
     }
 
     @Override
@@ -278,18 +149,20 @@ public class GroqAiServiceImpl implements AiService {
                         You are an AI Cashier Upsell Assistant for an Indian Supermarket / Retail Store.
                         Current Cart Items: [%s]
                         
-                        Based on these cart items, suggest 2 complementary, high-margin items that shoppers frequently buy together (cross-selling / impulse items).
+                        Based on Indian consumer buying habits (e.g. Chai with Biscuits/Rusk, Maggi with Cheese, Cold drinks with Chips/Namkeen):
+                        Suggest 2-3 high-margin complementary impulse add-on items that a cashier can pitch in 5 seconds.
                         
-                        Return strictly valid JSON with this schema:
+                        Return pure JSON strictly with this schema:
                         {
-                          "pitchMessage": "Short cashier phrase e.g. Add Jam at 10%% off with this Bread!",
+                          "pitchMessage": "Short, polite 1-sentence cashier pitch in Hinglish/English",
                           "recommendations": [
                             {
-                              "name": "Complementary Product Name",
-                              "category": "Category",
-                              "price": 0.0,
-                              "discountPercentage": 10.0,
-                              "reason": "1-sentence cashier pitch line explaining why to add this item"
+                              "productId": 101,
+                              "name": "Product Name",
+                              "category": "Snacks / Beverages / Confectionery",
+                              "price": 40.0,
+                              "discountPercentage": 5.0,
+                              "reason": "Why it pairs well"
                             }
                           ]
                         }
@@ -297,7 +170,7 @@ public class GroqAiServiceImpl implements AiService {
 
                 Map<String, Object> sysMsg = new HashMap<>();
                 sysMsg.put("role", "system");
-                sysMsg.put("content", "You are an expert retail cashier assistant that outputs strictly valid JSON.");
+                sysMsg.put("content", "You are a retail POS cashier impulse up-sell specialist. Respond only in strict JSON format.");
 
                 Map<String, Object> userMsg = new HashMap<>();
                 userMsg.put("role", "user");
@@ -319,19 +192,20 @@ public class GroqAiServiceImpl implements AiService {
                         String jsonText = cleanJsonString(contentNode.asText());
                         JsonNode parsed = objectMapper.readTree(jsonText);
                         pitchMessage = parsed.path("pitchMessage").asText(pitchMessage);
+
                         if (parsed.has("recommendations") && parsed.get("recommendations").isArray()) {
-                            long mockId = 1001L;
-                            for (JsonNode r : parsed.get("recommendations")) {
+                            for (JsonNode itemNode : parsed.get("recommendations")) {
                                 recommendations.add(AiUpsellResponse.UpsellItemDto.builder()
-                                        .productId(mockId++)
-                                        .name(r.path("name").asText())
-                                        .category(r.path("category").asText("Grocery"))
-                                        .price(r.path("price").asDouble(45.0))
-                                        .discountPercentage(r.path("discountPercentage").asDouble(5.0))
-                                        .reason(r.path("reason").asText())
+                                        .productId(itemNode.path("productId").asLong(101L))
+                                        .name(itemNode.path("name").asText("Impulse Add-on Item"))
+                                        .category(itemNode.path("category").asText("Snacks"))
+                                        .price(itemNode.path("price").asDouble(35.0))
+                                        .discountPercentage(itemNode.path("discountPercentage").asDouble(0.0))
+                                        .reason(itemNode.path("reason").asText("Frequently bought together"))
                                         .build());
                             }
                         }
+
                         if (!recommendations.isEmpty()) {
                             return AiUpsellResponse.builder()
                                     .success(true)
@@ -342,11 +216,11 @@ public class GroqAiServiceImpl implements AiService {
                     }
                 }
             } catch (Exception e) {
-                log.warn("Groq fast upsell recommendation fallback triggered: {}", e.getMessage());
+                log.warn("Groq Upsell suggestion call failed, falling back to heuristic: {}", e.getMessage());
             }
         }
 
-        // Rule-based fallback
+        // Standard smart retail heuristics
         recommendations.add(AiUpsellResponse.UpsellItemDto.builder()
                 .productId(201L)
                 .name("Premium Filter Coffee / Tea Masala Pack")
@@ -368,827 +242,6 @@ public class GroqAiServiceImpl implements AiService {
                 .success(true)
                 .recommendations(recommendations)
                 .pitchMessage(pitchMessage)
-                .build();
-    }
-
-    private Map<String, Object> gatherStrictRoleScopedContext() {
-        User currentUser = null;
-        try {
-            currentUser = userService.getCurrentUser();
-        } catch (Exception ignored) {}
-
-        UserRole role = currentUser != null ? currentUser.getRole() : UserRole.ROLE_STORE_ADMIN;
-        Long userId = currentUser != null ? currentUser.getId() : 0L;
-        String cacheKey = (role != null ? role.name() : "ROLE_STORE_ADMIN") + ":" + userId;
-
-        CachedContextEntry cached = roleContextCache.get(cacheKey);
-        if (cached != null && !cached.isExpired()) {
-            log.debug("Serving AI context from DB-shield cache for key: {}", cacheKey);
-            return new HashMap<>(cached.data());
-        }
-
-        Map<String, Object> fresh = queryFreshRoleScopedContext(currentUser, role);
-        roleContextCache.put(cacheKey, new CachedContextEntry(fresh, System.currentTimeMillis()));
-        return fresh;
-    }
-
-    private Map<String, Object> queryFreshRoleScopedContext(User currentUser, UserRole role) {
-        Map<String, Object> context = new HashMap<>();
-        try {
-            String roleName = role != null ? role.name() : "ROLE_STORE_ADMIN";
-            String userFullName = currentUser != null && currentUser.getFullName() != null ? currentUser.getFullName() : "Team Member";
-
-            context.put("userRole", roleName);
-            context.put("userFullName", userFullName);
-
-            // Time boundaries in IST
-            LocalDateTime nowInIst = LocalDateTime.now(IST_ZONE);
-            LocalDateTime startOfToday = nowInIst.toLocalDate().atStartOfDay();
-            LocalDateTime startOfYesterday = startOfToday.minusDays(1);
-            LocalDateTime endOfYesterday = startOfToday.minusNanos(1);
-            LocalDateTime startOf7DaysAgo = startOfToday.minusDays(7);
-            LocalDateTime startOf30DaysAgo = startOfToday.minusDays(30);
-            context.put("todayDate", nowInIst.toLocalDate().toString());
-
-            // =========================================================================
-            // PORTAL 1: SUPER ADMIN PORTAL (ROLE_ADMIN)
-            // =========================================================================
-            if (role == UserRole.ROLE_ADMIN) {
-                context.put("scopeType", "SUPER_ADMIN_PORTAL");
-
-                long totalStores = storeRepository.count();
-                long totalBranches = branchRepository.count();
-                long totalUsers = userRepository.count();
-                long totalPlatformOrders = orderRepository.count();
-
-                // Compute real platform GMV & time windows
-                double totalPlatformGmv = 30504.52;
-                double gmvToday = 30504.52;
-                double gmv7Days = 30504.52;
-                double gmv30Days = 30504.52;
-                try {
-                    List<Store> allStores = storeRepository.findAll();
-                    double sumTotal = 0;
-                    double sumToday = 0;
-                    double sum7 = 0;
-                    double sum30 = 0;
-                    for (Store s : allStores) {
-                        if (s.getStoreAdmin() != null) {
-                            Long adminId = s.getStoreAdmin().getId();
-                            sumTotal += orderRepository.sumTotalSalesByStoreAdmin(adminId).orElse(0.0);
-                            sumToday += orderRepository.sumCompletedSalesByStoreAdminAndDateRange(adminId, startOfToday, nowInIst);
-                            sum7 += orderRepository.sumCompletedSalesByStoreAdminAndDateRange(adminId, startOf7DaysAgo, nowInIst);
-                            sum30 += orderRepository.sumCompletedSalesByStoreAdminAndDateRange(adminId, startOf30DaysAgo, nowInIst);
-                        }
-                    }
-                    if (sumTotal > 0) totalPlatformGmv = sumTotal;
-                    if (sumToday > 0) gmvToday = sumToday;
-                    if (sum7 > 0) gmv7Days = sum7;
-                    if (sum30 > 0) gmv30Days = sum30;
-                } catch (Exception ignored) {}
-
-                context.put("gmvToday", gmvToday);
-                context.put("gmv7Days", gmv7Days);
-                context.put("gmv30Days", gmv30Days);
-
-                // Super Admin Subscription Plans
-                List<SubscriptionPlan> plans = subscriptionPlanRepository.findAll();
-                StringBuilder plansSummary = new StringBuilder();
-                if (!plans.isEmpty()) {
-                    for (SubscriptionPlan p : plans) {
-                        plansSummary.append(String.format("  - **%s**: ₹%.2f / %s (Max Branches: %d, Max Users: %d, Max Products: %d, Reports: %s, Inventory: %s)\n",
-                                p.getName(), p.getPrice() != null ? p.getPrice() : 0.0,
-                                p.getBillingCycle() != null ? p.getBillingCycle().name() : "MONTHLY",
-                                p.getMaxBranches() != null ? p.getMaxBranches() : 1,
-                                p.getMaxUsers() != null ? p.getMaxUsers() : 3,
-                                p.getMaxProducts() != null ? p.getMaxProducts() : 1000,
-                                Boolean.TRUE.equals(p.getEnableAdvancedReports()) ? "Yes" : "No",
-                                Boolean.TRUE.equals(p.getEnableInventory()) ? "Yes" : "No"));
-                    }
-                } else {
-                    plansSummary.append("  - No subscription plans configured in database yet.\n");
-                }
-
-                // Pending Approvals count for Super Admin
-                long pendingApprovalsCount = 0;
-                try {
-                    pendingApprovalsCount = approvalRequestRepository.findByStatus(ApprovalRequestStatus.PENDING).size();
-                } catch (Exception ignored) {}
-
-                // Active merchants overview
-                StringBuilder storeListSummary = new StringBuilder();
-                List<Store> stores = storeRepository.findAll();
-                for (Store s : stores) {
-                    storeListSummary.append(String.format("  - %s (Status: %s, Admin: %s)\n",
-                            s.getBrand() != null ? s.getBrand() : "Store",
-                            s.getStatus() != null ? s.getStatus().name() : "ACTIVE",
-                            s.getStoreAdmin() != null ? s.getStoreAdmin().getFullName() : "N/A"));
-                }
-
-                // Super Admin Platform Commissions & Subscription Revenue Sharing (Matching CommissionsPage.jsx)
-                double totalGrossSubRevenue = 0.0;
-                double commRate = 10.0; // 10% platform fee rate as configured on platform
-                double totalCommShare = 0.0;
-                StringBuilder commSummary = new StringBuilder();
-
-                for (Store s : stores) {
-                    StoreSubscription sub = storeSubscriptionRepository.findByStoreId(s.getId()).orElse(null);
-                    double fee = 0.0;
-                    String planTitle = "No Active Plan";
-                    if (sub != null && sub.getCurrentPlan() != null && sub.getCurrentPlan().getPrice() != null) {
-                        fee = sub.getCurrentPlan().getPrice();
-                        planTitle = sub.getCurrentPlan().getName();
-                    }
-                    totalGrossSubRevenue += fee;
-                    double netComm = Math.round(fee * (commRate / 100.0));
-                    totalCommShare += netComm;
-                    commSummary.append(String.format("  - Store: %s | Owner: %s (%s) | Plan: %s | Gross Fee: ₹%.0f | Rate: 10%% | Net Commission: ₹%.0f | Status: %s\n",
-                            s.getBrand() != null ? s.getBrand() : "Store #" + s.getId(),
-                            s.getStoreAdmin() != null && s.getStoreAdmin().getFullName() != null ? s.getStoreAdmin().getFullName() : "N/A",
-                            s.getStoreAdmin() != null && s.getStoreAdmin().getEmail() != null ? s.getStoreAdmin().getEmail() : "N/A",
-                            planTitle, fee, netComm,
-                            s.getStatus() != null ? s.getStatus().name() : "ACTIVE"));
-                }
-
-                if (stores.isEmpty()) {
-                    commSummary.append("  - No merchant stores registered on the platform yet.\n");
-                }
-
-                context.put("totalStores", totalStores);
-                context.put("totalBranches", totalBranches);
-                context.put("totalUsers", totalUsers);
-                context.put("totalPlatformOrders", totalPlatformOrders);
-                context.put("totalPlatformGmv", totalPlatformGmv);
-                context.put("totalCatalogSkus", productRepository.count());
-                context.put("pendingApprovalsCount", pendingApprovalsCount);
-                context.put("subscriptionPlansSummary", plansSummary.toString());
-                context.put("storeListSummary", storeListSummary.toString());
-                context.put("paymentGateway", "Razorpay (UPI, Debit/Credit Cards, Netbanking)");
-                context.put("platformFeeRate", "10%");
-                context.put("totalGrossSubRevenue", totalGrossSubRevenue);
-                context.put("totalCommShare", totalCommShare);
-                context.put("commissionSummary", commSummary.toString());
-                return context;
-            }
-
-            // =========================================================================
-            // RESOLVE STORE & BRANCH FOR STORE/BRANCH STAFF
-            // =========================================================================
-            Store store = null;
-            if (currentUser != null) {
-                try {
-                    store = storeRepository.findByStoreAdminId(currentUser.getId());
-                } catch (Exception ignored) {}
-
-                if (store == null && currentUser.getStore() != null) {
-                    store = currentUser.getStore();
-                }
-
-                if (store == null && currentUser.getBranch() != null) {
-                    store = currentUser.getBranch().getStore();
-                }
-            }
-
-            if (store == null) {
-                List<Store> stores = storeRepository.findAll();
-                if (!stores.isEmpty()) store = stores.get(0);
-            }
-
-            String storeName = store != null && store.getBrand() != null ? store.getBrand() : "Swapnil Mega Mart";
-            Long storeId = store != null ? store.getId() : null;
-            Long storeAdminId = store != null && store.getStoreAdmin() != null ? store.getStoreAdmin().getId() : null;
-
-            context.put("storeName", storeName);
-            context.put("storeId", storeId);
-
-            Branch branch = currentUser != null ? currentUser.getBranch() : null;
-            if (branch == null && storeId != null) {
-                List<Branch> branches = branchRepository.findByStoreId(storeId);
-                if (!branches.isEmpty()) branch = branches.get(0);
-            }
-            Long branchId = branch != null ? branch.getId() : null;
-            String branchName = branch != null && branch.getName() != null ? branch.getName() : "Main Market Branch";
-            context.put("branchName", branchName);
-            context.put("branchId", branchId);
-
-            // =========================================================================
-            // PORTAL 2: CASHIER PORTAL (ROLE_BRANCH_CASHIER)
-            // STRICTLY SCOPED TO THIS CASHIER'S SHIFT ONLY (100% REAL DB DATA)
-            // =========================================================================
-            if (role == UserRole.ROLE_BRANCH_CASHIER) {
-                Long cashierId = currentUser != null ? currentUser.getId() : 0L;
-                long myOrdersCount = 0;
-                double mySalesToday = 0.0;
-                try {
-                    myOrdersCount = orderRepository.countByCashierId(cashierId);
-                    mySalesToday = orderRepository.sumTotalAmountByCashierId(cashierId);
-                } catch (Exception ignored) {}
-
-                context.put("scopeType", "CASHIER_PORTAL");
-                context.put("myOrdersCount", myOrdersCount);
-                context.put("mySalesToday", mySalesToday);
-                context.put("myAverageBill", myOrdersCount > 0 ? (mySalesToday / myOrdersCount) : 0.0);
-                context.put("activeRegister", "Counter Till");
-                context.put("assignedBranch", branchName);
-                return context;
-            }
-
-            // =========================================================================
-            // PORTAL 3: BRANCH ADMIN & BRANCH MANAGER PORTALS
-            // STRICTLY SCOPED TO THIS BRANCH ONLY (100% REAL DB DATA)
-            // =========================================================================
-            if (role == UserRole.ROLE_BRANCH_ADMIN || role == UserRole.ROLE_BRANCH_MANAGER) {
-                double branchTodaySales = 0.0;
-                int branchTodayOrders = 0;
-                if (branchId != null) {
-                    try {
-                        branchTodaySales = orderRepository.getTotalSalesBetween(branchId, startOfToday, nowInIst)
-                                .map(BigDecimal::doubleValue).orElse(0.0);
-                        List<Order> todayBranchOrders = orderRepository.findByBranchIdAndCreatedAtBetween(branchId, startOfToday, nowInIst);
-                        branchTodayOrders = todayBranchOrders.size();
-                    } catch (Exception ignored) {}
-                }
-
-                // Branch Cashiers
-                List<User> branchUsers = branchId != null ? userRepository.findByBranchId(branchId) : Collections.emptyList();
-                long branchCashierCount = branchUsers.stream()
-                        .filter(u -> u.getRole() == UserRole.ROLE_BRANCH_CASHIER)
-                        .count();
-
-                // Branch Low Stock
-                List<Map<String, Object>> branchLowStock = new ArrayList<>();
-                if (storeId != null) {
-                    List<BranchInventory> branchInvs = branchInventoryRepository.findByStoreId(storeId);
-                    for (BranchInventory bi : branchInvs) {
-                        int st = bi.getStock() != null ? bi.getStock() : 0;
-                        if (st <= 15 && branchLowStock.size() < 8) {
-                            Product p = bi.getProduct();
-                            branchLowStock.add(Map.of(
-                                    "name", p != null && p.getName() != null ? p.getName() : "Item",
-                                    "sku", p != null && p.getSku() != null ? p.getSku() : "N/A",
-                                    "stock", st,
-                                    "sellingPrice", bi.getSellingPrice() != null ? bi.getSellingPrice() : 0.0
-                            ));
-                        }
-                    }
-                }
-
-                context.put("scopeType", "BRANCH_PORTAL");
-                context.put("branchTodaySales", branchTodaySales);
-                context.put("branchTodayOrders", branchTodayOrders);
-                context.put("branchAov", branchTodayOrders > 0 ? (branchTodaySales / branchTodayOrders) : 0.0);
-                context.put("branchCashierCount", branchCashierCount);
-                context.put("branchLowStock", branchLowStock);
-                return context;
-            }
-
-            // =========================================================================
-            // PORTAL 4: STORE MANAGER PORTAL (ROLE_STORE_MANAGER)
-            // STORE LOGISTICS, SHIFTS, TARGETS, & INVENTORY FLOW (100% REAL DB DATA)
-            // =========================================================================
-            if (role == UserRole.ROLE_STORE_MANAGER) {
-                context.put("scopeType", "STORE_MANAGER_PORTAL");
-                double todaySales = 0.0;
-                int todayOrders = 0;
-                if (storeAdminId != null) {
-                    todaySales = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
-                    todayOrders = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
-                }
-
-                int storeStaffCount = storeId != null ? userRepository.findAllEmployeesByStoreId(storeId).size() : 0;
-                context.put("todaySales", todaySales);
-                context.put("todayOrders", todayOrders);
-                context.put("storeStaffCount", storeStaffCount);
-                context.put("totalProducts", productRepository.count());
-                return context;
-            }
-
-            // =========================================================================
-            // PORTAL 5: STORE ADMIN / OWNER PORTAL (ROLE_STORE_ADMIN)
-            // BRAND-WIDE REVENUE, BRANCH COMPARISONS, SUBSCRIPTION TIER (100% REAL DB DATA)
-            // =========================================================================
-            context.put("scopeType", "STORE_ADMIN_PORTAL");
-
-            double todaySales = 0.0;
-            double yesterdaySales = 0.0;
-            double sales7Days = 0.0;
-            double sales30Days = 0.0;
-            int todayOrders = 0;
-            int yesterdayOrders = 0;
-            int orders7Days = 0;
-            int orders30Days = 0;
-            double totalLifetimeSales = 0.0;
-            long totalLifetimeOrders = 0;
-
-            if (storeAdminId != null) {
-                todaySales = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
-                yesterdaySales = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOfYesterday, endOfYesterday);
-                sales7Days = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOf7DaysAgo, nowInIst);
-                sales30Days = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOf30DaysAgo, nowInIst);
-
-                todayOrders = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
-                yesterdayOrders = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOfYesterday, endOfYesterday);
-                orders7Days = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOf7DaysAgo, nowInIst);
-                orders30Days = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOf30DaysAgo, nowInIst);
-
-                totalLifetimeSales = orderRepository.sumTotalSalesByStoreAdmin(storeAdminId).orElse(0.0);
-                totalLifetimeOrders = orderRepository.countByStoreAdminId(storeAdminId);
-            }
-
-            context.put("todaySales", todaySales);
-            context.put("yesterdaySales", yesterdaySales);
-            context.put("sales7Days", sales7Days);
-            context.put("sales30Days", sales30Days);
-            context.put("todayOrders", todayOrders);
-            context.put("yesterdayOrders", yesterdayOrders);
-            context.put("orders7Days", orders7Days);
-            context.put("orders30Days", orders30Days);
-            context.put("totalLifetimeSales", totalLifetimeSales);
-            context.put("totalLifetimeOrders", totalLifetimeOrders);
-            context.put("averageOrderValue", todayOrders > 0 ? (todaySales / todayOrders) : 0.0);
-
-            // Customers count for THIS store
-            long storeCustomers = storeId != null ? customerRepository.countByStoreId(storeId) : 0;
-            context.put("totalCustomers", storeCustomers);
-
-            // Branches under this store
-            int activeBranches = storeAdminId != null ? branchRepository.countByStoreAdminId(storeAdminId) : 0;
-            context.put("activeBranches", activeBranches);
-
-            // Store Employees
-            int storeStaff = storeId != null ? userRepository.findAllEmployeesByStoreId(storeId).size() : 0;
-            context.put("storeStaffCount", storeStaff);
-
-            // Store Subscription Status from database
-            String currentPlanName = "No Active Plan";
-            if (storeId != null) {
-                StoreSubscription sub = storeSubscriptionRepository.findByStoreId(storeId).orElse(null);
-                if (sub != null && sub.getCurrentPlan() != null) {
-                    currentPlanName = sub.getCurrentPlan().getName() + " (" + sub.getStatus() + ")";
-                }
-            }
-            context.put("currentPlanName", currentPlanName);
-
-            // Low Stock Items directly from branch inventory
-            List<Map<String, Object>> lowStockList = new ArrayList<>();
-            long totalProducts = productRepository.count();
-            if (storeId != null) {
-                List<BranchInventory> inventories = branchInventoryRepository.findByStoreId(storeId);
-                for (BranchInventory bi : inventories) {
-                    int st = bi.getStock() != null ? bi.getStock() : 0;
-                    if (st <= 15 && lowStockList.size() < 10) {
-                        Product p = bi.getProduct();
-                        Map<String, Object> itemMap = new HashMap<>();
-                        itemMap.put("name", p != null && p.getName() != null ? p.getName() : "Item");
-                        itemMap.put("sku", p != null && p.getSku() != null ? p.getSku() : "N/A");
-                        itemMap.put("stock", st);
-                        itemMap.put("sellingPrice", bi.getSellingPrice() != null ? bi.getSellingPrice() : 0.0);
-                        lowStockList.add(itemMap);
-                    }
-                }
-            }
-
-            context.put("totalProducts", totalProducts);
-            context.put("lowStockItems", lowStockList);
-
-        } catch (Exception e) {
-            log.warn("Error gathering role-scoped live store context: {}", e.getMessage());
-            context.put("scopeType", "STORE_ADMIN_PORTAL");
-            context.put("storeName", "Store");
-            context.put("todaySales", 0.0);
-            context.put("todayOrders", 0);
-            context.put("totalProducts", 0);
-            context.put("totalCustomers", 0);
-        }
-
-        return context;
-    }
-
-    private String buildSystemPrompt(Map<String, Object> context) {
-        String scopeType = (String) context.getOrDefault("scopeType", "STORE_ADMIN_PORTAL");
-        String userFullName = (String) context.getOrDefault("userFullName", "Team Member");
-        String userRole = (String) context.getOrDefault("userRole", "ROLE_STORE_ADMIN");
-
-        // =========================================================================
-        // 1. SUPER ADMIN PORTAL SYSTEM PROMPT
-        // =========================================================================
-        if ("SUPER_ADMIN_PORTAL".equals(scopeType)) {
-            return String.format("""
-                    You are 'NexPOS Super Admin Copilot', the high-level executive platform intelligence agent for the Platform Owner & Creator, %s.
-                    You have access to all data available in the SUPER ADMIN PORTAL.
-                    
-                    SUPER ADMIN PORTAL LIVE DATA SNAPSHOT:
-                    - Creator & Super Admin: %s (%s)
-                    - Onboarded Stores (Merchants): %d active
-                    - Total Operational Branches: %d
-                    - Total Platform Staff Accounts: %d
-                    - Total Platform Orders Completed: %d
-                    - Platform Gross Merchandise Value (GMV): ₹%.2f
-                    - Platform GMV Today: ₹%.2f
-                    - Platform GMV Last 7 Days: ₹%.2f
-                    - Platform GMV Last 30 Days: ₹%.2f
-                    - Total Seeded Catalog Products: %d SKUs
-                    - Pending Store Approvals / Upgrades: %d
-                    - POS Database: Neon Cloud PostgreSQL (100%% Operational)
-                    - Payment Gateway: %s
-                    
-                    PLATFORM COMMISSIONS & SUBSCRIPTION REVENUE SHARING (FROM COMMISSIONS PAGE):
-                    - Platform Fee Rate: %s
-                    - Total Gross Subscription Revenue: ₹%.0f
-                    - Total Commission Share Earned by Platform: ₹%.0f
-                    - Subscription Commission Breakdown:
-%s
-                    
-                    REGISTERED SUBSCRIPTION PLANS ON PLATFORM:
-                    %s
-                    
-                    ONBOARDED STORES LIST:
-                    %s
-                    
-                    SECURITY & ROLE PERMISSIONS:
-                    1. STRICT ISOLATION: You represent the SUPER ADMIN PORTAL. You answer using platform-wide data, merchant lists, subscription tiers, commissions, and system status.
-                    2. WHO HE IS: %s is the CREATOR AND OWNER of this SaaS platform. He does NOT buy plans; he CREATES and MANAGES them.
-                    3. COMMISSIONS & REVENUE SHARING:
-                       - When asked about "platform commission", "total commission share", "commission rate", or revenue sharing:
-                         Cite the EXACT data above:
-                         * Platform Fee Rate: %s
-                         * Total Gross Revenue: ₹%.0f
-                         * Total Commission Share: ₹%.0f (earned from active merchant store subscriptions as recorded in the database)
-                         * Manageable and exportable via CSV from 'Super Admin Dashboard → Commissions'.
-                       - NEVER hallucinate or invent a "2%% order fee" or order-level transaction cut!
-                    4. TIME-RANGE INTELLIGENCE: When asked about today, yesterday, last 7 days, or last 30 days, cite the exact figures above.
-                    5. SUBSCRIPTION QUERIES: State the real plans above accurately. Note that he can create/modify plans in 'Super Admin Dashboard → Subscription Plans'.
-                    6. CASUAL CHAT ("kaise ho", "khana kha liya"): Be warm, smart, and human-like! (e.g. "Main ek AI system hoon %s ji, khana toh nahi khata par server 100%% speed par active hai! 😄 Aap bataiye, aapne khana kha liya?"). NEVER say robotic absurdities like "lunch break set hai".
-                    7. MATCH LANGUAGE: Natural Hinglish if asked in Hindi/Hinglish; polished executive English otherwise.
-                    8. STRICT JSON:
-                    {
-                      "intent": "SALES_ANALYTICS | GENERAL_ADVICE",
-                      "answerMarkdown": "Your response in markdown",
-                      "suggestedFollowUps": ["Q1", "Q2", "Q3"]
-                    }
-                    """,
-                    userFullName, userFullName, userRole,
-                    ((Number) context.getOrDefault("totalStores", 0)).longValue(),
-                    ((Number) context.getOrDefault("totalBranches", 0)).longValue(),
-                    ((Number) context.getOrDefault("totalUsers", 0)).longValue(),
-                    ((Number) context.getOrDefault("totalPlatformOrders", 0)).longValue(),
-                    ((Number) context.getOrDefault("totalPlatformGmv", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("gmvToday", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("gmv7Days", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("gmv30Days", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("totalCatalogSkus", 0)).longValue(),
-                    ((Number) context.getOrDefault("pendingApprovalsCount", 0)).longValue(),
-                    context.getOrDefault("paymentGateway", "Razorpay"),
-                    context.getOrDefault("platformFeeRate", "10%"),
-                    ((Number) context.getOrDefault("totalGrossSubRevenue", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("totalCommShare", 0.0)).doubleValue(),
-                    context.getOrDefault("commissionSummary", "No commissions recorded yet"),
-                    context.getOrDefault("subscriptionPlansSummary", "Standard Plans"),
-                    context.getOrDefault("storeListSummary", "No stores onboarded yet"),
-                    userFullName,
-                    context.getOrDefault("platformFeeRate", "10%"),
-                    ((Number) context.getOrDefault("totalGrossSubRevenue", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("totalCommShare", 0.0)).doubleValue(),
-                    userFullName
-            );
-        }
-
-        // =========================================================================
-        // 2. CASHIER PORTAL SYSTEM PROMPT
-        // =========================================================================
-        if ("CASHIER_PORTAL".equals(scopeType)) {
-            return String.format("""
-                    You are 'NexPOS Cashier Buddy', the checkout counter coach for Cashier %s!
-                    You operate strictly inside the CASHIER POS PORTAL at %s.
-                    
-                    CASHIER PORTAL LIVE DATA SNAPSHOT:
-                    - Cashier Name: %s (%s)
-                    - Active Counter: %s
-                    - Assigned Branch: %s
-                    - My Orders / Bills Punched Today: %d completed bills
-                    - Total Cash/UPI Billed in My Till: ₹%.2f
-                    - My Average Order Value (AOV): ₹%.2f
-                    
-                    SECURITY & ROLE PERMISSIONS:
-                    1. STRICT ISOLATION: You ONLY answer using this cashier's shift data, till collection, and counter checkout tips.
-                    2. NEVER reveal owner profits, store margins, other cashiers' tills, or super admin data to this cashier.
-                    3. GREETINGS & CASUAL CHAT: Warm, punchy, motivating! "Hey %s! Counter is active — you have billed %d customers for ₹%.2f today! How can I help?"
-                    4. COUNTER UPSELLS: Give quick 1-sentence customer pitch lines (e.g. "Suggest cold beverages with snacks!").
-                    5. MATCH LANGUAGE: Friendly Hinglish or conversational English.
-                    6. STRICT JSON:
-                    {
-                      "intent": "SALES_ANALYTICS | GENERAL_ADVICE",
-                      "answerMarkdown": "Your response in markdown",
-                      "suggestedFollowUps": ["My collection today", "Quick impulse upsell phrase", "Tips to bill faster"]
-                    }
-                    """,
-                    userFullName, context.get("assignedBranch"),
-                    userFullName, userRole,
-                    context.getOrDefault("activeRegister", "Counter Till"),
-                    context.getOrDefault("assignedBranch", "Assigned Branch"),
-                    ((Number) context.getOrDefault("myOrdersCount", 0)).longValue(),
-                    ((Number) context.getOrDefault("mySalesToday", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("myAverageBill", 0.0)).doubleValue(),
-                    userFullName,
-                    ((Number) context.getOrDefault("myOrdersCount", 0)).longValue(),
-                    ((Number) context.getOrDefault("mySalesToday", 0.0)).doubleValue()
-            );
-        }
-
-        // =========================================================================
-        // 3. BRANCH PORTAL SYSTEM PROMPT (BRANCH ADMIN / BRANCH MANAGER)
-        // =========================================================================
-        if ("BRANCH_PORTAL".equals(scopeType)) {
-            StringBuilder lowStockSb = new StringBuilder();
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> branchLowStock = (List<Map<String, Object>>) context.get("branchLowStock");
-            if (branchLowStock != null && !branchLowStock.isEmpty()) {
-                for (Map<String, Object> item : branchLowStock) {
-                    lowStockSb.append(String.format("  - %s (SKU: %s, Stock: %s, Selling: ₹%s)\n",
-                            item.get("name"), item.get("sku"), item.get("stock"), item.get("sellingPrice")));
-                }
-            } else {
-                lowStockSb.append("  - All branch items currently have healthy stock (>15 units). No urgent stockout risk.\n");
-            }
-
-            return String.format("""
-                    You are 'NexPOS Branch Commander', the operations advisor for %s, Head of **%s**!
-                    You operate strictly inside the BRANCH PORTAL.
-                    
-                    BRANCH PORTAL LIVE DATA SNAPSHOT:
-                    - Branch: %s
-                    - Branch Manager: %s (%s)
-                    - Today's Branch Revenue: ₹%.2f across %d completed orders
-                    - Branch Average Order Value (AOV): ₹%.2f
-                    - Cashiers on Duty in This Branch: %d
-                    
-                    BRANCH LOW-STOCK ITEMS:
-                    %s
-                    
-                    SECURITY & ROLE PERMISSIONS:
-                    1. STRICT ISOLATION: You ONLY answer using this specific branch's revenue, counter queue speed, and branch stock.
-                    2. NEVER reveal other branches' private performance, store owner's personal income, or Super Admin data.
-                    3. TACTICAL ASSISTANCE: Help with daily counter rush, cashier allocation, and stock replenishment.
-                    4. MATCH LANGUAGE: Natural Hinglish or professional English.
-                    5. STRICT JSON:
-                    {
-                      "intent": "SALES_ANALYTICS | STOCK_FORECAST | GENERAL_ADVICE",
-                      "answerMarkdown": "Your response in markdown",
-                      "suggestedFollowUps": ["Branch revenue today", "Cashier queue pace", "Branch low stock"]
-                    }
-                    """,
-                    userFullName, context.get("branchName"),
-                    context.get("branchName"), userFullName, userRole,
-                    ((Number) context.getOrDefault("branchTodaySales", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("branchTodayOrders", 0)).intValue(),
-                    ((Number) context.getOrDefault("branchAov", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("branchCashierCount", 0)).longValue(),
-                    lowStockSb.toString()
-            );
-        }
-
-        // =========================================================================
-        // 4. STORE MANAGER PORTAL SYSTEM PROMPT
-        // =========================================================================
-        if ("STORE_MANAGER_PORTAL".equals(scopeType)) {
-            return String.format("""
-                    You are 'NexPOS Store Operations Chief', operations advisor for %s, Manager at **%s**!
-                    You operate inside the STORE MANAGER PORTAL.
-                    
-                    STORE MANAGER PORTAL LIVE DATA:
-                    - Store: %s
-                    - Store Manager: %s (%s)
-                    - Today's Store Completed Orders: %d orders (₹%.2f)
-                    - Total Store Staff Count: %d employees
-                    - Active Catalog Size: %d SKUs
-                    
-                    SECURITY & ROLE PERMISSIONS:
-                    1. STRICT ISOLATION: Focus on daily store operations, shift targets, inventory replenishment, and staff coordination.
-                    2. Do NOT discuss Super Admin platform commissions or edit SaaS subscription plans.
-                    3. MATCH LANGUAGE: Natural Hinglish or professional English.
-                    4. STRICT JSON:
-                    {
-                      "intent": "SALES_ANALYTICS | STOCK_FORECAST | GENERAL_ADVICE",
-                      "answerMarkdown": "Your response in markdown",
-                      "suggestedFollowUps": ["Store order pace today", "Staff shift attendance", "Inventory replenishment"]
-                    }
-                    """,
-                    userFullName, context.get("storeName"),
-                    context.get("storeName"), userFullName, userRole,
-                    ((Number) context.getOrDefault("todayOrders", 0)).intValue(),
-                    ((Number) context.getOrDefault("todaySales", 0.0)).doubleValue(),
-                    ((Number) context.getOrDefault("storeStaffCount", 0)).intValue(),
-                    ((Number) context.getOrDefault("totalProducts", 0)).longValue()
-            );
-        }
-
-        // =========================================================================
-        // 5. STORE ADMIN PORTAL SYSTEM PROMPT (STORE OWNER / ADMIN)
-        // =========================================================================
-        StringBuilder lowStockSummary = new StringBuilder();
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> lowStockItems = (List<Map<String, Object>>) context.get("lowStockItems");
-        if (lowStockItems != null && !lowStockItems.isEmpty()) {
-            for (Map<String, Object> item : lowStockItems) {
-                lowStockSummary.append(String.format("  - %s (SKU: %s, Stock: %s pcs, Selling: ₹%s)\n",
-                        item.get("name"), item.get("sku"), item.get("stock"), item.get("sellingPrice")));
-            }
-        } else {
-            lowStockSummary.append("  - All tracked inventory items currently have healthy stock levels (>15 units). No immediate reorders required.\n");
-        }
-
-        return String.format("""
-                You are 'NexPOS Store Co-Founder AI', business partner to Store Owner %s at **%s**!
-                You operate inside the STORE ADMIN PORTAL.
-                
-                STORE ADMIN PORTAL LIVE DATA SNAPSHOT:
-                - Store Name: %s
-                - Store Owner / Admin: %s (%s)
-                - Current Store SaaS Plan: %s
-                - Today's Completed Revenue: ₹%.2f across %d orders
-                - Yesterday's Revenue: ₹%.2f (%d orders)
-                - Past 7 Days Total Revenue: ₹%.2f across %d orders
-                - Past 30 Days Total Revenue: ₹%.2f across %d orders
-                - Average Order Value (AOV): ₹%.2f
-                - Lifetime Store Revenue: ₹%.2f (%d total orders)
-                - Active Branches under This Store: %d
-                - Total Store Employees: %d
-                - Store Registered Customers: %d
-                - Total Catalog SKUs Tracked: %d
-                
-                LOW STOCK REORDER ALERTS:
-                %s
-                
-                SECURITY & ROLE PERMISSIONS:
-                1. STRICT ISOLATION: You ONLY answer using this store's brand data, branches, catalog, and customers.
-                2. TIME-RANGE INTELLIGENCE: When asked about today, yesterday, last 7 days, or last 30 days, cite the exact figures above.
-                3. Do NOT expose other store owners' private revenues or Super Admin platform-level backend financials.
-                4. BUSINESS PARTNER TONE: Speak like a trusted co-founder focused on store profitability, AOV growth, and reorder cycles.
-                5. GREETINGS: Greet warmly in natural Hinglish or polished English: "Namaste %s ji! %s par aaj ka sales ₹%.2f hai across %d orders. Bataiye aaj kisme help karu?"
-                6. STRICT JSON:
-                {
-                  "intent": "SALES_ANALYTICS | STOCK_FORECAST | EXPIRY_MANAGEMENT | GENERAL_ADVICE",
-                  "answerMarkdown": "Your strategic co-founder response in markdown",
-                  "suggestedFollowUps": ["Check low stock items", "Analyze branch sales", "Tips to boost gross margins"]
-                }
-                """,
-                userFullName, context.get("storeName"),
-                context.get("storeName"), userFullName, userRole,
-                context.getOrDefault("currentPlanName", "No Active Plan"),
-                ((Number) context.getOrDefault("todaySales", 0.0)).doubleValue(),
-                ((Number) context.getOrDefault("todayOrders", 0)).intValue(),
-                ((Number) context.getOrDefault("yesterdaySales", 0.0)).doubleValue(),
-                ((Number) context.getOrDefault("yesterdayOrders", 0)).intValue(),
-                ((Number) context.getOrDefault("sales7Days", 0.0)).doubleValue(),
-                ((Number) context.getOrDefault("orders7Days", 0)).intValue(),
-                ((Number) context.getOrDefault("sales30Days", 0.0)).doubleValue(),
-                ((Number) context.getOrDefault("orders30Days", 0)).intValue(),
-                ((Number) context.getOrDefault("averageOrderValue", 0.0)).doubleValue(),
-                ((Number) context.getOrDefault("totalLifetimeSales", 0.0)).doubleValue(),
-                ((Number) context.getOrDefault("totalLifetimeOrders", 0)).longValue(),
-                ((Number) context.getOrDefault("activeBranches", 0)).intValue(),
-                ((Number) context.getOrDefault("storeStaffCount", 0)).intValue(),
-                ((Number) context.getOrDefault("totalCustomers", 0)).longValue(),
-                ((Number) context.getOrDefault("totalProducts", 0)).longValue(),
-                lowStockSummary.toString(),
-                userFullName, context.get("storeName"),
-                ((Number) context.getOrDefault("todaySales", 0.0)).doubleValue(),
-                ((Number) context.getOrDefault("todayOrders", 0)).intValue()
-        );
-    }
-
-    private String executeGroqCall(Map<String, Object> requestBody, String modelName) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(groqApiKey.trim());
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
-        try {
-            ResponseEntity<String> response = restTemplate.exchange(
-                    groqApiUrl,
-                    HttpMethod.POST,
-                    entity,
-                    String.class
-            );
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody();
-            }
-        } catch (Exception e) {
-            log.error("Groq API call error with model {}: {}", modelName, e.getMessage());
-            // Fast fallback to groqFastModel if main encounters rate-limit
-            if (!modelName.equals(groqFastModel)) {
-                try {
-                    requestBody.put("model", groqFastModel);
-                    HttpEntity<Map<String, Object>> fallbackEntity = new HttpEntity<>(requestBody, headers);
-                    ResponseEntity<String> fallbackResponse = restTemplate.exchange(
-                            groqApiUrl,
-                            HttpMethod.POST,
-                            fallbackEntity,
-                            String.class
-                    );
-                    if (fallbackResponse.getStatusCode().is2xxSuccessful() && fallbackResponse.getBody() != null) {
-                        return fallbackResponse.getBody();
-                    }
-                } catch (Exception fe) {
-                    log.error("Groq fast fallback model call also failed: {}", fe.getMessage());
-                }
-            }
-        }
-        return null;
-    }
-
-    private AiCopilotResponse generateLocalStoreCopilotInsight(String query, Map<String, Object> context) {
-        String scopeType = (String) context.getOrDefault("scopeType", "STORE_ADMIN_PORTAL");
-        String userFullName = (String) context.getOrDefault("userFullName", "Team Member");
-        String storeName = (String) context.getOrDefault("storeName", "Swapnil Mega Mart");
-
-        if ("CASHIER_PORTAL".equals(scopeType)) {
-            double mySales = ((Number) context.getOrDefault("mySalesToday", 30504.52)).doubleValue();
-            long myOrders = ((Number) context.getOrDefault("myOrdersCount", 4)).longValue();
-            String md = String.format("""
-                    ### 🎯 Cashier Shift Summary — **%s**
-                    
-                    - **Bills Punched**: **%d customers served**
-                    - **Total in My Till**: **₹%.2f**
-                    - **Average Bill Size**: **₹%.2f**
-                    
-                    > 💡 **Counter Tip**: Offer high-margin impulse chocolates or cold beverages near the card swipe machine for instant basket lift!
-                    """,
-                    userFullName, myOrders, mySales, myOrders > 0 ? mySales / myOrders : 0.0
-            );
-            return AiCopilotResponse.builder()
-                    .success(true)
-                    .intent("SALES_ANALYTICS")
-                    .answerMarkdown(md)
-                    .dataSnapshot(context)
-                    .suggestedFollowUps(List.of(
-                            "What is my average checkout time?",
-                            "Quick counter impulse pitch",
-                            "Show cash vs digital split"
-                    ))
-                    .build();
-        }
-
-        if ("SUPER_ADMIN_PORTAL".equals(scopeType)) {
-            String md = String.format("""
-                    ### 🌐 Super Admin Platform Snapshot — **%s**
-                    
-                    - **Total Onboarded Stores**: **%d active merchants**
-                    - **Total Branches Operating**: **%d branches**
-                    - **Platform GMV**: **₹%.2f**
-                    - **Platform Health**: **100%% Operational**
-                    
-                    > ⚡ **Quick Access**: You can manage all stores, subscription plans, and commission reports directly from the Super Admin sidebar.
-                    """,
-                    userFullName,
-                    ((Number) context.getOrDefault("totalStores", 1)).longValue(),
-                    ((Number) context.getOrDefault("totalBranches", 1)).longValue(),
-                    ((Number) context.getOrDefault("totalPlatformGmv", 30504.52)).doubleValue()
-            );
-            return AiCopilotResponse.builder()
-                    .success(true)
-                    .intent("SALES_ANALYTICS")
-                    .answerMarkdown(md)
-                    .dataSnapshot(context)
-                    .suggestedFollowUps(List.of(
-                            "Give me an overview of all onboarded stores",
-                            "What are our registered subscription plans?",
-                            "Check platform GMV and pending approvals"
-                    ))
-                    .build();
-        }
-
-        // Store Admin Fallback
-        double todaySales = ((Number) context.getOrDefault("todaySales", 30504.52)).doubleValue();
-        int todayOrders = ((Number) context.getOrDefault("todayOrders", 4)).intValue();
-        long totalProducts = ((Number) context.getOrDefault("totalProducts", 3500)).longValue();
-
-        String md = String.format("""
-                ### 📊 Store Financial Summary — **%s**
-                
-                - **Today's Gross Sales**: **₹%.2f** across **%d completed orders**
-                - **Average Order Value (AOV)**: **₹%.2f**
-                - **Tracked Catalog Size**: **%d SKUs**
-                
-                > ⚡ **Live Intelligence**: All branches reporting healthy transaction pace.
-                """,
-                storeName, todaySales, todayOrders,
-                todayOrders > 0 ? todaySales / todayOrders : 0.0,
-                totalProducts
-        );
-
-        return AiCopilotResponse.builder()
-                .success(true)
-                .intent("SALES_ANALYTICS")
-                .answerMarkdown(md)
-                .dataSnapshot(context)
-                .suggestedFollowUps(List.of(
-                        "Which items are running low on stock?",
-                        "How can we boost weekend grocery sales?",
-                        "What is our branch-wise sales breakdown?"
-                ))
                 .build();
     }
 
@@ -1228,6 +281,47 @@ public class GroqAiServiceImpl implements AiService {
                                 .build()
                 ))
                 .build();
+    }
+
+    private String executeGroqCall(Map<String, Object> requestBody, String modelName) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(groqApiKey.trim());
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    groqApiUrl,
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return response.getBody();
+            }
+        } catch (Exception e) {
+            log.error("Groq API call error with model {}: {}", modelName, e.getMessage());
+            if (!modelName.equals(groqFastModel)) {
+                try {
+                    requestBody.put("model", groqFastModel);
+                    HttpEntity<Map<String, Object>> fallbackEntity = new HttpEntity<>(requestBody, headers);
+                    ResponseEntity<String> fallbackResponse = restTemplate.exchange(
+                            groqApiUrl,
+                            HttpMethod.POST,
+                            fallbackEntity,
+                            String.class
+                    );
+                    if (fallbackResponse.getStatusCode().is2xxSuccessful() && fallbackResponse.getBody() != null) {
+                        return fallbackResponse.getBody();
+                    }
+                } catch (Exception fe) {
+                    log.error("Groq fast fallback model call also failed: {}", fe.getMessage());
+                }
+            }
+        }
+        return null;
     }
 
     private String cleanJsonString(String jsonText) {

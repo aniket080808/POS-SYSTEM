@@ -43,12 +43,6 @@ public class AiController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/copilot-query")
-    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_ADMIN', 'BRANCH_MANAGER', 'ADMIN', 'BRANCH_CASHIER')")
-    public ResponseEntity<AiCopilotResponse> queryCopilot(@Valid @RequestBody AiCopilotRequest request) {
-        AiCopilotResponse response = aiService.processCopilotQuery(request);
-        return ResponseEntity.ok(response);
-    }
 
     @PostMapping("/upsell-suggestions")
     @PreAuthorize("hasAnyRole('BRANCH_CASHIER', 'STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_MANAGER')")
