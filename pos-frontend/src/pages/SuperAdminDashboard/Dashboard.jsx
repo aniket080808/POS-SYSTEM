@@ -106,7 +106,7 @@ export default function SuperAdminDashboard() {
   // Set up WebSocket connection for real-time updates
   useEffect(() => {
     const token = localStorage.getItem("jwt");
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const apiUrl = import.meta.env.VITE_API_URL || "https://pos-system-3p1s.onrender.com";
     const wsUrl = apiUrl.replace(/^http/, "ws") + "/ws/websocket";
     const client = new Client({
       brokerURL: wsUrl,

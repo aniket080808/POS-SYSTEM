@@ -19,7 +19,7 @@ export const useWebSocket = () => {
     const token = localStorage.getItem('jwt');
     if (!token) return;
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://pos-system-3p1s.onrender.com';
     const wsUrl = apiUrl.replace(/^http/, 'ws') + '/ws/websocket';
     
     stompClient.current = new Client({

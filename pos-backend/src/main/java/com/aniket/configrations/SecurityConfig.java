@@ -110,6 +110,12 @@ public class SecurityConfig {
 						.filter(s -> !s.isEmpty())
 						.toList();
 				cfg.setAllowedOrigins(origins);
+				cfg.setAllowedOriginPatterns(Arrays.asList(
+						"http://localhost:*",
+						"https://*.vercel.app",
+						"https://*.pages.dev",
+						"https://*.onrender.com"
+				));
 				cfg.setAllowedMethods(Collections.singletonList("*"));
 				cfg.setAllowCredentials(true);
 				cfg.setAllowedHeaders(Collections.singletonList("*"));
