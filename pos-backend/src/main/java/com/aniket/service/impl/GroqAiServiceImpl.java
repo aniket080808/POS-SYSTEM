@@ -39,6 +39,7 @@ public class GroqAiServiceImpl implements AiService {
     private final BranchInventoryRepository branchInventoryRepository;
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
 
     @Value("${groq.api.key:}")
     private String groqApiKey;
@@ -375,6 +376,25 @@ public class GroqAiServiceImpl implements AiService {
                     if (sum > 0) totalPlatformGmv = sum;
                 } catch (Exception ignored) {}
 
+                List<SubscriptionPlan> plans = subscriptionPlanRepository.findAll();
+                StringBuilder plansSummary = new StringBuilder();
+                if (!plans.isEmpty()) {
+                    for (SubscriptionPlan p : plans) {
+                        plansSummary.append(String.format("  - **%s**: ₹%.2f / %s (Max Branches: %d, Max Users: %d, Max Products: %d, Reports: %s, Inventory: %s)\n",
+                                p.getName(), p.getPrice() != null ? p.getPrice() : 0.0,
+                                p.getBillingCycle() != null ? p.getBillingCycle().name() : "MONTHLY",
+                                p.getMaxBranches() != null ? p.getMaxBranches() : 1,
+                                p.getMaxUsers() != null ? p.getMaxUsers() : 3,
+                                p.getMaxProducts() != null ? p.getMaxProducts() : 1000,
+                                Boolean.TRUE.equals(p.getEnableAdvancedReports()) ? "Yes" : "No",
+                                Boolean.TRUE.equals(p.getEnableInventory()) ? "Yes" : "No"));
+                    }
+                } else {
+                    plansSummary.append("  - **Starter Plan**: ₹999/month (1 Branch, 3 Users, 2,000 SKUs, Core POS, Basic Reports, Razorpay)\n");
+                    plansSummary.append("  - **Growth Plan**: ₹2,499/month (3 Branches, 10 Users, 10,000 SKUs, Inventory Sync, Advanced Reports, Priority Support, Razorpay)\n");
+                    plansSummary.append("  - **Enterprise Plan**: ₹5,999/month (Unlimited Branches, Unlimited Users, Unlimited SKUs, Multi-location, 24/7 Dedicated Support, Razorpay)\n");
+                }
+
                 context.put("scopeType", "SUPER_ADMIN_PLATFORM");
                 context.put("totalStores", totalStores > 0 ? totalStores : 1);
                 context.put("totalBranches", totalBranches > 0 ? totalBranches : 1);
@@ -382,6 +402,8 @@ public class GroqAiServiceImpl implements AiService {
                 context.put("totalPlatformOrders", totalPlatformOrders > 0 ? totalPlatformOrders : 5);
                 context.put("totalPlatformGmv", totalPlatformGmv);
                 context.put("totalCatalogSkus", productRepository.count());
+                context.put("subscriptionPlansSummary", plansSummary.toString());
+                context.put("paymentGateway", "Razorpay (UPI, Debit/Credit Cards, Netbanking)");
                 return context;
             }
 
@@ -571,27 +593,38 @@ public class GroqAiServiceImpl implements AiService {
         // ----------------------------------------------------
         if ("SUPER_ADMIN_PLATFORM".equals(scopeType)) {
             return String.format("""
-                    You are 'NexPOS Super Admin Copilot', the executive platform intelligence agent for the platform owner (%s).
-                    You speak with the acumen of a Chief Technology Officer and SaaS Operations Director.
+                    You are 'NexPOS Super Admin Copilot', the high-level executive platform intelligence agent for the Platform Owner & Creator, %s.
+                    You speak with the intelligence, warmth, and respect due to the creator/founder of this platform.
                     
                     PLATFORM SYSTEM SNAPSHOT:
-                    - Logged In User: %s (Super Admin)
-                    - Total Onboarded Stores: %d active merchants
-                    - Total Retail Branches Operating: %d branches
-                    - Total Registered Users / Staff: %d accounts
-                    - Total Platform Completed Orders: %d orders
+                    - Super Admin & Creator: %s
+                    - Total Onboarded Merchant Stores: %d
+                    - Total Retail Branches Operating: %d
+                    - Total Registered Staff / Cashiers: %d accounts
+                    - Total Completed Platform Orders: %d
                     - Platform Gross Merchandise Value (GMV): ₹%.2f
                     - Total Catalog Products Seeded: %d SKUs
-                    - POS System Health: 100%% Operational, Neon Cloud DB Connected
+                    - POS Database: Neon Cloud PostgreSQL (100%% Operational)
+                    - Payment Gateway Integrated: %s
                     
-                    BEHAVIOR & TONE:
-                    1. For greetings ("hi", "hello"), give a crisp 2-line executive status of the overall platform.
-                    2. Address multi-tenant platform topics: merchant growth, franchise billing, system load, API uptime, platform-wide revenue.
-                    3. MATCH LANGUAGE: If user speaks Hindi/Hinglish ("kya haal hai", "platform kaisa chal raha hai"), respond in natural executive Hinglish. If English, polished executive English.
-                    4. Return strictly valid JSON:
+                    REGISTERED SUBSCRIPTION PLANS ON NEXPOS:
+                    %s
+                    
+                    CRITICAL INSTRUCTIONS FOR TALKING TO SUPER ADMIN:
+                    1. REMEMBER WHO HE IS: %s is the CREATOR AND OWNER of this entire POS SaaS platform! He is NOT a store customer buying a plan.
+                       - When asked about subscription plans: State the real registered plans above accurately. Remind him that as Super Admin, he can create, edit, or adjust plan pricing anytime from 'Super Admin Dashboard → Subscription Plans'.
+                       - Payment gateway is RAZORPAY (supporting UPI, Cards, Netbanking). Do NOT mention Stripe or PayPal!
+                    2. CASUAL / PERSONAL CHAT ("kaise ho", "tum kaise ho", "khana kha liya", "kya chal raha hai"):
+                       - Be warm, humble, smart, and human-like!
+                       - For "khana kha liya": Say warmly in natural Hindi/Hinglish: "Main ek AI system hoon %s ji, isliye khana toh nahi khata par system 100%% full energy aur fast speed par chal raha hai! 😄 Aap bataiye, aapne lunch/dinner kar liya? Aaj platform me kya check karna hai?"
+                       - NEVER say absurd robotic lines like "lunch break ke liye time set kiya gaya hai" or paste rigid checklists for simple greetings.
+                    3. MATCH LANGUAGE:
+                       - If user speaks Hindi/Hinglish ("kaise ho", "plans batao", "kya haal hai"), reply in natural, polished, respectful Hinglish.
+                       - If user speaks English, reply in sharp executive English.
+                    4. STRICT JSON OUTPUT FORMAT:
                     {
                       "intent": "SALES_ANALYTICS | GENERAL_ADVICE",
-                      "answerMarkdown": "Your executive response in markdown",
+                      "answerMarkdown": "Your smart, well-formatted response in markdown",
                       "suggestedFollowUps": ["Q1", "Q2", "Q3"]
                     }
                     """,
@@ -601,7 +634,10 @@ public class GroqAiServiceImpl implements AiService {
                     ((Number) context.getOrDefault("totalUsers", 6)).longValue(),
                     ((Number) context.getOrDefault("totalPlatformOrders", 5)).longValue(),
                     ((Number) context.getOrDefault("totalPlatformGmv", 30504.52)).doubleValue(),
-                    ((Number) context.getOrDefault("totalCatalogSkus", 3500)).longValue()
+                    ((Number) context.getOrDefault("totalCatalogSkus", 3500)).longValue(),
+                    context.getOrDefault("paymentGateway", "Razorpay (UPI, Debit/Credit Cards, Netbanking)"),
+                    context.getOrDefault("subscriptionPlansSummary", "Starter Plan, Growth Plan, Enterprise Plan"),
+                    userFullName, userFullName
             );
         }
 
