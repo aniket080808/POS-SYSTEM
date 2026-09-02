@@ -61,6 +61,16 @@ public class GroqAiServiceImpl implements AiService {
 
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
+    // Concurrent In-Memory DB Load Shield Cache (TTL = 90 seconds)
+    private static final long CACHE_TTL_MILLIS = 90_000L;
+    private final Map<String, CachedContextEntry> roleContextCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record CachedContextEntry(Map<String, Object> data, long timestamp) {
+        boolean isExpired() {
+            return System.currentTimeMillis() - timestamp > CACHE_TTL_MILLIS;
+        }
+    }
+
     @Override
     public InvoiceExtractionResponse scanSupplierInvoice(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -362,10 +372,29 @@ public class GroqAiServiceImpl implements AiService {
     }
 
     private Map<String, Object> gatherStrictRoleScopedContext() {
+        User currentUser = null;
+        try {
+            currentUser = userService.getCurrentUser();
+        } catch (Exception ignored) {}
+
+        UserRole role = currentUser != null ? currentUser.getRole() : UserRole.ROLE_STORE_ADMIN;
+        Long userId = currentUser != null ? currentUser.getId() : 0L;
+        String cacheKey = (role != null ? role.name() : "ROLE_STORE_ADMIN") + ":" + userId;
+
+        CachedContextEntry cached = roleContextCache.get(cacheKey);
+        if (cached != null && !cached.isExpired()) {
+            log.debug("Serving AI context from DB-shield cache for key: {}", cacheKey);
+            return new HashMap<>(cached.data());
+        }
+
+        Map<String, Object> fresh = queryFreshRoleScopedContext(currentUser, role);
+        roleContextCache.put(cacheKey, new CachedContextEntry(fresh, System.currentTimeMillis()));
+        return fresh;
+    }
+
+    private Map<String, Object> queryFreshRoleScopedContext(User currentUser, UserRole role) {
         Map<String, Object> context = new HashMap<>();
         try {
-            User currentUser = userService.getCurrentUser();
-            UserRole role = currentUser != null ? currentUser.getRole() : UserRole.ROLE_STORE_ADMIN;
             String roleName = role != null ? role.name() : "ROLE_STORE_ADMIN";
             String userFullName = currentUser != null && currentUser.getFullName() != null ? currentUser.getFullName() : "Team Member";
 
