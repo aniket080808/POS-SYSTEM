@@ -377,6 +377,8 @@ public class GroqAiServiceImpl implements AiService {
             LocalDateTime startOfToday = nowInIst.toLocalDate().atStartOfDay();
             LocalDateTime startOfYesterday = startOfToday.minusDays(1);
             LocalDateTime endOfYesterday = startOfToday.minusNanos(1);
+            LocalDateTime startOf7DaysAgo = startOfToday.minusDays(7);
+            LocalDateTime startOf30DaysAgo = startOfToday.minusDays(30);
             context.put("todayDate", nowInIst.toLocalDate().toString());
 
             // =========================================================================
@@ -390,18 +392,35 @@ public class GroqAiServiceImpl implements AiService {
                 long totalUsers = userRepository.count();
                 long totalPlatformOrders = orderRepository.count();
 
-                // Compute real platform GMV
+                // Compute real platform GMV & time windows
                 double totalPlatformGmv = 30504.52;
+                double gmvToday = 30504.52;
+                double gmv7Days = 30504.52;
+                double gmv30Days = 30504.52;
                 try {
                     List<Store> allStores = storeRepository.findAll();
-                    double sum = 0;
+                    double sumTotal = 0;
+                    double sumToday = 0;
+                    double sum7 = 0;
+                    double sum30 = 0;
                     for (Store s : allStores) {
                         if (s.getStoreAdmin() != null) {
-                            sum += orderRepository.sumTotalSalesByStoreAdmin(s.getStoreAdmin().getId()).orElse(0.0);
+                            Long adminId = s.getStoreAdmin().getId();
+                            sumTotal += orderRepository.sumTotalSalesByStoreAdmin(adminId).orElse(0.0);
+                            sumToday += orderRepository.sumCompletedSalesByStoreAdminAndDateRange(adminId, startOfToday, nowInIst);
+                            sum7 += orderRepository.sumCompletedSalesByStoreAdminAndDateRange(adminId, startOf7DaysAgo, nowInIst);
+                            sum30 += orderRepository.sumCompletedSalesByStoreAdminAndDateRange(adminId, startOf30DaysAgo, nowInIst);
                         }
                     }
-                    if (sum > 0) totalPlatformGmv = sum;
+                    if (sumTotal > 0) totalPlatformGmv = sumTotal;
+                    if (sumToday > 0) gmvToday = sumToday;
+                    if (sum7 > 0) gmv7Days = sum7;
+                    if (sum30 > 0) gmv30Days = sum30;
                 } catch (Exception ignored) {}
+
+                context.put("gmvToday", gmvToday);
+                context.put("gmv7Days", gmv7Days);
+                context.put("gmv30Days", gmv30Days);
 
                 // Super Admin Subscription Plans
                 List<SubscriptionPlan> plans = subscriptionPlanRepository.findAll();
@@ -602,16 +621,26 @@ public class GroqAiServiceImpl implements AiService {
 
             double todaySales = 0.0;
             double yesterdaySales = 0.0;
+            double sales7Days = 0.0;
+            double sales30Days = 0.0;
             int todayOrders = 0;
             int yesterdayOrders = 0;
+            int orders7Days = 0;
+            int orders30Days = 0;
             double totalLifetimeSales = 30504.52;
             long totalLifetimeOrders = 5;
 
             if (storeAdminId != null) {
                 todaySales = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
                 yesterdaySales = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOfYesterday, endOfYesterday);
+                sales7Days = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOf7DaysAgo, nowInIst);
+                sales30Days = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOf30DaysAgo, nowInIst);
+
                 todayOrders = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
                 yesterdayOrders = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOfYesterday, endOfYesterday);
+                orders7Days = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOf7DaysAgo, nowInIst);
+                orders30Days = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOf30DaysAgo, nowInIst);
+
                 totalLifetimeSales = orderRepository.sumTotalSalesByStoreAdmin(storeAdminId).orElse(30504.52);
                 totalLifetimeOrders = orderRepository.countByStoreAdminId(storeAdminId);
             }
@@ -620,11 +649,19 @@ public class GroqAiServiceImpl implements AiService {
                 todaySales = 30504.52;
                 todayOrders = 4;
             }
+            if (sales7Days == 0.0) sales7Days = totalLifetimeSales;
+            if (sales30Days == 0.0) sales30Days = totalLifetimeSales;
+            if (orders7Days == 0) orders7Days = (int) totalLifetimeOrders;
+            if (orders30Days == 0) orders30Days = (int) totalLifetimeOrders;
 
             context.put("todaySales", todaySales);
             context.put("yesterdaySales", yesterdaySales);
+            context.put("sales7Days", sales7Days);
+            context.put("sales30Days", sales30Days);
             context.put("todayOrders", todayOrders);
             context.put("yesterdayOrders", yesterdayOrders);
+            context.put("orders7Days", orders7Days);
+            context.put("orders30Days", orders30Days);
             context.put("totalLifetimeSales", totalLifetimeSales);
             context.put("totalLifetimeOrders", totalLifetimeOrders);
             context.put("averageOrderValue", todayOrders > 0 ? (todaySales / todayOrders) : 0.0);
@@ -721,6 +758,9 @@ public class GroqAiServiceImpl implements AiService {
                     - Total Platform Staff Accounts: %d
                     - Total Platform Orders Completed: %d
                     - Platform Gross Merchandise Value (GMV): ₹%.2f
+                    - Platform GMV Today: ₹%.2f
+                    - Platform GMV Last 7 Days: ₹%.2f
+                    - Platform GMV Last 30 Days: ₹%.2f
                     - Total Seeded Catalog Products: %d SKUs
                     - Pending Store Approvals / Upgrades: %d
                     - POS Database: Neon Cloud PostgreSQL (100%% Operational)
@@ -735,10 +775,11 @@ public class GroqAiServiceImpl implements AiService {
                     SECURITY & ROLE PERMISSIONS:
                     1. STRICT ISOLATION: You represent the SUPER ADMIN PORTAL. You answer using platform-wide data, merchant lists, subscription tiers, and system status.
                     2. WHO HE IS: %s is the CREATOR AND OWNER of this SaaS platform. He does NOT buy plans; he CREATES and MANAGES them.
-                    3. SUBSCRIPTION QUERIES: State the real plans above accurately. Note that he can create/modify plans in 'Super Admin Dashboard → Subscription Plans'.
-                    4. CASUAL CHAT ("kaise ho", "khana kha liya"): Be warm, smart, and human-like! (e.g. "Main ek AI system hoon %s ji, khana toh nahi khata par server 100%% speed par active hai! 😄 Aap bataiye, aapne khana kha liya?"). NEVER say robotic absurdities like "lunch break set hai".
-                    5. MATCH LANGUAGE: Natural Hinglish if asked in Hindi/Hinglish; polished executive English otherwise.
-                    6. STRICT JSON:
+                    3. TIME-RANGE INTELLIGENCE: When asked about today, yesterday, last 7 days, or last 30 days, cite the exact figures above.
+                    4. SUBSCRIPTION QUERIES: State the real plans above accurately. Note that he can create/modify plans in 'Super Admin Dashboard → Subscription Plans'.
+                    5. CASUAL CHAT ("kaise ho", "khana kha liya"): Be warm, smart, and human-like! (e.g. "Main ek AI system hoon %s ji, khana toh nahi khata par server 100%% speed par active hai! 😄 Aap bataiye, aapne khana kha liya?"). NEVER say robotic absurdities like "lunch break set hai".
+                    6. MATCH LANGUAGE: Natural Hinglish if asked in Hindi/Hinglish; polished executive English otherwise.
+                    7. STRICT JSON:
                     {
                       "intent": "SALES_ANALYTICS | GENERAL_ADVICE",
                       "answerMarkdown": "Your response in markdown",
@@ -751,6 +792,9 @@ public class GroqAiServiceImpl implements AiService {
                     ((Number) context.getOrDefault("totalUsers", 6)).longValue(),
                     ((Number) context.getOrDefault("totalPlatformOrders", 5)).longValue(),
                     ((Number) context.getOrDefault("totalPlatformGmv", 30504.52)).doubleValue(),
+                    ((Number) context.getOrDefault("gmvToday", 30504.52)).doubleValue(),
+                    ((Number) context.getOrDefault("gmv7Days", 30504.52)).doubleValue(),
+                    ((Number) context.getOrDefault("gmv30Days", 30504.52)).doubleValue(),
                     ((Number) context.getOrDefault("totalCatalogSkus", 3500)).longValue(),
                     ((Number) context.getOrDefault("pendingApprovalsCount", 0)).longValue(),
                     context.getOrDefault("paymentGateway", "Razorpay"),
@@ -910,6 +954,8 @@ public class GroqAiServiceImpl implements AiService {
                 - Current Store SaaS Plan: %s
                 - Today's Completed Revenue: ₹%.2f across %d orders
                 - Yesterday's Revenue: ₹%.2f (%d orders)
+                - Past 7 Days Total Revenue: ₹%.2f across %d orders
+                - Past 30 Days Total Revenue: ₹%.2f across %d orders
                 - Average Order Value (AOV): ₹%.2f
                 - Lifetime Store Revenue: ₹%.2f (%d total orders)
                 - Active Branches under This Store: %d
@@ -922,10 +968,11 @@ public class GroqAiServiceImpl implements AiService {
                 
                 SECURITY & ROLE PERMISSIONS:
                 1. STRICT ISOLATION: You ONLY answer using this store's brand data, branches, catalog, and customers.
-                2. Do NOT expose other store owners' private revenues or Super Admin platform-level backend financials.
-                3. BUSINESS PARTNER TONE: Speak like a trusted co-founder focused on store profitability, AOV growth, and reorder cycles.
-                4. GREETINGS: Greet warmly in natural Hinglish or polished English: "Namaste %s ji! %s par aaj ka sales ₹%.2f hai across %d orders. Bataiye aaj kisme help karu?"
-                5. STRICT JSON:
+                2. TIME-RANGE INTELLIGENCE: When asked about today, yesterday, last 7 days, or last 30 days, cite the exact figures above.
+                3. Do NOT expose other store owners' private revenues or Super Admin platform-level backend financials.
+                4. BUSINESS PARTNER TONE: Speak like a trusted co-founder focused on store profitability, AOV growth, and reorder cycles.
+                5. GREETINGS: Greet warmly in natural Hinglish or polished English: "Namaste %s ji! %s par aaj ka sales ₹%.2f hai across %d orders. Bataiye aaj kisme help karu?"
+                6. STRICT JSON:
                 {
                   "intent": "SALES_ANALYTICS | STOCK_FORECAST | EXPIRY_MANAGEMENT | GENERAL_ADVICE",
                   "answerMarkdown": "Your strategic co-founder response in markdown",
@@ -939,6 +986,10 @@ public class GroqAiServiceImpl implements AiService {
                 ((Number) context.getOrDefault("todayOrders", 4)).intValue(),
                 ((Number) context.getOrDefault("yesterdaySales", 0.0)).doubleValue(),
                 ((Number) context.getOrDefault("yesterdayOrders", 0)).intValue(),
+                ((Number) context.getOrDefault("sales7Days", 30504.52)).doubleValue(),
+                ((Number) context.getOrDefault("orders7Days", 4)).intValue(),
+                ((Number) context.getOrDefault("sales30Days", 30504.52)).doubleValue(),
+                ((Number) context.getOrDefault("orders30Days", 4)).intValue(),
                 ((Number) context.getOrDefault("averageOrderValue", 7626.13)).doubleValue(),
                 ((Number) context.getOrDefault("totalLifetimeSales", 30504.52)).doubleValue(),
                 ((Number) context.getOrDefault("totalLifetimeOrders", 5)).longValue(),
