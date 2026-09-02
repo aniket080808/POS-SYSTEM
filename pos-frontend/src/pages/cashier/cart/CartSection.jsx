@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Pause, Trash2, ShoppingBag } from "lucide-react";
 import CartItem from "./CartItem";
 import CartSummary from "./CartSummary";
-import AiUpsellBanner from "./AiUpsellBanner";
 import { playScanBeep, playErrorBeep } from "@/utils/audioUtils";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -112,12 +111,6 @@ const CartSection = ({ setShowHeldOrdersDialog }) => {
         )}
       </div>
 
-      {/* AI Counter Upsell Banner */}
-      {cartItems.length > 0 && (
-        <div className="px-3 pb-1 shrink-0">
-          <AiUpsellBanner />
-        </div>
-      )}
 
       {/* Cart Summary Breakdown */}
       {cartItems.length > 0 && <CartSummary />}

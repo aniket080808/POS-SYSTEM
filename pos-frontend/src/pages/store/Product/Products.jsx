@@ -34,7 +34,6 @@ import ProductForm from "./ProductForm";
 import ProductSearch from "./ProductSearch";
 import ProductDetails from "./ProductDetails";
 import ImportProductsModal from "./ImportProductsModal";
-import AiInvoiceScannerModal from "./AiInvoiceScannerModal";
 import { deleteAllProducts } from "@/Redux Toolkit/features/product/productThunks";
 
 export default function Products() {
@@ -51,7 +50,6 @@ export default function Products() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [isAiScanModalOpen, setIsAiScanModalOpen] = useState(false);
   const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false);
   const [clearingAll, setClearingAll] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(null);
@@ -289,15 +287,6 @@ export default function Products() {
             <Upload className="w-3.5 h-3.5" /> Import CSV
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsAiScanModalOpen(true)}
-            className="text-xs h-10 gap-1.5 cursor-pointer border-[#C9A227]/50 text-[#C9A227] hover:bg-[#C9A227]/10 font-bold shadow-2xs"
-            title="Scan paper or PDF invoice using Groq AI"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#C9A227]" /> AI Invoice OCR
-          </Button>
 
           <Button
             variant="outline"
@@ -427,12 +416,6 @@ export default function Products() {
         </CardContent>
       </Card>
 
-      {/* Groq AI Invoice Vision OCR Modal */}
-      <AiInvoiceScannerModal
-        open={isAiScanModalOpen}
-        onOpenChange={setIsAiScanModalOpen}
-        storeId={activeStoreId}
-      />
     </div>
   );
 }
