@@ -577,10 +577,10 @@ public class GroqAiServiceImpl implements AiService {
 
             // =========================================================================
             // PORTAL 2: CASHIER PORTAL (ROLE_BRANCH_CASHIER)
-            // STRICTLY SCOPED TO THIS CASHIER'S SHIFT ONLY
+            // STRICTLY SCOPED TO THIS CASHIER'S SHIFT ONLY (100% REAL DB DATA)
             // =========================================================================
             if (role == UserRole.ROLE_BRANCH_CASHIER) {
-                Long cashierId = currentUser != null ? currentUser.getId() : 1L;
+                Long cashierId = currentUser != null ? currentUser.getId() : 0L;
                 long myOrdersCount = 0;
                 double mySalesToday = 0.0;
                 try {
@@ -588,21 +588,18 @@ public class GroqAiServiceImpl implements AiService {
                     mySalesToday = orderRepository.sumTotalAmountByCashierId(cashierId);
                 } catch (Exception ignored) {}
 
-                if (myOrdersCount == 0) myOrdersCount = 4;
-                if (mySalesToday == 0.0) mySalesToday = 30504.52;
-
                 context.put("scopeType", "CASHIER_PORTAL");
                 context.put("myOrdersCount", myOrdersCount);
                 context.put("mySalesToday", mySalesToday);
                 context.put("myAverageBill", myOrdersCount > 0 ? (mySalesToday / myOrdersCount) : 0.0);
-                context.put("activeRegister", "Counter Till #1");
+                context.put("activeRegister", "Counter Till");
                 context.put("assignedBranch", branchName);
                 return context;
             }
 
             // =========================================================================
             // PORTAL 3: BRANCH ADMIN & BRANCH MANAGER PORTALS
-            // STRICTLY SCOPED TO THIS BRANCH ONLY
+            // STRICTLY SCOPED TO THIS BRANCH ONLY (100% REAL DB DATA)
             // =========================================================================
             if (role == UserRole.ROLE_BRANCH_ADMIN || role == UserRole.ROLE_BRANCH_MANAGER) {
                 double branchTodaySales = 0.0;
@@ -615,9 +612,6 @@ public class GroqAiServiceImpl implements AiService {
                         branchTodayOrders = todayBranchOrders.size();
                     } catch (Exception ignored) {}
                 }
-
-                if (branchTodayOrders == 0) branchTodayOrders = 4;
-                if (branchTodaySales == 0.0) branchTodaySales = 30504.52;
 
                 // Branch Cashiers
                 List<User> branchUsers = branchId != null ? userRepository.findByBranchId(branchId) : Collections.emptyList();
@@ -634,8 +628,8 @@ public class GroqAiServiceImpl implements AiService {
                         if (st <= 15 && branchLowStock.size() < 8) {
                             Product p = bi.getProduct();
                             branchLowStock.add(Map.of(
-                                    "name", p != null ? p.getName() : "Item",
-                                    "sku", p != null ? p.getSku() : "N/A",
+                                    "name", p != null && p.getName() != null ? p.getName() : "Item",
+                                    "sku", p != null && p.getSku() != null ? p.getSku() : "N/A",
                                     "stock", st,
                                     "sellingPrice", bi.getSellingPrice() != null ? bi.getSellingPrice() : 0.0
                             ));
@@ -647,39 +641,35 @@ public class GroqAiServiceImpl implements AiService {
                 context.put("branchTodaySales", branchTodaySales);
                 context.put("branchTodayOrders", branchTodayOrders);
                 context.put("branchAov", branchTodayOrders > 0 ? (branchTodaySales / branchTodayOrders) : 0.0);
-                context.put("branchCashierCount", branchCashierCount > 0 ? branchCashierCount : 2);
+                context.put("branchCashierCount", branchCashierCount);
                 context.put("branchLowStock", branchLowStock);
                 return context;
             }
 
             // =========================================================================
             // PORTAL 4: STORE MANAGER PORTAL (ROLE_STORE_MANAGER)
-            // STORE LOGISTICS, SHIFTS, TARGETS, & INVENTORY FLOW
+            // STORE LOGISTICS, SHIFTS, TARGETS, & INVENTORY FLOW (100% REAL DB DATA)
             // =========================================================================
             if (role == UserRole.ROLE_STORE_MANAGER) {
                 context.put("scopeType", "STORE_MANAGER_PORTAL");
-                double todaySales = 30504.52;
-                int todayOrders = 4;
+                double todaySales = 0.0;
+                int todayOrders = 0;
                 if (storeAdminId != null) {
                     todaySales = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
                     todayOrders = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
                 }
-                if (todayOrders == 0) {
-                    todaySales = 30504.52;
-                    todayOrders = 4;
-                }
 
-                int storeStaffCount = storeId != null ? userRepository.findAllEmployeesByStoreId(storeId).size() : 6;
+                int storeStaffCount = storeId != null ? userRepository.findAllEmployeesByStoreId(storeId).size() : 0;
                 context.put("todaySales", todaySales);
                 context.put("todayOrders", todayOrders);
-                context.put("storeStaffCount", storeStaffCount > 0 ? storeStaffCount : 6);
+                context.put("storeStaffCount", storeStaffCount);
                 context.put("totalProducts", productRepository.count());
                 return context;
             }
 
             // =========================================================================
             // PORTAL 5: STORE ADMIN / OWNER PORTAL (ROLE_STORE_ADMIN)
-            // BRAND-WIDE REVENUE, BRANCH COMPARISONS, SUBSCRIPTION TIER, 3,500 SKUs
+            // BRAND-WIDE REVENUE, BRANCH COMPARISONS, SUBSCRIPTION TIER (100% REAL DB DATA)
             // =========================================================================
             context.put("scopeType", "STORE_ADMIN_PORTAL");
 
@@ -691,8 +681,8 @@ public class GroqAiServiceImpl implements AiService {
             int yesterdayOrders = 0;
             int orders7Days = 0;
             int orders30Days = 0;
-            double totalLifetimeSales = 30504.52;
-            long totalLifetimeOrders = 5;
+            double totalLifetimeSales = 0.0;
+            long totalLifetimeOrders = 0;
 
             if (storeAdminId != null) {
                 todaySales = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
@@ -705,18 +695,9 @@ public class GroqAiServiceImpl implements AiService {
                 orders7Days = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOf7DaysAgo, nowInIst);
                 orders30Days = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOf30DaysAgo, nowInIst);
 
-                totalLifetimeSales = orderRepository.sumTotalSalesByStoreAdmin(storeAdminId).orElse(30504.52);
+                totalLifetimeSales = orderRepository.sumTotalSalesByStoreAdmin(storeAdminId).orElse(0.0);
                 totalLifetimeOrders = orderRepository.countByStoreAdminId(storeAdminId);
             }
-
-            if (todayOrders == 0 && totalLifetimeSales > 0) {
-                todaySales = 30504.52;
-                todayOrders = 4;
-            }
-            if (sales7Days == 0.0) sales7Days = totalLifetimeSales;
-            if (sales30Days == 0.0) sales30Days = totalLifetimeSales;
-            if (orders7Days == 0) orders7Days = (int) totalLifetimeOrders;
-            if (orders30Days == 0) orders30Days = (int) totalLifetimeOrders;
 
             context.put("todaySales", todaySales);
             context.put("yesterdaySales", yesterdaySales);
@@ -731,28 +712,19 @@ public class GroqAiServiceImpl implements AiService {
             context.put("averageOrderValue", todayOrders > 0 ? (todaySales / todayOrders) : 0.0);
 
             // Customers count for THIS store
-            long storeCustomers = 15;
-            if (storeId != null) {
-                storeCustomers = customerRepository.countByStoreId(storeId);
-            }
-            context.put("totalCustomers", storeCustomers > 0 ? storeCustomers : 15);
+            long storeCustomers = storeId != null ? customerRepository.countByStoreId(storeId) : 0;
+            context.put("totalCustomers", storeCustomers);
 
             // Branches under this store
-            int activeBranches = 1;
-            if (storeAdminId != null) {
-                activeBranches = branchRepository.countByStoreAdminId(storeAdminId);
-            }
-            context.put("activeBranches", Math.max(1, activeBranches));
+            int activeBranches = storeAdminId != null ? branchRepository.countByStoreAdminId(storeAdminId) : 0;
+            context.put("activeBranches", activeBranches);
 
             // Store Employees
-            int storeStaff = 6;
-            if (storeId != null) {
-                storeStaff = userRepository.findAllEmployeesByStoreId(storeId).size();
-            }
-            context.put("storeStaffCount", storeStaff > 0 ? storeStaff : 6);
+            int storeStaff = storeId != null ? userRepository.findAllEmployeesByStoreId(storeId).size() : 0;
+            context.put("storeStaffCount", storeStaff);
 
-            // Store Subscription Status
-            String currentPlanName = "Growth Plan (Active)";
+            // Store Subscription Status from database
+            String currentPlanName = "No Active Plan";
             if (storeId != null) {
                 StoreSubscription sub = storeSubscriptionRepository.findByStoreId(storeId).orElse(null);
                 if (sub != null && sub.getCurrentPlan() != null) {
@@ -761,7 +733,7 @@ public class GroqAiServiceImpl implements AiService {
             }
             context.put("currentPlanName", currentPlanName);
 
-            // Low Stock Items
+            // Low Stock Items directly from branch inventory
             List<Map<String, Object>> lowStockList = new ArrayList<>();
             long totalProducts = productRepository.count();
             if (storeId != null) {
@@ -780,23 +752,17 @@ public class GroqAiServiceImpl implements AiService {
                 }
             }
 
-            if (lowStockList.isEmpty()) {
-                lowStockList.add(Map.of("name", "Amul Butter 500g", "sku", "DAIRY-AMUL-500", "stock", 4, "sellingPrice", 275.0));
-                lowStockList.add(Map.of("name", "Tata Tea Premium 1kg", "sku", "BEV-TATA-1K", "stock", 8, "sellingPrice", 420.0));
-                lowStockList.add(Map.of("name", "Aashirvaad Atta 10kg", "sku", "GRO-AASH-10K", "stock", 2, "sellingPrice", 440.0));
-            }
-
-            context.put("totalProducts", totalProducts > 0 ? totalProducts : 3500);
+            context.put("totalProducts", totalProducts);
             context.put("lowStockItems", lowStockList);
 
         } catch (Exception e) {
             log.warn("Error gathering role-scoped live store context: {}", e.getMessage());
             context.put("scopeType", "STORE_ADMIN_PORTAL");
-            context.put("storeName", "Swapnil Mega Mart");
-            context.put("todaySales", 30504.52);
-            context.put("todayOrders", 4);
-            context.put("totalProducts", 3500);
-            context.put("totalCustomers", 15);
+            context.put("storeName", "Store");
+            context.put("todaySales", 0.0);
+            context.put("todayOrders", 0);
+            context.put("totalProducts", 0);
+            context.put("totalCustomers", 0);
         }
 
         return context;
@@ -866,27 +832,27 @@ public class GroqAiServiceImpl implements AiService {
                     }
                     """,
                     userFullName, userFullName, userRole,
-                    ((Number) context.getOrDefault("totalStores", 1)).longValue(),
-                    ((Number) context.getOrDefault("totalBranches", 1)).longValue(),
-                    ((Number) context.getOrDefault("totalUsers", 6)).longValue(),
-                    ((Number) context.getOrDefault("totalPlatformOrders", 5)).longValue(),
-                    ((Number) context.getOrDefault("totalPlatformGmv", 30504.52)).doubleValue(),
-                    ((Number) context.getOrDefault("gmvToday", 30504.52)).doubleValue(),
-                    ((Number) context.getOrDefault("gmv7Days", 30504.52)).doubleValue(),
-                    ((Number) context.getOrDefault("gmv30Days", 30504.52)).doubleValue(),
-                    ((Number) context.getOrDefault("totalCatalogSkus", 3500)).longValue(),
+                    ((Number) context.getOrDefault("totalStores", 0)).longValue(),
+                    ((Number) context.getOrDefault("totalBranches", 0)).longValue(),
+                    ((Number) context.getOrDefault("totalUsers", 0)).longValue(),
+                    ((Number) context.getOrDefault("totalPlatformOrders", 0)).longValue(),
+                    ((Number) context.getOrDefault("totalPlatformGmv", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("gmvToday", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("gmv7Days", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("gmv30Days", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("totalCatalogSkus", 0)).longValue(),
                     ((Number) context.getOrDefault("pendingApprovalsCount", 0)).longValue(),
                     context.getOrDefault("paymentGateway", "Razorpay"),
                     context.getOrDefault("platformFeeRate", "10%"),
-                    ((Number) context.getOrDefault("totalGrossSubRevenue", 2499.0)).doubleValue(),
-                    ((Number) context.getOrDefault("totalCommShare", 250.0)).doubleValue(),
-                    context.getOrDefault("commissionSummary", "No commissions"),
+                    ((Number) context.getOrDefault("totalGrossSubRevenue", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("totalCommShare", 0.0)).doubleValue(),
+                    context.getOrDefault("commissionSummary", "No commissions recorded yet"),
                     context.getOrDefault("subscriptionPlansSummary", "Standard Plans"),
-                    context.getOrDefault("storeListSummary", "Swapnil Mega Mart"),
+                    context.getOrDefault("storeListSummary", "No stores onboarded yet"),
                     userFullName,
                     context.getOrDefault("platformFeeRate", "10%"),
-                    ((Number) context.getOrDefault("totalGrossSubRevenue", 2499.0)).doubleValue(),
-                    ((Number) context.getOrDefault("totalCommShare", 250.0)).doubleValue(),
+                    ((Number) context.getOrDefault("totalGrossSubRevenue", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("totalCommShare", 0.0)).doubleValue(),
                     userFullName
             );
         }
@@ -922,14 +888,14 @@ public class GroqAiServiceImpl implements AiService {
                     """,
                     userFullName, context.get("assignedBranch"),
                     userFullName, userRole,
-                    context.getOrDefault("activeRegister", "Counter Till #1"),
-                    context.getOrDefault("assignedBranch", "Main Market Branch"),
-                    ((Number) context.getOrDefault("myOrdersCount", 4)).longValue(),
-                    ((Number) context.getOrDefault("mySalesToday", 30504.52)).doubleValue(),
-                    ((Number) context.getOrDefault("myAverageBill", 7626.13)).doubleValue(),
+                    context.getOrDefault("activeRegister", "Counter Till"),
+                    context.getOrDefault("assignedBranch", "Assigned Branch"),
+                    ((Number) context.getOrDefault("myOrdersCount", 0)).longValue(),
+                    ((Number) context.getOrDefault("mySalesToday", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("myAverageBill", 0.0)).doubleValue(),
                     userFullName,
-                    ((Number) context.getOrDefault("myOrdersCount", 4)).longValue(),
-                    ((Number) context.getOrDefault("mySalesToday", 30504.52)).doubleValue()
+                    ((Number) context.getOrDefault("myOrdersCount", 0)).longValue(),
+                    ((Number) context.getOrDefault("mySalesToday", 0.0)).doubleValue()
             );
         }
 
@@ -945,6 +911,8 @@ public class GroqAiServiceImpl implements AiService {
                     lowStockSb.append(String.format("  - %s (SKU: %s, Stock: %s, Selling: ₹%s)\n",
                             item.get("name"), item.get("sku"), item.get("stock"), item.get("sellingPrice")));
                 }
+            } else {
+                lowStockSb.append("  - All branch items currently have healthy stock (>15 units). No urgent stockout risk.\n");
             }
 
             return String.format("""
@@ -975,10 +943,10 @@ public class GroqAiServiceImpl implements AiService {
                     """,
                     userFullName, context.get("branchName"),
                     context.get("branchName"), userFullName, userRole,
-                    ((Number) context.getOrDefault("branchTodaySales", 30504.52)).doubleValue(),
-                    ((Number) context.getOrDefault("branchTodayOrders", 4)).intValue(),
-                    ((Number) context.getOrDefault("branchAov", 7626.13)).doubleValue(),
-                    ((Number) context.getOrDefault("branchCashierCount", 2)).longValue(),
+                    ((Number) context.getOrDefault("branchTodaySales", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("branchTodayOrders", 0)).intValue(),
+                    ((Number) context.getOrDefault("branchAov", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("branchCashierCount", 0)).longValue(),
                     lowStockSb.toString()
             );
         }
@@ -1011,10 +979,10 @@ public class GroqAiServiceImpl implements AiService {
                     """,
                     userFullName, context.get("storeName"),
                     context.get("storeName"), userFullName, userRole,
-                    ((Number) context.getOrDefault("todayOrders", 4)).intValue(),
-                    ((Number) context.getOrDefault("todaySales", 30504.52)).doubleValue(),
-                    ((Number) context.getOrDefault("storeStaffCount", 6)).intValue(),
-                    ((Number) context.getOrDefault("totalProducts", 3500)).longValue()
+                    ((Number) context.getOrDefault("todayOrders", 0)).intValue(),
+                    ((Number) context.getOrDefault("todaySales", 0.0)).doubleValue(),
+                    ((Number) context.getOrDefault("storeStaffCount", 0)).intValue(),
+                    ((Number) context.getOrDefault("totalProducts", 0)).longValue()
             );
         }
 
@@ -1029,6 +997,8 @@ public class GroqAiServiceImpl implements AiService {
                 lowStockSummary.append(String.format("  - %s (SKU: %s, Stock: %s pcs, Selling: ₹%s)\n",
                         item.get("name"), item.get("sku"), item.get("stock"), item.get("sellingPrice")));
             }
+        } else {
+            lowStockSummary.append("  - All tracked inventory items currently have healthy stock levels (>15 units). No immediate reorders required.\n");
         }
 
         return String.format("""
@@ -1068,26 +1038,26 @@ public class GroqAiServiceImpl implements AiService {
                 """,
                 userFullName, context.get("storeName"),
                 context.get("storeName"), userFullName, userRole,
-                context.getOrDefault("currentPlanName", "Growth Plan (Active)"),
-                ((Number) context.getOrDefault("todaySales", 30504.52)).doubleValue(),
-                ((Number) context.getOrDefault("todayOrders", 4)).intValue(),
+                context.getOrDefault("currentPlanName", "No Active Plan"),
+                ((Number) context.getOrDefault("todaySales", 0.0)).doubleValue(),
+                ((Number) context.getOrDefault("todayOrders", 0)).intValue(),
                 ((Number) context.getOrDefault("yesterdaySales", 0.0)).doubleValue(),
                 ((Number) context.getOrDefault("yesterdayOrders", 0)).intValue(),
-                ((Number) context.getOrDefault("sales7Days", 30504.52)).doubleValue(),
-                ((Number) context.getOrDefault("orders7Days", 4)).intValue(),
-                ((Number) context.getOrDefault("sales30Days", 30504.52)).doubleValue(),
-                ((Number) context.getOrDefault("orders30Days", 4)).intValue(),
-                ((Number) context.getOrDefault("averageOrderValue", 7626.13)).doubleValue(),
-                ((Number) context.getOrDefault("totalLifetimeSales", 30504.52)).doubleValue(),
-                ((Number) context.getOrDefault("totalLifetimeOrders", 5)).longValue(),
-                ((Number) context.getOrDefault("activeBranches", 1)).intValue(),
-                ((Number) context.getOrDefault("storeStaffCount", 6)).intValue(),
-                ((Number) context.getOrDefault("totalCustomers", 15)).longValue(),
-                ((Number) context.getOrDefault("totalProducts", 3500)).longValue(),
+                ((Number) context.getOrDefault("sales7Days", 0.0)).doubleValue(),
+                ((Number) context.getOrDefault("orders7Days", 0)).intValue(),
+                ((Number) context.getOrDefault("sales30Days", 0.0)).doubleValue(),
+                ((Number) context.getOrDefault("orders30Days", 0)).intValue(),
+                ((Number) context.getOrDefault("averageOrderValue", 0.0)).doubleValue(),
+                ((Number) context.getOrDefault("totalLifetimeSales", 0.0)).doubleValue(),
+                ((Number) context.getOrDefault("totalLifetimeOrders", 0)).longValue(),
+                ((Number) context.getOrDefault("activeBranches", 0)).intValue(),
+                ((Number) context.getOrDefault("storeStaffCount", 0)).intValue(),
+                ((Number) context.getOrDefault("totalCustomers", 0)).longValue(),
+                ((Number) context.getOrDefault("totalProducts", 0)).longValue(),
                 lowStockSummary.toString(),
                 userFullName, context.get("storeName"),
-                ((Number) context.getOrDefault("todaySales", 30504.52)).doubleValue(),
-                ((Number) context.getOrDefault("todayOrders", 4)).intValue()
+                ((Number) context.getOrDefault("todaySales", 0.0)).doubleValue(),
+                ((Number) context.getOrDefault("todayOrders", 0)).intValue()
         );
     }
 
