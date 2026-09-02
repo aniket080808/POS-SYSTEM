@@ -209,6 +209,12 @@ const AiCopilotWidget = () => {
     const query = (textToSend || inputQuery).trim();
     if (!query || copilotLoading) return;
 
+    // Multi-turn context memory: extract last 6 message turns before adding current query
+    const recentMessages = (copilotHistory || []).slice(-6).map((m) => ({
+      role: m.sender === "user" ? "user" : "assistant",
+      content: m.content || "",
+    }));
+
     dispatch(addUserCopilotMessage(query));
     setInputQuery("");
 
@@ -217,6 +223,7 @@ const AiCopilotWidget = () => {
         query,
         storeId: store?.id || userProfile?.storeId,
         branchId: userProfile?.branchId,
+        messages: recentMessages,
       })
     );
   };

@@ -183,17 +183,37 @@ public class GroqAiServiceImpl implements AiService {
             try {
                 String systemPrompt = buildSystemPrompt(liveContext);
 
+                List<Map<String, Object>> groqMessages = new ArrayList<>();
                 Map<String, Object> sysMsg = new HashMap<>();
                 sysMsg.put("role", "system");
                 sysMsg.put("content", systemPrompt);
+                groqMessages.add(sysMsg);
 
+                // Multi-turn context memory: Add last 6 message turns from conversation history
+                if (request.getMessages() != null && !request.getMessages().isEmpty()) {
+                    int total = request.getMessages().size();
+                    int startIdx = Math.max(0, total - 6);
+                    for (int i = startIdx; i < total; i++) {
+                        AiCopilotRequest.ChatMessageDto prev = request.getMessages().get(i);
+                        if (prev != null && prev.getContent() != null && !prev.getContent().trim().isEmpty()) {
+                            String msgRole = "assistant".equalsIgnoreCase(prev.getRole()) ? "assistant" : "user";
+                            Map<String, Object> turnMsg = new HashMap<>();
+                            turnMsg.put("role", msgRole);
+                            turnMsg.put("content", prev.getContent().trim());
+                            groqMessages.add(turnMsg);
+                        }
+                    }
+                }
+
+                // Current user query
                 Map<String, Object> userMsg = new HashMap<>();
                 userMsg.put("role", "user");
                 userMsg.put("content", request.getQuery());
+                groqMessages.add(userMsg);
 
                 Map<String, Object> requestBody = new HashMap<>();
                 requestBody.put("model", groqModel);
-                requestBody.put("messages", List.of(sysMsg, userMsg));
+                requestBody.put("messages", groqMessages);
                 requestBody.put("temperature", 0.3);
                 Map<String, String> responseFormat = new HashMap<>();
                 responseFormat.put("type", "json_object");
