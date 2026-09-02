@@ -34,8 +34,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:aniketmeshram445@gmail.com}
+    password: ${MAIL_PASSWORD:otah jlph xjrd jzwq}
     properties:
       mail:
         smtp:
@@ -52,22 +52,22 @@ server:
 
 razorpay:
   api:
-    key: ${RAZORPAY_KEY_ID}
-    secret: ${RAZORPAY_KEY_SECRET}
+    key: ${RAZORPAY_KEY_ID:}
+    secret: ${RAZORPAY_KEY_SECRET:}
 
 gemini:
   api:
-    key: ${GEMINI_API_KEY}
+    key: ${GEMINI_API_KEY:}
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:anw4grsndhybrgc3q4ixngesubtr4wibgigfwinx4g4ng3i6ti3f}
   frontend:
-    reset-url: ${FRONTEND_RESET_URL}
+    reset-url: ${FRONTEND_RESET_URL:http://localhost:5173/auth/reset-password?token=}
   admin:
-    email: ${ADMIN_EMAIL_ANIKET}
-    password: ${ADMIN_PASSWORD_ANIKET}
-    full-name: ${ADMIN_FULL_NAME_ANIKET}
+    email: ${ADMIN_EMAIL_ANIKET:aniketmeshram445@gmail.com}
+    password: ${ADMIN_PASSWORD_ANIKET:Aniket123@}
+    full-name: ${ADMIN_FULL_NAME_ANIKET:Aniket Meshram}
   alerts:
     # Inactive Cashiers: flag cashiers who haven't logged in for N days (or never logged in)
     inactive-cashier-days: ${ALERTS_INACTIVE_CASHIER_DAYS:7}
