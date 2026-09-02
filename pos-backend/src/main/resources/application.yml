@@ -7,20 +7,29 @@ spring:
     locale: en_IN
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pos}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pos}${DB_SSL_PARAM:}}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+      idle-timeout: 30000
+      connection-timeout: 20000
+      max-lifetime: 1800000
 
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: ${JPA_SHOW_SQL:true}
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         jdbc:
           lob:
             non_contextual_creation: true
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
 
   mail:
     host: smtp.gmail.com
@@ -51,12 +60,14 @@ gemini:
     key: ${GEMINI_API_KEY}
 
 app:
+  jwt:
+    secret: ${JWT_SECRET}
   frontend:
     reset-url: ${FRONTEND_RESET_URL}
   admin:
-    email: ${ADMIN_EMAIL_ANIKET:aniketmeshram445@gmail.com}
-    password: ${ADMIN_PASSWORD_ANIKET:Admin123@}
-    full-name: ${ADMIN_FULL_NAME_ANIKET:Aniket Meshram}
+    email: ${ADMIN_EMAIL_ANIKET}
+    password: ${ADMIN_PASSWORD_ANIKET}
+    full-name: ${ADMIN_FULL_NAME_ANIKET}
   alerts:
     # Inactive Cashiers: flag cashiers who haven't logged in for N days (or never logged in)
     inactive-cashier-days: ${ALERTS_INACTIVE_CASHIER_DAYS:7}
@@ -77,7 +88,4 @@ logging:
   level:
     org:
       hibernate:
-        SQL: ${LOGGING_LEVEL_HIBERNATE_SQL:DEBUG}
-        type:
-          descriptor:
-            sql: TRACE
+        SQL: ${LOGGING_LEVEL_HIBERNATE_SQL:WARN}

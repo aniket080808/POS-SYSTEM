@@ -67,8 +67,9 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<scope>annotationProcessor</scope>
+			<optional>true</optional>
 		</dependency>
+
 
 		<!-- Load .env file automatically -->
 		<dependency>

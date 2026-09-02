@@ -26,6 +26,8 @@ import settingsReducer from "./features/settings/settingsSlice.js";
 import storeSubscriptionReducer from "./features/storeSubscription/storeSubscriptionSlice.js";
 import approvalRequestReducer from "./features/approvalRequest/approvalRequestSlice.js";
 import storeSettingsReducer from "./features/storeSettings/storeSettingsSlice.js";
+import aiReducer from "./features/ai/aiSlice.js";
+import heldOrderReducer from "./features/heldOrder/heldOrderSlice.js";
 
 const globleState = configureStore({
   reducer: {
@@ -57,7 +59,14 @@ const globleState = configureStore({
     storeSubscription: storeSubscriptionReducer,
     approvalRequest: approvalRequestReducer,
     storeSettings: storeSettingsReducer,
+    ai: aiReducer,
+    heldOrder: heldOrderReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+      immutableCheck: false,
+    }),
 });
 
 export default globleState;

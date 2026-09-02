@@ -34,15 +34,13 @@ public class ShiftReport {
     @ManyToOne
     private Branch branch;
 
-//    @OneToMany(mappedBy = "shiftReport", cascade = CascadeType.ALL)
-//    @ElementCollection
     @Transient
     private List<PaymentSummary> paymentSummaries;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    private List<Product> topSellingProducts;
+    @Transient
+    private List<com.aniket.payload.dto.ProductDTO> topSellingProducts;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @Transient
     private List<Order> recentOrders;
 
     @OneToMany(mappedBy = "shiftReport", cascade = CascadeType.ALL)

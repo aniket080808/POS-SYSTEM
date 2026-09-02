@@ -106,13 +106,25 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
 
         // Resolve store from security context user
         String email = auth.getName();
-        User user = userRepository.findByEmail(email);
+        User user = (User) request.getAttribute("AUTHENTICATED_USER");
+        if (user == null) {
+            user = userRepository.findByEmail(email);
+            if (user != null) {
+                request.setAttribute("AUTHENTICATED_USER", user);
+            }
+        }
         if (user == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        Store store = resolveStoreForUser(user);
+        Store store = (Store) request.getAttribute("AUTHENTICATED_STORE");
+        if (store == null) {
+            store = resolveStoreForUser(user);
+            if (store != null) {
+                request.setAttribute("AUTHENTICATED_STORE", store);
+            }
+        }
 
         if (store == null) {
             filterChain.doFilter(request, response);
@@ -173,22 +185,14 @@ public class SubscriptionGuardFilter extends OncePerRequestFilter {
     }
 
     private Store resolveStoreForUser(User user) {
-        if (user.getRole() == UserRole.ROLE_STORE_ADMIN || user.getRole() == UserRole.ROLE_STORE_MANAGER) {
-            return storeRepository.findByStoreAdminId(user.getId());
-        } else if (user.getRole() == UserRole.ROLE_BRANCH_MANAGER || user.getRole() == UserRole.ROLE_BRANCH_ADMIN || user.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
-            // Resolve store via the user's own FK relationships instead of a global findFirst().
-            // 1) Direct store link (User.store / User.ownedStore)
-            if (user.getStore() != null) {
-                return user.getStore();
-            }
-            // 2) Via the user's linked branch
-            if (user.getBranch() != null && user.getBranch().getStore() != null) {
-                return user.getBranch().getStore();
-            }
-            // No store linked — pass through; controllers enforce their own scoping
-            return null;
+        Store store = user.getStore();
+        if (store == null && user.getBranch() != null && user.getBranch().getStore() != null) {
+            store = user.getBranch().getStore();
         }
-        return storeRepository.findByStoreAdminId(user.getId());
+        if (store == null) {
+            store = storeRepository.findByStoreAdminId(user.getId());
+        }
+        return store;
     }
 
     private void writeForbiddenResponse(HttpServletResponse response, String message, String code) throws IOException {

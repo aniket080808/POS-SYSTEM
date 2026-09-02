@@ -23,6 +23,7 @@ public interface StoreService {
     StoreDTO updateStore(Long id, StoreDTO storeDto) throws ResourceNotFoundException, UserException;
     StoreDTO updateStoreAsSuperAdmin(Long id, StoreDTO storeDto) throws ResourceNotFoundException, UserException;
     void deleteStore() throws ResourceNotFoundException, UserException;
+    void deleteStore(Long id) throws ResourceNotFoundException, UserException;
     UserDTO addEmployee(Long id, UserDTO userDto) throws UserException;
     List<UserDTO> getEmployeesByStore(Long storeId) throws UserException;
 

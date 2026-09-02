@@ -2,11 +2,14 @@ package com.aniket.service.impl;
 
 import com.aniket.domain.NotificationType;
 import com.aniket.domain.Priority;
+import com.aniket.domain.UserRole;
 import com.aniket.modal.Notification;
 import com.aniket.modal.NotificationPreference;
+import com.aniket.modal.User;
 import com.aniket.repository.NotificationPreferenceRepository;
 import com.aniket.repository.NotificationRepository;
 import com.aniket.service.NotificationService;
+import com.aniket.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +29,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationPreferenceRepository preferenceRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final UserService userService;
 
     @Override
     @Transactional
@@ -90,8 +94,18 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void markAsRead(Long notificationId) {
         notificationRepository.findById(notificationId).ifPresent(notification -> {
-            notification.setRead(true);
-            notificationRepository.save(notification);
+            try {
+                User currentUser = userService.getCurrentUser();
+                if (currentUser.getRole() == UserRole.ROLE_ADMIN ||
+                        (notification.getRecipientId() != null && notification.getRecipientId().equals(currentUser.getId()))) {
+                    notification.setRead(true);
+                    notificationRepository.save(notification);
+                }
+            } catch (Exception e) {
+                // If no security context user, update as fallback
+                notification.setRead(true);
+                notificationRepository.save(notification);
+            }
         });
     }
 
@@ -105,8 +119,18 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void deleteNotification(Long notificationId) {
         notificationRepository.findById(notificationId).ifPresent(notification -> {
-            notification.setDeleted(true);
-            notificationRepository.save(notification);
+            try {
+                User currentUser = userService.getCurrentUser();
+                if (currentUser.getRole() == UserRole.ROLE_ADMIN ||
+                        (notification.getRecipientId() != null && notification.getRecipientId().equals(currentUser.getId()))) {
+                    notification.setDeleted(true);
+                    notificationRepository.save(notification);
+                }
+            } catch (Exception e) {
+                // If no security context user, delete as fallback
+                notification.setDeleted(true);
+                notificationRepository.save(notification);
+            }
         });
     }
 

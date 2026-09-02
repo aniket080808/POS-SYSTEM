@@ -27,6 +27,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final InventoryRepository inventoryRepository;
+    private final com.aniket.repository.ShiftReportRepository shiftReportRepository;
 
     @Override
     public List<DailySalesDTO> getDailySalesChart(Long branchId, int days) {
@@ -93,31 +94,40 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
 
     @Override
     public List<CategorySalesDTO> getCategoryWiseSalesBreakdown(Long branchId, LocalDate date) {
-        LocalDateTime start = date.atStartOfDay();
-        LocalDateTime end = date.atTime(LocalTime.MAX);
-
-        List<Object[]> rawData = orderItemRepository.getCategoryWiseSales(branchId, start, end);
+        List<Object[]> rawData;
+        if (date != null) {
+            LocalDateTime start = date.atStartOfDay();
+            LocalDateTime end = date.atTime(LocalTime.MAX);
+            rawData = orderItemRepository.getCategoryWiseSales(branchId, start, end);
+        } else {
+            rawData = orderItemRepository.getAllTimeCategoryWiseSales(branchId);
+        }
 
         return rawData.stream().map(obj -> CategorySalesDTO.builder()
-                .categoryName((String) obj[0])
-                .totalSales((Double) obj[1])
-                .quantitySold((Long) obj[2])
+                .categoryName(obj[0] != null ? (String) obj[0] : "General")
+                .totalSales(obj[1] != null ? ((Number) obj[1]).doubleValue() : 0.0)
+                .quantitySold(obj[2] != null ? ((Number) obj[2]).longValue() : 0L)
                 .build()
         ).collect(Collectors.toList());
     }
 
     @Override
     public List<PaymentSummary> getPaymentMethodBreakdown(Long branchId, LocalDate date) {
-        List<Object[]> rawData = orderRepository.getPaymentBreakdownByMethod(branchId, date);
+        List<Object[]> rawData;
+        if (date != null) {
+            rawData = orderRepository.getPaymentBreakdownByMethod(branchId, date);
+        } else {
+            rawData = orderRepository.getAllTimePaymentBreakdown(branchId);
+        }
 
         double total = rawData.stream()
-                .mapToDouble(obj -> (Double) obj[1])
+                .mapToDouble(obj -> obj[1] != null ? ((Number) obj[1]).doubleValue() : 0.0)
                 .sum();
 
         return rawData.stream().map(obj -> {
             PaymentType type = (PaymentType) obj[0];
-            double amount = (Double) obj[1];
-            int count = ((Long) obj[2]).intValue();
+            double amount = obj[1] != null ? ((Number) obj[1]).doubleValue() : 0.0;
+            int count = obj[2] != null ? ((Number) obj[2]).intValue() : 0;
 
             double percentage = total == 0 ? 0 : (amount / total) * 100;
 
@@ -150,21 +160,20 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
         double orderGrowth = calculateGrowth(todayOrders, yesterdayOrders);
 
         // ---- Active Cashiers ----
-        int todayCashiers = orderRepository.countDistinctCashiersByBranchAndDate(branchId, today);
+        int activeCashiers = shiftReportRepository.countByBranchIdAndShiftEndIsNull(branchId);
         int yesterdayCashiers = orderRepository.countDistinctCashiersByBranchAndDate(branchId, yesterday);
-        double cashierGrowth = calculateGrowth(todayCashiers, yesterdayCashiers);
+        double cashierGrowth = calculateGrowth(activeCashiers, yesterdayCashiers);
 
         // ---- Low Stock ----
         int todayLowStock = inventoryRepository.countLowStockItems(branchId);
-        int yesterdayLowStock = 12; // You may store yesterday's value in DB or Redis if needed.
-        double lowStockGrowth = calculateGrowth(todayLowStock, yesterdayLowStock);
+        double lowStockGrowth = 0.0; // Clean neutral growth without fake hardcoded yesterday values
 
         return BranchDashboardOverviewDTO.builder()
                 .totalSales(todaySales)
                 .salesGrowth(salesGrowth)
                 .ordersToday(todayOrders)
                 .orderGrowth(orderGrowth)
-                .activeCashiers(todayCashiers)
+                .activeCashiers(activeCashiers)
                 .cashierGrowth(cashierGrowth)
                 .lowStockItems(todayLowStock)
                 .lowStockGrowth(lowStockGrowth)

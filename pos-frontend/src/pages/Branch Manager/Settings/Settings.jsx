@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -7,7 +8,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -19,14 +19,14 @@ import {
 } from "@/components/ui/select";
 import {
   Building,
-
   Printer,
   Receipt,
   CreditCard,
+  Percent,
   Save,
+  Loader2,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useState } from "react";
 import { getBranchById } from "@/Redux Toolkit/features/branch/branchThunks";
 import BranchInfo from "./BranchInfo";
 import { useToast } from "@/components/ui/use-toast";
@@ -35,49 +35,17 @@ import api from "@/utils/api";
 const Settings = () => {
   const dispatch = useDispatch();
   const { toast } = useToast();
+  const { branch } = useSelector((state) => state.branch);
   const { userProfile } = useSelector((state) => state.user);
-  const activeBranchId = userProfile?.branchId || userProfile?.branch?.id;
+  const activeBranchId = branch?.id || userProfile?.branchId || userProfile?.branch?.id;
 
-  useEffect(() => {
-    if (activeBranchId && localStorage.getItem("jwt")) {
-      dispatch(
-        getBranchById({
-          id: activeBranchId,
-          jwt: localStorage.getItem("jwt"),
-        })
-      );
-
-      // Load persistent branch settings from backend
-      api.get(`/api/branches/${activeBranchId}/settings`)
-        .then((res) => {
-          if (res.data) {
-            if (res.data.printerSettings) {
-              try { setPrinterSettings(JSON.parse(res.data.printerSettings)); } catch { /* ignore parse error */ }
-            }
-            if (res.data.taxSettings) {
-              try { setTaxSettings(JSON.parse(res.data.taxSettings)); } catch { /* ignore parse error */ }
-            }
-            if (res.data.paymentSettings) {
-              try { setPaymentSettings(JSON.parse(res.data.paymentSettings)); } catch { /* ignore parse error */ }
-            }
-            if (res.data.discountSettings) {
-              try { setDiscountSettings(JSON.parse(res.data.discountSettings)); } catch { /* ignore parse error */ }
-            }
-          }
-        })
-        .catch(() => {
-          // fallback to localStorage if network/backend error
-        });
-    }
-  }, [dispatch, activeBranchId]);
+  const [saving, setSaving] = useState(false);
 
   const [printerSettings, setPrinterSettings] = useState(() => {
     try {
       const saved = localStorage.getItem("pos_branch_printer_settings");
       if (saved) return JSON.parse(saved);
-    } catch {
-      /* ignore */
-    }
+    } catch {}
     return {
       printerName: "Epson TM-T88VI",
       paperSize: "80mm",
@@ -92,9 +60,7 @@ const Settings = () => {
     try {
       const saved = localStorage.getItem("pos_branch_tax_settings");
       if (saved) return JSON.parse(saved);
-    } catch {
-      /* ignore */
-    }
+    } catch {}
     return {
       gstEnabled: true,
       gstPercentage: 18,
@@ -107,9 +73,7 @@ const Settings = () => {
     try {
       const saved = localStorage.getItem("pos_branch_payment_settings");
       if (saved) return JSON.parse(saved);
-    } catch {
-      /* ignore */
-    }
+    } catch {}
     return {
       acceptCash: true,
       acceptUPI: true,
@@ -123,9 +87,7 @@ const Settings = () => {
     try {
       const saved = localStorage.getItem("pos_branch_discount_settings");
       if (saved) return JSON.parse(saved);
-    } catch {
-      /* ignore */
-    }
+    } catch {}
     return {
       allowDiscount: true,
       maxDiscountPercentage: 10,
@@ -139,35 +101,38 @@ const Settings = () => {
     };
   });
 
-  const handlePrinterSettingsChange = (field, value) => {
-    setPrinterSettings({
-      ...printerSettings,
-      [field]: value,
-    });
-  };
+  useEffect(() => {
+    if (activeBranchId && localStorage.getItem("jwt")) {
+      dispatch(
+        getBranchById({
+          id: activeBranchId,
+          jwt: localStorage.getItem("jwt"),
+        })
+      );
 
-  const handleTaxSettingsChange = (field, value) => {
-    setTaxSettings({
-      ...taxSettings,
-      [field]: value,
-    });
-  };
-
-  const handlePaymentSettingsChange = (field, value) => {
-    setPaymentSettings({
-      ...paymentSettings,
-      [field]: value,
-    });
-  };
-
-  const handleDiscountSettingsChange = (field, value) => {
-    setDiscountSettings({
-      ...discountSettings,
-      [field]: value,
-    });
-  };
+      api.get(`/api/branches/${activeBranchId}/settings`)
+        .then((res) => {
+          if (res.data) {
+            if (res.data.printerSettings) {
+              try { setPrinterSettings(JSON.parse(res.data.printerSettings)); } catch {}
+            }
+            if (res.data.taxSettings) {
+              try { setTaxSettings(JSON.parse(res.data.taxSettings)); } catch {}
+            }
+            if (res.data.paymentSettings) {
+              try { setPaymentSettings(JSON.parse(res.data.paymentSettings)); } catch {}
+            }
+            if (res.data.discountSettings) {
+              try { setDiscountSettings(JSON.parse(res.data.discountSettings)); } catch {}
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [dispatch, activeBranchId]);
 
   const handleSaveSettings = async (settingType) => {
+    setSaving(true);
     try {
       if (settingType === "printer") {
         localStorage.setItem("pos_branch_printer_settings", JSON.stringify(printerSettings));
@@ -190,511 +155,315 @@ const Settings = () => {
 
       toast({
         title: "Settings Saved",
-        description: `${settingType.charAt(0).toUpperCase() + settingType.slice(1)} settings updated successfully.`,
+        description: `${settingType.charAt(0).toUpperCase() + settingType.slice(1)} configurations updated successfully.`,
       });
-    } catch {
+    } catch (e) {
       toast({
         title: "Settings Saved Locally",
-        description: `${settingType.charAt(0).toUpperCase() + settingType.slice(1)} settings saved to local cache.`,
+        description: `${settingType.charAt(0).toUpperCase() + settingType.slice(1)} configurations cached in local storage.`,
       });
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Branch Settings</h1>
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Branch Workstation Preferences
+        </h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Configure thermal receipt templates, GST parameters, terminal tenders, and cashier discounts
+        </p>
       </div>
 
-      <Tabs defaultValue="branch-info">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="branch-info" className="flex items-center gap-2">
-            <Building className="h-4 w-4" />
-            Branch Info
+      <Tabs defaultValue="branch-info" className="space-y-6">
+        <TabsList className="bg-secondary/60 p-1 rounded-2xl border border-border grid w-full grid-cols-5">
+          <TabsTrigger value="branch-info" className="text-xs font-semibold rounded-xl gap-1.5 data-[state=active]:bg-card">
+            <Building className="h-3.5 w-3.5" /> Station Info
           </TabsTrigger>
-          <TabsTrigger value="printer" className="flex items-center gap-2">
-            <Printer className="h-4 w-4" />
-            Printer
+          <TabsTrigger value="printer" className="text-xs font-semibold rounded-xl gap-1.5 data-[state=active]:bg-card">
+            <Printer className="h-3.5 w-3.5" /> Thermal Printer
           </TabsTrigger>
-          <TabsTrigger value="tax" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
-            Tax
+          <TabsTrigger value="tax" className="text-xs font-semibold rounded-xl gap-1.5 data-[state=active]:bg-card">
+            <Receipt className="h-3.5 w-3.5" /> GST & Taxes
           </TabsTrigger>
-          <TabsTrigger value="payment" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            Payment
+          <TabsTrigger value="payment" className="text-xs font-semibold rounded-xl gap-1.5 data-[state=active]:bg-card">
+            <CreditCard className="h-3.5 w-3.5" /> Tender Tills
           </TabsTrigger>
-          <TabsTrigger value="discount" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            Discount
+          <TabsTrigger value="discount" className="text-xs font-semibold rounded-xl gap-1.5 data-[state=active]:bg-card">
+            <Percent className="h-3.5 w-3.5" /> POS Discounts
           </TabsTrigger>
         </TabsList>
-
-        {/* Branch Info Tab */}
 
         <TabsContent value="branch-info">
           <BranchInfo />
         </TabsContent>
 
-        {/* Printer Settings Tab */}
+        {/* Printer Settings */}
         <TabsContent value="printer">
-          <Card>
-            <CardHeader>
-              <CardTitle>POS Printer Settings</CardTitle>
-              <CardDescription>
-                Configure your receipt printer settings.
+          <Card className="border-border shadow-2xs">
+            <CardHeader className="pb-3 border-b border-border/60">
+              <CardTitle className="text-base">Thermal Receipt Printer Configuration</CardTitle>
+              <CardDescription className="text-xs">
+                ESC/POS ESC-P hardware drivers, paper widths, and receipt footer policies
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="printer-name"
-                      className="text-sm font-medium"
-                    >
-                      Printer Name
-                    </label>
-                    <Input
-                      id="printer-name"
-                      value={printerSettings.printerName}
-                      onChange={(e) =>
-                        handlePrinterSettingsChange(
-                          "printerName",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="paper-size" className="text-sm font-medium">
-                      Paper Size
-                    </label>
-                    <Select
-                      value={printerSettings.paperSize}
-                      onValueChange={(value) =>
-                        handlePrinterSettingsChange("paperSize", value)
-                      }
-                    >
-                      <SelectTrigger id="paper-size">
-                        <SelectValue placeholder="Select paper size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="58mm">58mm</SelectItem>
-                        <SelectItem value="80mm">80mm</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="print-logo" className="text-sm font-medium">
-                      Print Logo on Receipt
-                    </label>
-                    <Switch
-                      id="print-logo"
-                      checked={printerSettings.printLogo}
-                      onCheckedChange={(checked) =>
-                        handlePrinterSettingsChange("printLogo", checked)
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <label
-                      htmlFor="print-customer"
-                      className="text-sm font-medium"
-                    >
-                      Print Customer Details
-                    </label>
-                    <Switch
-                      id="print-customer"
-                      checked={printerSettings.printCustomerDetails}
-                      onCheckedChange={(checked) =>
-                        handlePrinterSettingsChange(
-                          "printCustomerDetails",
-                          checked
-                        )
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="print-tax" className="text-sm font-medium">
-                      Print Itemized Tax
-                    </label>
-                    <Switch
-                      id="print-tax"
-                      checked={printerSettings.printItemizedTax}
-                      onCheckedChange={(checked) =>
-                        handlePrinterSettingsChange("printItemizedTax", checked)
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="footer-text" className="text-sm font-medium">
-                    Receipt Footer Text
+            <CardContent className="space-y-6 pt-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1.5 block">
+                    Assigned Thermal Hardware Model
                   </label>
                   <Input
-                    id="footer-text"
-                    value={printerSettings.footerText}
-                    onChange={(e) =>
-                      handlePrinterSettingsChange("footerText", e.target.value)
-                    }
+                    value={printerSettings.printerName}
+                    onChange={(e) => setPrinterSettings({ ...printerSettings, printerName: e.target.value })}
+                    className="text-xs h-10"
                   />
                 </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  className="gap-2"
-                  onClick={() => handleSaveSettings("printer")}
-                >
-                  <Save className="h-4 w-4" />
-                  Save Changes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tax Settings Tab */}
-        <TabsContent value="tax">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tax Settings</CardTitle>
-              <CardDescription>
-                Configure tax rates and rules for your branch.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="gst-enabled" className="text-sm font-medium">
-                    Enable GST
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1.5 block">
+                    Roll Paper Width Spec
                   </label>
-                  <Switch
-                    id="gst-enabled"
-                    checked={taxSettings.gstEnabled}
-                    onCheckedChange={(checked) =>
-                      handleTaxSettingsChange("gstEnabled", checked)
-                    }
-                  />
-                </div>
-
-                {taxSettings.gstEnabled && (
-                  <div className="space-y-4 pl-6 border-l-2 border-gray-100">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="gst-percentage"
-                        className="text-sm font-medium"
-                      >
-                        GST Percentage (%)
-                      </label>
-                      <Input
-                        id="gst-percentage"
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={taxSettings.gstPercentage}
-                        onChange={(e) =>
-                          handleTaxSettingsChange(
-                            "gstPercentage",
-                            parseInt(e.target.value)
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <label
-                        htmlFor="apply-gst-all"
-                        className="text-sm font-medium"
-                      >
-                        Apply GST to All Products
-                      </label>
-                      <Switch
-                        id="apply-gst-all"
-                        checked={taxSettings.applyGstToAll}
-                        onCheckedChange={(checked) =>
-                          handleTaxSettingsChange("applyGstToAll", checked)
-                        }
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <label
-                        htmlFor="show-tax-breakdown"
-                        className="text-sm font-medium"
-                      >
-                        Show Tax Breakdown on Receipt
-                      </label>
-                      <Switch
-                        id="show-tax-breakdown"
-                        checked={taxSettings.showTaxBreakdown}
-                        onCheckedChange={(checked) =>
-                          handleTaxSettingsChange("showTaxBreakdown", checked)
-                        }
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  className="gap-2"
-                  onClick={() => handleSaveSettings("tax")}
-                >
-                  <Save className="h-4 w-4" />
-                  Save Changes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Payment Settings Tab */}
-        <TabsContent value="payment">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Methods</CardTitle>
-              <CardDescription>
-                Configure accepted payment methods for your branch.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="accept-cash" className="text-sm font-medium">
-                    Accept Cash Payments
-                  </label>
-                  <Switch
-                    id="accept-cash"
-                    checked={paymentSettings.acceptCash}
-                    onCheckedChange={(checked) =>
-                      handlePaymentSettingsChange("acceptCash", checked)
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <label htmlFor="accept-upi" className="text-sm font-medium">
-                    Accept UPI Payments
-                  </label>
-                  <Switch
-                    id="accept-upi"
-                    checked={paymentSettings.acceptUPI}
-                    onCheckedChange={(checked) =>
-                      handlePaymentSettingsChange("acceptUPI", checked)
-                    }
-                  />
-                </div>
-
-                {paymentSettings.acceptUPI && (
-                  <div className="space-y-2 pl-6 border-l-2 border-gray-100">
-                    <label htmlFor="upi-id" className="text-sm font-medium">
-                      Branch UPI ID
-                    </label>
-                    <Input
-                      id="upi-id"
-                      value={paymentSettings.upiId}
-                      onChange={(e) =>
-                        handlePaymentSettingsChange("upiId", e.target.value)
-                      }
-                    />
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <label htmlFor="accept-card" className="text-sm font-medium">
-                    Accept Card Payments
-                  </label>
-                  <Switch
-                    id="accept-card"
-                    checked={paymentSettings.acceptCard}
-                    onCheckedChange={(checked) =>
-                      handlePaymentSettingsChange("acceptCard", checked)
-                    }
-                  />
-                </div>
-
-                {paymentSettings.acceptCard && (
-                  <div className="space-y-2 pl-6 border-l-2 border-gray-100">
-                    <label
-                      htmlFor="terminal-id"
-                      className="text-sm font-medium"
-                    >
-                      Card Terminal ID
-                    </label>
-                    <Input
-                      id="terminal-id"
-                      value={paymentSettings.cardTerminalId}
-                      onChange={(e) =>
-                        handlePaymentSettingsChange(
-                          "cardTerminalId",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  className="gap-2"
-                  onClick={() => handleSaveSettings("payment")}
-                >
-                  <Save className="h-4 w-4" />
-                  Save Changes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Discount Settings Tab */}
-        <TabsContent value="discount">
-          <Card>
-            <CardHeader>
-              <CardTitle>Discount Rules</CardTitle>
-              <CardDescription>
-                Configure discount policies for your branch.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="allow-discount"
-                    className="text-sm font-medium"
+                  <Select
+                    value={printerSettings.paperSize}
+                    onValueChange={(val) => setPrinterSettings({ ...printerSettings, paperSize: val })}
                   >
-                    Allow Discounts
-                  </label>
+                    <SelectTrigger className="text-xs h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="80mm">80mm (Standard POS Receipt)</SelectItem>
+                      <SelectItem value="58mm">58mm (Compact Mobile Roll)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-foreground mb-1.5 block">
+                  Receipt Footer Policy
+                </label>
+                <Input
+                  value={printerSettings.footerText}
+                  onChange={(e) => setPrinterSettings({ ...printerSettings, footerText: e.target.value })}
+                  className="text-xs h-10"
+                />
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 border border-border">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground block">Print Brand Header Logo</span>
+                    <span className="text-[11px] text-muted-foreground block">Embed grayscale store logo on top of paper roll</span>
+                  </div>
                   <Switch
-                    id="allow-discount"
-                    checked={discountSettings.allowDiscount}
-                    onCheckedChange={(checked) =>
-                      handleDiscountSettingsChange("allowDiscount", checked)
-                    }
+                    checked={printerSettings.printLogo}
+                    onCheckedChange={(val) => setPrinterSettings({ ...printerSettings, printLogo: val })}
                   />
                 </div>
 
-                {discountSettings.allowDiscount && (
-                  <div className="space-y-4 pl-6 border-l-2 border-gray-100">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="max-discount"
-                        className="text-sm font-medium"
-                      >
-                        Maximum Discount Percentage (%)
-                      </label>
-                      <Input
-                        id="max-discount"
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={discountSettings.maxDiscountPercentage}
-                        onChange={(e) =>
-                          handleDiscountSettingsChange(
-                            "maxDiscountPercentage",
-                            parseInt(e.target.value)
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <label
-                        htmlFor="manager-approval"
-                        className="text-sm font-medium"
-                      >
-                        Require Manager Approval for Discounts
-                      </label>
-                      <Switch
-                        id="manager-approval"
-                        checked={discountSettings.requireManagerApproval}
-                        onCheckedChange={(checked) =>
-                          handleDiscountSettingsChange(
-                            "requireManagerApproval",
-                            checked
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">
-                        Discount Reasons
-                      </label>
-                      <div className="space-y-2">
-                        {discountSettings.discountReasons.map(
-                          (reason, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center gap-2"
-                            >
-                              <Input
-                                value={reason}
-                                onChange={(e) => {
-                                  const updatedReasons = [
-                                    ...discountSettings.discountReasons,
-                                  ];
-                                  updatedReasons[index] = e.target.value;
-                                  handleDiscountSettingsChange(
-                                    "discountReasons",
-                                    updatedReasons
-                                  );
-                                }}
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  const updatedReasons =
-                                    discountSettings.discountReasons.filter(
-                                      (_, i) => i !== index
-                                    );
-                                  handleDiscountSettingsChange(
-                                    "discountReasons",
-                                    updatedReasons
-                                  );
-                                }}
-                              >
-                                ✕
-                              </Button>
-                            </div>
-                          )
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            handleDiscountSettingsChange("discountReasons", [
-                              ...discountSettings.discountReasons,
-                              "",
-                            ]);
-                          }}
-                        >
-                          Add Reason
-                        </Button>
-                      </div>
-                    </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 border border-border">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground block">Customer Phone & Name Header</span>
+                    <span className="text-[11px] text-muted-foreground block">Print customer CRM details on receipt</span>
                   </div>
-                )}
+                  <Switch
+                    checked={printerSettings.printCustomerDetails}
+                    onCheckedChange={(val) => setPrinterSettings({ ...printerSettings, printCustomerDetails: val })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 border border-border">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground block">Itemized CGST / SGST Breakdown</span>
+                    <span className="text-[11px] text-muted-foreground block">Print detailed tax breakdown per line item</span>
+                  </div>
+                  <Switch
+                    checked={printerSettings.printItemizedTax}
+                    onCheckedChange={(val) => setPrinterSettings({ ...printerSettings, printItemizedTax: val })}
+                  />
+                </div>
               </div>
 
-              <div className="flex justify-end">
-                <Button
-                  className="gap-2"
-                  onClick={() => handleSaveSettings("discount")}
-                >
-                  <Save className="h-4 w-4" />
-                  Save Changes
+              <div className="flex justify-end pt-3 border-t border-border/60">
+                <Button onClick={() => handleSaveSettings("printer")} disabled={saving} className="text-xs font-bold h-10 gap-1.5">
+                  <Save className="w-3.5 h-3.5" /> Save Printer Settings
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tax Settings */}
+        <TabsContent value="tax">
+          <Card className="border-border shadow-2xs">
+            <CardHeader className="pb-3 border-b border-border/60">
+              <CardTitle className="text-base">GST & Tax Invoicing Rules</CardTitle>
+              <CardDescription className="text-xs">Statutory taxation rates and invoicing breakdown flags</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 border border-border">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-foreground block">Enable GST Computation</span>
+                  <span className="text-[11px] text-muted-foreground block">Calculate tax on checkout lines automatically</span>
+                </div>
+                <Switch
+                  checked={taxSettings.gstEnabled}
+                  onCheckedChange={(val) => setTaxSettings({ ...taxSettings, gstEnabled: val })}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1.5 block">
+                    Default GST Bracket (%)
+                  </label>
+                  <Input
+                    type="number"
+                    value={taxSettings.gstPercentage}
+                    onChange={(e) => setTaxSettings({ ...taxSettings, gstPercentage: Number(e.target.value) })}
+                    className="text-xs h-10 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-3 border-t border-border/60">
+                <Button onClick={() => handleSaveSettings("tax")} disabled={saving} className="text-xs font-bold h-10 gap-1.5">
+                  <Save className="w-3.5 h-3.5" /> Save Tax Policy
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Payment Tenders */}
+        <TabsContent value="payment">
+          <Card className="border-border shadow-2xs">
+            <CardHeader className="pb-3 border-b border-border/60">
+              <CardTitle className="text-base">Checkout Station Payment Tenders</CardTitle>
+              <CardDescription className="text-xs">Payment methods accepted across counter tills</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 border border-border">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground block">Accept Cash Currency</span>
+                    <span className="text-[11px] text-muted-foreground block">Physical cash till drawer settlements</span>
+                  </div>
+                  <Switch
+                    checked={paymentSettings.acceptCash}
+                    onCheckedChange={(val) => setPaymentSettings({ ...paymentSettings, acceptCash: val })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 border border-border">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground block">Accept UPI Dynamic QR</span>
+                    <span className="text-[11px] text-muted-foreground block">Instant UPI payment routing to branch VPA</span>
+                  </div>
+                  <Switch
+                    checked={paymentSettings.acceptUPI}
+                    onCheckedChange={(val) => setPaymentSettings({ ...paymentSettings, acceptUPI: val })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 border border-border">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground block">Accept Card Terminal POS</span>
+                    <span className="text-[11px] text-muted-foreground block">Debit / Credit card swipe & tap transactions</span>
+                  </div>
+                  <Switch
+                    checked={paymentSettings.acceptCard}
+                    onCheckedChange={(val) => setPaymentSettings({ ...paymentSettings, acceptCard: val })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1.5 block">
+                    Branch UPI VPA ID
+                  </label>
+                  <Input
+                    value={paymentSettings.upiId}
+                    onChange={(e) => setPaymentSettings({ ...paymentSettings, upiId: e.target.value })}
+                    className="text-xs h-10 font-mono"
+                    placeholder="branch@upi"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1.5 block">
+                    EDC Card Terminal Station ID
+                  </label>
+                  <Input
+                    value={paymentSettings.cardTerminalId}
+                    onChange={(e) => setPaymentSettings({ ...paymentSettings, cardTerminalId: e.target.value })}
+                    className="text-xs h-10 font-mono"
+                    placeholder="TERM12345"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-3 border-t border-border/60">
+                <Button onClick={() => handleSaveSettings("payment")} disabled={saving} className="text-xs font-bold h-10 gap-1.5">
+                  <Save className="w-3.5 h-3.5" /> Save Payment Tenders
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Discounts */}
+        <TabsContent value="discount">
+          <Card className="border-border shadow-2xs">
+            <CardHeader className="pb-3 border-b border-border/60">
+              <CardTitle className="text-base">Cashier POS Discount Guardrails</CardTitle>
+              <CardDescription className="text-xs">Discretionary discount thresholds and approval requirements</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 border border-border">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-foreground block">Allow Counter Discounts</span>
+                  <span className="text-[11px] text-muted-foreground block">Enable cashier price adjustments during checkout</span>
+                </div>
+                <Switch
+                  checked={discountSettings.allowDiscount}
+                  onCheckedChange={(val) => setDiscountSettings({ ...discountSettings, allowDiscount: val })}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1.5 block">
+                    Maximum Discretionary Discount (%)
+                  </label>
+                  <Input
+                    type="number"
+                    max={100}
+                    min={0}
+                    value={discountSettings.maxDiscountPercentage}
+                    onChange={(e) => setDiscountSettings({ ...discountSettings, maxDiscountPercentage: Number(e.target.value) })}
+                    className="text-xs h-10 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 border border-border">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-foreground block">Require Manager PIN for High Discounts</span>
+                  <span className="text-[11px] text-muted-foreground block">Prompt manager authorization on discounts exceeding threshold</span>
+                </div>
+                <Switch
+                  checked={discountSettings.requireManagerApproval}
+                  onCheckedChange={(val) => setDiscountSettings({ ...discountSettings, requireManagerApproval: val })}
+                />
+              </div>
+
+              <div className="flex justify-end pt-3 border-t border-border/60">
+                <Button onClick={() => handleSaveSettings("discount")} disabled={saving} className="text-xs font-bold h-10 gap-1.5">
+                  <Save className="w-3.5 h-3.5" /> Save Discount Policy
                 </Button>
               </div>
             </CardContent>

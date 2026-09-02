@@ -1,11 +1,12 @@
 import { useSelector } from "react-redux";
 
 /**
- * Format a date string or Date object according to the store's configured date format.
- * Supported patterns: "MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD", "DD-MM-YYYY"
+ * Format a date string or Date object according to a given pattern.
+ * Supported patterns: "DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD", "DD-MM-YYYY"
+ * Default: "DD/MM/YYYY"
  */
 export const formatDateByPattern = (dateInput, pattern = "DD/MM/YYYY") => {
-  if (!dateInput) return "—";
+  if (!dateInput) return "";
 
   const date = new Date(dateInput);
   if (isNaN(date.getTime())) return String(dateInput);
@@ -14,7 +15,9 @@ export const formatDateByPattern = (dateInput, pattern = "DD/MM/YYYY") => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = date.getFullYear();
 
-  switch (pattern?.toUpperCase()) {
+  const activePattern = (pattern || "DD/MM/YYYY").toUpperCase();
+
+  switch (activePattern) {
     case "MM/DD/YYYY":
       return `${month}/${day}/${year}`;
     case "YYYY-MM-DD":
@@ -28,68 +31,22 @@ export const formatDateByPattern = (dateInput, pattern = "DD/MM/YYYY") => {
 };
 
 /**
- * Alias for formatDateByPattern for standard formatting.
+ * Format date and time according to store date format pattern
  */
-export const formatDate = (dateInput, pattern = "DD/MM/YYYY") => {
-  return formatDateByPattern(dateInput, pattern);
-};
+export const formatDateTimeByPattern = (dateInput, pattern = "DD/MM/YYYY", options = {}) => {
+  if (!dateInput) return "";
 
-/**
- * Format date & time with standard 12-hour AM/PM format.
- */
-export const formatDateTime = (dateInput) => {
-  if (!dateInput) return "—";
   const date = new Date(dateInput);
   if (isNaN(date.getTime())) return String(dateInput);
 
-  return date.toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+  const formattedDate = formatDateByPattern(dateInput, pattern);
+  const timeStr = date.toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: true,
+    hour12: options.hour12 !== false,
   });
-};
 
-/**
- * Format time only (12-hour format).
- */
-export const formatTime = (dateInput) => {
-  if (!dateInput) return "—";
-  const date = new Date(dateInput);
-  if (isNaN(date.getTime())) return String(dateInput);
-
-  return date.toLocaleTimeString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-};
-
-/**
- * Human-readable relative time ("Just now", "5 minutes ago", "Yesterday", etc.)
- */
-export const getRelativeTime = (dateInput) => {
-  if (!dateInput) return "—";
-  const now = new Date();
-  const date = new Date(dateInput);
-  if (isNaN(date.getTime())) return String(dateInput);
-
-  const diffMs = now - date;
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffSeconds < 60) return "Just now";
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return formatDateByPattern(dateInput, "DD/MM/YYYY");
+  return `${formattedDate}, ${timeStr}`;
 };
 
 /**
@@ -99,9 +56,13 @@ export const useDateFormatter = () => {
   const store = useSelector((state) => state.store?.store);
   const dateFormat = store?.dateFormat || "DD/MM/YYYY";
 
-  const format = (dateInput, overridePattern) => {
+  const formatDate = (dateInput, overridePattern) => {
     return formatDateByPattern(dateInput, overridePattern || dateFormat);
   };
 
-  return { format, dateFormat, formatDateTime, formatTime, getRelativeTime };
+  const formatDateTime = (dateInput, overridePattern, options) => {
+    return formatDateTimeByPattern(dateInput, overridePattern || dateFormat, options);
+  };
+
+  return { format: formatDate, formatDate, formatDateTime, dateFormat };
 };

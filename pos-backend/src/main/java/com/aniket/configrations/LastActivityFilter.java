@@ -34,7 +34,13 @@ public class LastActivityFilter extends OncePerRequestFilter {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && auth.getName() != null) {
             String email = auth.getName();
-            User user = userRepository.findByEmail(email);
+            User user = (User) request.getAttribute("AUTHENTICATED_USER");
+            if (user == null) {
+                user = userRepository.findByEmail(email);
+                if (user != null) {
+                    request.setAttribute("AUTHENTICATED_USER", user);
+                }
+            }
             if (user != null) {
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime lastActivity = user.getLastActivity();

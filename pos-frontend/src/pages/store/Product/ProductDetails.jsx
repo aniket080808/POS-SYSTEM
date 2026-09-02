@@ -1,7 +1,6 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React from "react";
 import { Badge } from "@/components/ui/badge";
-import { Tag, Package, Calendar, Barcode, Palette, Image as ImageIcon } from "lucide-react";
+import { Tag, Package, Barcode, Palette, Info } from "lucide-react";
 import { useCurrencyFormatter } from "@/utils/currencyUtils";
 
 const ProductDetails = ({ product }) => {
@@ -10,126 +9,82 @@ const ProductDetails = ({ product }) => {
   if (!product) return null;
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100 pb-4">
-        <CardTitle className="text-2xl font-bold">{product.name}</CardTitle>
-        {product.brand && (
-          <CardDescription className="text-sm font-medium text-emerald-700">
-            {product.brand}
-          </CardDescription>
-        )}
-      </CardHeader>
-      <CardContent className="p-6 space-y-6">
-        {/* Product Image */}
-        {product.image && (
-          <div className="mb-6 flex justify-center">
-            <div className="relative w-full max-w-md h-64 rounded-lg overflow-hidden border border-gray-200">
-              <img 
-                src={product.image} 
-                alt={product.name} 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = 'https://placehold.co/400x300?text=No+Image';
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Product Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Barcode className="h-5 w-5 text-gray-500" />
-              <div>
-                <div className="text-sm text-gray-500">SKU</div>
-                <div className="font-medium">{product.sku || 'N/A'}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Tag className="h-5 w-5 text-gray-500" />
-              <div>
-                <div className="text-sm text-gray-500">Category</div>
-                <div className="font-medium">{product.category || 'Uncategorized'}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Palette className="h-5 w-5 text-gray-500" />
-              <div>
-                <div className="text-sm text-gray-500">Color</div>
-                <div className="font-medium">{product.color || 'N/A'}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <div className="text-sm text-gray-500">Price</div>
-              <div className="font-medium flex items-center gap-2 flex-wrap">
-                <span className="text-lg font-bold text-emerald-700">
-                  {formatCurrency(product.sellingPrice)}
-                </span>
-                {(() => {
-                  const mrp = Number(product.mrp);
-                  const sellingPrice = Number(product.sellingPrice);
-                  if (mrp > 0 && sellingPrice > 0 && mrp > sellingPrice) {
-                    const discountPercent = Math.round(((mrp - sellingPrice) / mrp) * 100);
-                    if (discountPercent > 0) {
-                      return (
-                        <>
-                          <span className="text-sm line-through text-gray-400">
-                            {formatCurrency(mrp)}
-                          </span>
-                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 font-semibold text-xs">
-                            {discountPercent}% OFF
-                          </Badge>
-                        </>
-                      );
-                    }
-                  }
-                  return null;
-                })()}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-gray-500" />
-              <div>
-                <div className="text-sm text-gray-500">Stock</div>
-                <div className="font-medium">
-                  {product.stock !== undefined ? (
-                    <Badge className={product.stock > 10 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}>
-                      {product.stock} in stock
-                    </Badge>
-                  ) : 'N/A'}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-gray-500" />
-              <div>
-                <div className="text-sm text-gray-500">Last Updated</div>
-                <div className="font-medium">
-                  {product.updatedAt ? new Date(product.updatedAt).toLocaleDateString() : 'N/A'}
-                </div>
-              </div>
-            </div>
+    <div className="space-y-6">
+      {product.image && (
+        <div className="flex justify-center">
+          <div className="w-full max-w-sm h-56 rounded-2xl overflow-hidden border border-border bg-secondary/30">
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-full object-contain p-2"
+            />
           </div>
         </div>
+      )}
 
-        {/* Description */}
-        {product.description && (
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <h3 className="text-lg font-medium mb-2">Description</h3>
-            <p className="text-gray-700 whitespace-pre-line">{product.description}</p>
+      <div>
+        <h3 className="text-xl font-bold text-foreground">{product.name}</h3>
+        {product.brand && (
+          <p className="text-xs text-muted-foreground mt-0.5">Brand: {product.brand}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="p-3 rounded-2xl bg-secondary/30 border border-border/60">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Barcode className="w-3.5 h-3.5 text-[#B8860B]" />
+            <span>SKU / Barcode</span>
+          </div>
+          <p className="text-xs font-mono font-bold text-foreground mt-1">{product.sku || "N/A"}</p>
+        </div>
+
+        <div className="p-3 rounded-2xl bg-secondary/30 border border-border/60">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Tag className="w-3.5 h-3.5 text-[#B8860B]" />
+            <span>Category</span>
+          </div>
+          <p className="text-xs font-bold text-foreground mt-1">
+            {product.category?.name || product.category || "Uncategorized"}
+          </p>
+        </div>
+
+        <div className="p-3 rounded-2xl bg-secondary/30 border border-border/60">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Package className="w-3.5 h-3.5 text-[#B8860B]" />
+            <span>Current Stock</span>
+          </div>
+          <p className="text-xs font-mono font-bold text-foreground mt-1">
+            {product.stock ?? 0} units
+          </p>
+        </div>
+      </div>
+
+      <div className="p-4 rounded-2xl bg-secondary/40 border border-border/60 flex items-center justify-between">
+        <div>
+          <span className="text-xs text-muted-foreground">Retail Selling Price</span>
+          <div className="text-2xl font-black font-mono text-foreground">
+            {formatCurrency(product.sellingPrice)}
+          </div>
+        </div>
+        {product.mrp && (
+          <div className="text-right">
+            <span className="text-xs text-muted-foreground">Max Retail Price (MRP)</span>
+            <div className="text-sm font-mono text-muted-foreground line-through">
+              {formatCurrency(product.mrp)}
+            </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {product.description && (
+        <div className="space-y-1">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</h4>
+          <p className="text-xs text-foreground/90 leading-relaxed bg-secondary/20 p-3 rounded-xl border border-border/50">
+            {product.description}
+          </p>
+        </div>
+      )}
+    </div>
   );
 };
 

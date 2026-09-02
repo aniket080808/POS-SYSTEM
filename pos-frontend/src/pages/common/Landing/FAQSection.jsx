@@ -1,81 +1,161 @@
-import React, { useState } from "react";
-import { ChevronDown, HelpCircle } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Mail, Phone, Clock, Search } from "lucide-react";
+import siteConfig from "@/config/siteConfig";
+import { useScrollReveal } from "@/hooks/useAnimations";
 
-const platformFaqs = [
+const allFaqs = [
   {
-    q: "How does multi-branch inventory synchronization work?",
-    a: "Products are managed under a centralized store catalog. Each branch outlet maintains its own real-time stock counts and can have specific price overrides. When orders are fulfilled at any terminal, branch inventory is deducted instantly.",
+    question: "Can I manage multiple branch stores under one account?",
+    answer: "Yes. Store owners can create multiple branch locations, assign branch managers, and track stock across all stores from one central dashboard.",
   },
   {
-    q: "How does the cashier shift tracking operate?",
-    a: "When a cashier logs in, their shift is initialized with an opening cash balance. During the shift, all sales, returns, and cash adjustments are logged. At shift end, an automated reconciliation report summarizes cash expected versus actual cash counted.",
+    question: "How does cashier shift balancing work?",
+    answer: "Cashiers enter an opening cash float when starting their shift. As they process sales, the system tracks cash, card, and UPI transactions. At the end of the shift, a summary report compares counted drawer cash against expected totals.",
   },
   {
-    q: "What hardware and scanners are supported?",
-    a: "NexPOS is web-standard and works on any modern desktop, laptop, or tablet (iPad/Android). It supports standard USB and Bluetooth barcode/SKU handheld scanners, ESC/POS thermal receipt printers, and cash drawers.",
+    question: "How do new stores get started on NexPOS?",
+    answer: "Submit your store registration online. Once verified by the system administrator, you can log in, select a plan, add your products, and start billing at checkout counters.",
   },
   {
-    q: "How are real-time alerts pushed to the dashboard?",
-    a: "NexPOS uses STOMP WebSockets connected to '/topic/activities'. Store Admins and Branch Managers receive instant pop-up notifications when inventory dips below minimum stock thresholds or when refund spikes occur.",
+    question: "Does the checkout counter support barcode scanners?",
+    answer: "Yes. NexPOS works with standard USB and wireless barcode scanners for quick product lookups during customer billing.",
   },
   {
-    q: "What formats can I export financial reports in?",
-    a: "The system includes native client-side export drivers generating PDF documents (via jsPDF + autoTable) and Excel spreadsheets (via XLSX) for sales summaries, cashier performance metrics, and inventory logs.",
+    question: "Can cashiers handle item returns and refunds?",
+    answer: "Yes. Cashiers and managers can look up previous bills by receipt number, select items being returned, and generate refund slips with recorded audit details.",
   },
   {
-    q: "How are subscription payments and billing managed?",
-    a: "Store subscriptions are processed securely through the integrated Razorpay Checkout SDK. Stores with active subscription status maintain full access to all store and branch management features.",
+    question: "What payment methods are supported?",
+    answer: "NexPOS supports Cash, UPI, and split payments. Cashiers can combine multiple payment methods in a single transaction.",
+  },
+  {
+    question: "Is there a limit on number of products?",
+    answer: "Product limits depend on your subscription plan. Starter plans support up to 500 products, Business plans support up to 5,000, and Enterprise plans offer unlimited products.",
+  },
+  {
+    question: "Can I export sales reports?",
+    answer: "Yes. Store admins and branch managers can export detailed sales, inventory, and shift reports as downloadable files from the dashboard.",
   },
 ];
 
 const FAQSection = () => {
-  const [openIndex, setOpenIndex] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { ref: sectionRef, isVisible } = useScrollReveal();
+
+  const filteredFaqs = useMemo(() => {
+    if (!searchQuery.trim()) return allFaqs;
+    const q = searchQuery.toLowerCase();
+    return allFaqs.filter(
+      (faq) =>
+        faq.question.toLowerCase().includes(q) ||
+        faq.answer.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
 
   return (
-    <section id="faq" className="py-20 bg-background border-b border-border/60">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <span className="text-xs font-bold uppercase tracking-wider text-accent">
+    <section id="faq" className="py-20 bg-background border-t border-border scroll-mt-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div
+          ref={sectionRef}
+          className={`text-center max-w-3xl mx-auto mb-16 transition-all duration-700 ${
+            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+          }`}
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-secondary text-foreground border border-border mb-3">
+            Questions & Answers
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight mb-4">
             Frequently Asked Questions
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight mt-2 mb-4">
-            System & Operational Clarifications
           </h2>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Clear answers about the NexPOS architecture, hardware compatibility, and deployment.
+          <p className="text-base text-muted-foreground leading-relaxed">
+            Common questions about setting up stores, managing staff, and daily billing.
           </p>
         </div>
 
-        <div className="space-y-3">
-          {platformFaqs.map((faq, index) => {
-            const isOpen = openIndex === index;
-            return (
-              <div
-                key={index}
-                className="bg-card rounded-xl border border-border/80 overflow-hidden shadow-2xs transition-colors"
-              >
-                <button
-                  onClick={() => setOpenIndex(isOpen ? -1 : index)}
-                  className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 font-semibold text-sm text-foreground hover:bg-muted/30 transition-colors"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <HelpCircle className="w-4 h-4 text-accent shrink-0" />
-                    {faq.q}
-                  </span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${
-                      isOpen ? "rotate-180 text-foreground" : ""
-                    }`}
-                  />
-                </button>
-                {isOpen && (
-                  <div className="px-5 pb-4 pt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed border-t border-border/40 bg-muted/10">
-                    {faq.a}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          {/* FAQs List */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search questions..."
+                className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-input bg-card outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+            </div>
+
+            <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-xs divide-y divide-border/60">
+              {filteredFaqs.length === 0 ? (
+                <div className="p-8 text-center text-sm text-muted-foreground">
+                  No questions match "<strong>{searchQuery}</strong>". Try a different search term.
+                </div>
+              ) : (
+                <Accordion type="single" collapsible className="w-full">
+                  {filteredFaqs.map((faq, index) => (
+                    <AccordionItem key={index} value={`item-${index}`} className="border-b border-border/60 last:border-b-0">
+                      <AccordionTrigger className="px-6 py-4 text-left text-sm font-bold text-foreground hover:no-underline hover:bg-secondary/40 transition-colors">
+                        {faq.question}
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-5 pt-1 text-xs text-muted-foreground leading-relaxed">
+                        {faq.answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              )}
+            </div>
+          </div>
+
+          {/* Support Sidebar connected to siteConfig */}
+          <div className="space-y-4">
+            <div className="bg-card rounded-2xl p-6 border border-border shadow-xs space-y-4">
+              <h3 className="text-base font-bold text-foreground">Need Help Getting Started?</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Contact our support team for help with store setup, product imports, or cashier training.
+              </p>
+
+              <div className="space-y-3 pt-2">
+                <div className="p-3.5 rounded-xl bg-secondary/50 border border-border/60 flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-card border border-border shrink-0 text-[#B8860B]">
+                    <Phone className="w-4 h-4" />
                   </div>
-                )}
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">Support Phone</h4>
+                    <p className="text-xs font-mono font-bold text-foreground mt-0.5">{siteConfig.contact.phone}</p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-secondary/50 border border-border/60 flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-card border border-border shrink-0 text-foreground">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">Email Inquiries</h4>
+                    <p className="text-xs font-mono font-bold text-foreground mt-0.5">{siteConfig.contact.email}</p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-secondary/50 border border-border/60 flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-card border border-border shrink-0 text-[#785600]">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">Working Hours</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{siteConfig.contact.hours}</p>
+                  </div>
+                </div>
               </div>
-            );
-          })}
+            </div>
+          </div>
         </div>
       </div>
     </section>

@@ -49,9 +49,11 @@ public class Notification {
     @Column(nullable = false)
     private Long recipientId;
     
+    @Builder.Default
     @Column(nullable = false, name = "read")
     private boolean read = false;
     
+    @Builder.Default
     @Column(nullable = false)
     private boolean deleted = false;
     

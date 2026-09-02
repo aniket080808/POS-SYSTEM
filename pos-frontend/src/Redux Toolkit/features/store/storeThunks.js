@@ -226,18 +226,20 @@ export const updateStoreAsSuperAdmin = createAsyncThunk(
 // 🔹 Delete store
 export const deleteStore = createAsyncThunk(
   "store/delete",
-  async (_, { rejectWithValue }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      console.log('🔄 Deleting store...');
+      console.log('🔄 Deleting store...', { storeId: id });
       
       const headers = getAuthHeaders();
-      const res = await api.delete("/api/stores", { headers });
+      const url = id ? `/api/stores/${id}` : "/api/stores";
+      const res = await api.delete(url, { headers });
       
       console.log('✅ Store deleted successfully:', { response: res.data });
       
       return res.data;
     } catch (err) {
       console.error('❌ Failed to delete store:', {
+        storeId: id,
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText

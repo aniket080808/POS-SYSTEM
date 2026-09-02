@@ -19,11 +19,18 @@ const getAuthHeaders = () => {
   };
 };
 
+const extractId = (arg) => {
+  if (arg === null || arg === undefined) return '';
+  if (typeof arg === 'number' || typeof arg === 'string') return arg;
+  return arg.storeAdminId || arg.id || arg.storeId || '';
+};
+
 // 🔹 Get Store Overview (KPI Summary)
 export const getStoreOverview = createAsyncThunk(
   "storeAnalytics/getStoreOverview",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       console.log('🔄 Fetching store overview...', { storeAdminId });
       
       const headers = getAuthHeaders();
@@ -37,7 +44,7 @@ export const getStoreOverview = createAsyncThunk(
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch store overview:', {
-        storeAdminId,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -53,8 +60,10 @@ export const getStoreOverview = createAsyncThunk(
 // 🔹 Get Sales Trends by Time (daily/weekly/monthly)
 export const getSalesTrends = createAsyncThunk(
   "storeAnalytics/getSalesTrends",
-  async ({ storeAdminId, period }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
+      const period = payload?.period || 'daily';
       console.log('🔄 Fetching sales trends...', { storeAdminId, period });
       
       const headers = getAuthHeaders();
@@ -69,8 +78,7 @@ export const getSalesTrends = createAsyncThunk(
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch sales trends:', {
-        storeAdminId,
-        period,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -86,8 +94,9 @@ export const getSalesTrends = createAsyncThunk(
 // 🔹 Get Monthly Sales Chart (line)
 export const getMonthlySales = createAsyncThunk(
   "storeAnalytics/getMonthlySales",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       console.log('🔄 Fetching monthly sales...', { storeAdminId });
       
       const headers = getAuthHeaders();
@@ -95,14 +104,14 @@ export const getMonthlySales = createAsyncThunk(
       
       console.log('✅ Monthly sales fetched successfully:', {
         storeAdminId,
-        dataPoints: res.data.length,
+        dataPoints: res.data?.length,
         response: res.data
       });
       
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch monthly sales:', {
-        storeAdminId,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -118,8 +127,9 @@ export const getMonthlySales = createAsyncThunk(
 // 🔹 Get Daily Sales Chart (line)
 export const getDailySales = createAsyncThunk(
   "storeAnalytics/getDailySales",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       console.log('🔄 Fetching daily sales...', { storeAdminId });
       
       const headers = getAuthHeaders();
@@ -127,14 +137,14 @@ export const getDailySales = createAsyncThunk(
       
       console.log('✅ Daily sales fetched successfully:', {
         storeAdminId,
-        dataPoints: res.data.length,
+        dataPoints: res.data?.length,
         response: res.data
       });
       
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch daily sales:', {
-        storeAdminId,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -150,8 +160,9 @@ export const getDailySales = createAsyncThunk(
 // 🔹 Get Sales by Product Category (pie/bar)
 export const getSalesByCategory = createAsyncThunk(
   "storeAnalytics/getSalesByCategory",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       console.log('🔄 Fetching sales by category...', { storeAdminId });
       
       const headers = getAuthHeaders();
@@ -159,14 +170,14 @@ export const getSalesByCategory = createAsyncThunk(
       
       console.log('✅ Sales by category fetched successfully:', {
         storeAdminId,
-        categories: res.data.length,
+        categories: res.data?.length,
         response: res.data
       });
       
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch sales by category:', {
-        storeAdminId,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -182,8 +193,9 @@ export const getSalesByCategory = createAsyncThunk(
 // 🔹 Get Sales by Payment Method (pie)
 export const getSalesByPaymentMethod = createAsyncThunk(
   "storeAnalytics/getSalesByPaymentMethod",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       console.log('🔄 Fetching sales by payment method...', { storeAdminId });
       
       const headers = getAuthHeaders();
@@ -191,14 +203,14 @@ export const getSalesByPaymentMethod = createAsyncThunk(
       
       console.log('✅ Sales by payment method fetched successfully:', {
         storeAdminId,
-        paymentMethods: res.data.length,
+        paymentMethods: res.data?.length,
         response: res.data
       });
       
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch sales by payment method:', {
-        storeAdminId,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -214,8 +226,9 @@ export const getSalesByPaymentMethod = createAsyncThunk(
 // 🔹 Get Sales by Branch (bar)
 export const getSalesByBranch = createAsyncThunk(
   "storeAnalytics/getSalesByBranch",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       console.log('🔄 Fetching sales by branch...', { storeAdminId });
       
       const headers = getAuthHeaders();
@@ -223,14 +236,14 @@ export const getSalesByBranch = createAsyncThunk(
       
       console.log('✅ Sales by branch fetched successfully:', {
         storeAdminId,
-        branches: res.data.length,
+        branches: res.data?.length,
         response: res.data
       });
       
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch sales by branch:', {
-        storeAdminId,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -246,8 +259,9 @@ export const getSalesByBranch = createAsyncThunk(
 // 🔹 Get Payment Breakdown (Cash, UPI, Card)
 export const getPaymentBreakdown = createAsyncThunk(
   "storeAnalytics/getPaymentBreakdown",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       console.log('🔄 Fetching payment breakdown...', { storeAdminId });
       
       const headers = getAuthHeaders();
@@ -255,14 +269,14 @@ export const getPaymentBreakdown = createAsyncThunk(
       
       console.log('✅ Payment breakdown fetched successfully:', {
         storeAdminId,
-        paymentTypes: res.data.length,
+        paymentTypes: res.data?.length,
         response: res.data
       });
       
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch payment breakdown:', {
-        storeAdminId,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -278,8 +292,9 @@ export const getPaymentBreakdown = createAsyncThunk(
 // 🔹 Get Branch Performance
 export const getBranchPerformance = createAsyncThunk(
   "storeAnalytics/getBranchPerformance",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       console.log('🔄 Fetching branch performance...', { storeAdminId });
       
       const headers = getAuthHeaders();
@@ -293,7 +308,7 @@ export const getBranchPerformance = createAsyncThunk(
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch branch performance:', {
-        storeAdminId,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -309,8 +324,9 @@ export const getBranchPerformance = createAsyncThunk(
 // 🔹 Get Recent Sales (for dashboard card)
 export const getRecentSales = createAsyncThunk(
   "storeAnalytics/getRecentSales",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/recent?limit=5`, { headers });
       return res.data;
@@ -325,8 +341,9 @@ export const getRecentSales = createAsyncThunk(
 // 🔹 Get Store Alerts and Health Monitoring
 export const getStoreAlerts = createAsyncThunk(
   "storeAnalytics/getStoreAlerts",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeAdminId = extractId(payload);
       console.log('🔄 Fetching store alerts...', { storeAdminId });
       
       const headers = getAuthHeaders();
@@ -340,7 +357,7 @@ export const getStoreAlerts = createAsyncThunk(
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch store alerts:', {
-        storeAdminId,
+        storeAdminId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText
@@ -353,11 +370,34 @@ export const getStoreAlerts = createAsyncThunk(
   }
 );
 
+// 🔹 Dismiss Store Alert
+export const dismissAlert = createAsyncThunk(
+  "storeAnalytics/dismissAlert",
+  async (payload, { dispatch, rejectWithValue }) => {
+    try {
+      const storeAdminId = extractId(payload);
+      const { alertType, referenceId, snapshotValue } = payload || {};
+      const headers = getAuthHeaders();
+      const res = await api.post(`/api/store/analytics/${storeAdminId}/alerts/dismiss`, {
+        alertType,
+        referenceId: String(referenceId),
+        snapshotValue: snapshotValue !== undefined ? String(snapshotValue) : null
+      }, { headers });
+      
+      dispatch(getStoreAlerts(storeAdminId));
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to dismiss alert");
+    }
+  }
+);
+
 // 🔹 Super Admin: Get Store Usage for a specific store
 export const getStoreUsageForAdmin = createAsyncThunk(
   "storeAnalytics/getStoreUsageForAdmin",
-  async (storeId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const storeId = extractId(payload);
       console.log('🔄 Fetching store usage for admin...', { storeId });
       
       const headers = getAuthHeaders();
@@ -371,7 +411,7 @@ export const getStoreUsageForAdmin = createAsyncThunk(
       return res.data;
     } catch (err) {
       console.error('❌ Failed to fetch store usage:', {
-        storeId,
+        storeId: extractId(payload),
         error: err.response?.data || err.message,
         status: err.response?.status,
         statusText: err.response?.statusText

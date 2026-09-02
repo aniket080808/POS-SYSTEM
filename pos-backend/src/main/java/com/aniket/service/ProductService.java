@@ -16,6 +16,8 @@ public interface ProductService {
 
     void deleteProduct(Long id, User user) throws AccessDeniedException;
 
+    int deleteAllProductsByStore(Long storeId, User user) throws AccessDeniedException;
+
     List<ProductDTO> getProductsByStoreId(Long storeId);
 
     List<ProductDTO> searchByKeyword(Long storeId, String query);

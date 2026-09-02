@@ -13,27 +13,28 @@ import {
   SelectGroup,
   SelectLabel,
 } from "@/components/ui/select";
-import { Store, Tag, MapPin, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Store, MapPin, Tag, ArrowRight, Loader2 } from "lucide-react";
 
 const validationSchema = Yup.object({
   storeName: Yup.string()
-    .required("Store brand name is required")
+    .required("Store name is required")
     .min(2, "Store name must be at least 2 characters"),
-  storeType: Yup.string().required("Please select a store type"),
+  storeType: Yup.string().required("Store type is required"),
   storeAddress: Yup.string().optional(),
 });
 
 const storeTypes = [
-  { value: "retail", label: "Retail Supermarket / Grocery" },
+  { value: "retail", label: "Retail / Supermarket" },
   { value: "restaurant", label: "Restaurant / Food Outlet" },
   { value: "cafe", label: "Café & Bakery" },
-  { value: "pharmacy", label: "Pharmacy & Healthcare" },
+  { value: "pharmacy", label: "Pharmacy & Health" },
+  { value: "grocery", label: "Grocery & Provisions" },
   { value: "electronics", label: "Electronics & Appliances" },
   { value: "clothing", label: "Apparel & Fashion" },
-  { value: "other", label: "General Merchandise / Other" },
+  { value: "other", label: "Other Commercial" },
 ];
 
-const StoreDetailsForm = ({ initialValues, onSubmit, onBack, isLoading }) => {
+const StoreDetailsForm = ({ initialValues, onSubmit, onBack }) => {
   return (
     <Formik
       initialValues={initialValues}
@@ -43,122 +44,117 @@ const StoreDetailsForm = ({ initialValues, onSubmit, onBack, isLoading }) => {
         setSubmitting(false);
       }}
     >
-      {({ isSubmitting, isValid }) => (
+      {({ isSubmitting, isValid, touched, errors, values, setFieldValue }) => (
         <Form className="space-y-4">
-          {/* Store Brand Name */}
           <div>
-            <label
-              htmlFor="storeName"
-              className="block text-xs font-bold text-foreground mb-1"
-            >
-              Store / Business Name <span className="text-red-500">*</span>
+            <h2 className="text-base font-bold text-foreground mb-1">
+              Store Information
+            </h2>
+            <p className="text-xs text-muted-foreground mb-4">
+              Enter your retail business and brand identification details
+            </p>
+          </div>
+
+          {/* Store Name */}
+          <div>
+            <label htmlFor="storeName" className="block text-sm font-semibold text-foreground mb-1.5">
+              Brand / Store Name
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                <Store className="h-4 w-4 text-muted-foreground" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                <Store className="w-4 h-4" />
               </div>
               <Field
                 as={Input}
                 type="text"
                 id="storeName"
                 name="storeName"
-                className="pl-9 h-10 text-sm"
-                placeholder="e.g. Apex Super Mart"
+                className={`pl-10 text-xs h-11 ${
+                  touched.storeName && errors.storeName
+                    ? "border-destructive ring-1 ring-destructive"
+                    : ""
+                }`}
+                placeholder="e.g. Apex Hypermarket"
               />
             </div>
             <ErrorMessage
               name="storeName"
               component="div"
-              className="text-red-500 text-xs mt-1"
+              className="text-xs text-destructive mt-1 flex items-center gap-1 font-semibold"
             />
           </div>
 
-          {/* Store Category */}
+          {/* Store Type */}
           <div>
-            <label
-              htmlFor="storeType"
-              className="block text-xs font-bold text-foreground mb-1"
-            >
-              Store Category / Type <span className="text-red-500">*</span>
+            <label htmlFor="storeType" className="block text-sm font-semibold text-foreground mb-1.5">
+              Retail Category
             </label>
-            <Field name="storeType">
-              {({ field, form }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={(val) => form.setFieldValue("storeType", val)}
-                >
-                  <SelectTrigger className="w-full h-10 text-sm" id="storeType">
-                    <SelectValue placeholder="Select business category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Retail Categories</SelectLabel>
-                      {storeTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              )}
-            </Field>
+            <Select
+              value={values.storeType}
+              onValueChange={(val) => setFieldValue("storeType", val)}
+            >
+              <SelectTrigger id="storeType" className="h-11 text-xs">
+                <SelectValue placeholder="Select business type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Retail Verticals</SelectLabel>
+                  {storeTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
             <ErrorMessage
               name="storeType"
               component="div"
-              className="text-red-500 text-xs mt-1"
+              className="text-xs text-destructive mt-1 flex items-center gap-1 font-semibold"
             />
           </div>
 
           {/* Store Address */}
           <div>
-            <label
-              htmlFor="storeAddress"
-              className="block text-xs font-bold text-foreground mb-1"
-            >
-              Store Physical Address <span className="text-xs font-normal text-muted-foreground">(Optional)</span>
+            <label htmlFor="storeAddress" className="block text-sm font-semibold text-foreground mb-1.5">
+              Headquarters / Main Address{" "}
+              <span className="text-muted-foreground font-normal">(Optional)</span>
             </label>
             <Field
               as={Textarea}
               id="storeAddress"
               name="storeAddress"
-              className="min-h-20 text-sm"
-              placeholder="e.g. Shop 104, City Commercial Complex, Mumbai"
-            />
-            <ErrorMessage
-              name="storeAddress"
-              component="div"
-              className="text-red-500 text-xs mt-1"
+              rows={3}
+              className="text-xs rounded-xl border border-input bg-card p-3 resize-none focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+              placeholder="e.g. 104 Commercial Boulevard, Mumbai"
             />
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex gap-3 pt-2">
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-3">
             <Button
               type="button"
               variant="outline"
               onClick={onBack}
-              disabled={isLoading || isSubmitting}
-              className="flex-1 h-11 text-xs font-semibold"
+              className="flex-1 text-xs h-11"
             >
-              <ArrowLeft className="w-4 h-4 mr-1.5" />
-              <span>Back</span>
+              <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+              Previous
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || isSubmitting || !isValid}
-              className="flex-1 h-11 bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold shadow-xs"
+              disabled={isSubmitting || !isValid}
+              className="flex-1 text-xs h-11 font-bold gap-1.5"
             >
-              {isLoading || isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent" />
-                  <span>Registering...</span>
-                </div>
+              {isSubmitting ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Submitting...
+                </span>
               ) : (
-                <div className="flex items-center gap-1.5">
-                  <span>Complete Setup</span>
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
+                <>
+                  Complete Setup
+                  <ArrowRight className="w-4 h-4" />
+                </>
               )}
             </Button>
           </div>

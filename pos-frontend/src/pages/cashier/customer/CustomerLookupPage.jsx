@@ -18,7 +18,6 @@ import {
   CustomerDetails,
   PurchaseHistory,
   AddPointsDialog,
- 
 } from "./components";
 import { clearCustomerOrders } from "../../../Redux Toolkit/features/order/orderSlice";
 import CustomerForm from "./CustomerForm";
@@ -27,33 +26,27 @@ const CustomerLookupPage = () => {
   const dispatch = useDispatch();
   const { toast } = useToast();
 
-  // Redux state
   const {
-    customers,
+    customers = [],
     loading: customerLoading,
     error: customerError,
   } = useSelector((state) => state.customer);
   const {
-    customerOrders,
+    customerOrders = [],
     loading: orderLoading,
     error: orderError,
   } = useSelector((state) => state.order);
-  // const { userProfile } = useSelector((state) => state.user);
 
-  // Local state
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showAddPointsDialog, setShowAddPointsDialog] = useState(false);
   const [pointsToAdd, setPointsToAdd] = useState(0);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
-  
 
-  // Load customers on component mount
   useEffect(() => {
     dispatch(getAllCustomers());
   }, [dispatch]);
 
-  // Handle errors
   useEffect(() => {
     if (customerError) {
       toast({
@@ -74,7 +67,6 @@ const CustomerLookupPage = () => {
     }
   }, [orderError, toast]);
 
-  // Filter customers based on search term
   const filteredCustomers = filterCustomers(customers, searchTerm);
 
   const handleSelectCustomer = async (customer) => {
@@ -84,6 +76,21 @@ const CustomerLookupPage = () => {
       dispatch(getOrdersByCustomer(customer.id));
     }
   };
+
+  // Auto-select first customer or sync current selectedCustomer with fresh backend customer list
+  useEffect(() => {
+    if (customers.length > 0) {
+      if (!selectedCustomer) {
+        handleSelectCustomer(customers[0]);
+      } else {
+        const fresh = customers.find((c) => c.id === selectedCustomer.id);
+        if (fresh && (fresh.loyaltyPoints !== selectedCustomer.loyaltyPoints || fresh.loyaltyStatus !== selectedCustomer.loyaltyStatus)) {
+          setSelectedCustomer(fresh);
+        }
+      }
+    }
+  }, [customers]);
+
 
   const handleAddPoints = async () => {
     const pts = parseInt(pointsToAdd, 10);
@@ -102,7 +109,7 @@ const CustomerLookupPage = () => {
       const result = await dispatch(addLoyaltyPoints({ id: selectedCustomer.id, points: pts })).unwrap();
       setSelectedCustomer((prev) => ({ ...prev, ...result }));
       toast({
-        title: "Loyalty Points Added",
+        title: "Loyalty Points Awarded",
         description: `Successfully awarded ${pts} points to ${selectedCustomer?.fullName || "customer"}.`,
       });
       setShowAddPointsDialog(false);
@@ -116,12 +123,10 @@ const CustomerLookupPage = () => {
     }
   };
 
-  // Calculate customer stats from orders
   const customerStats = selectedCustomer
     ? calculateCustomerStats(customerOrders)
     : null;
 
-  // Format customer data for display
   const displayCustomer = selectedCustomer
     ? {
         ...selectedCustomer,
@@ -130,14 +135,17 @@ const CustomerLookupPage = () => {
     : null;
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 bg-card border-b">
-        <h1 className="text-2xl font-bold">Customer Management</h1>
+    <div className="h-full flex flex-col bg-background">
+      <div className="p-4 bg-card border-b border-border/80 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Customer Relationship Management</h1>
+          <p className="text-xs text-muted-foreground">Directory search, purchase histories, and loyalty balances</p>
+        </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Column - Customer Search & List */}
-        <div className="w-1/3 border-r flex flex-col ">
+        <div className="w-1/3 border-r border-border flex flex-col bg-card/40">
           <CustomerSearch
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
@@ -153,7 +161,7 @@ const CustomerLookupPage = () => {
         </div>
 
         {/* Right Column - Customer Details */}
-        <div className="w-2/3 flex flex-col overflow-y-auto">
+        <div className="w-2/3 flex flex-col overflow-y-auto bg-card/20">
           <CustomerDetails
             customer={displayCustomer}
             onAddPoints={() => setShowAddPointsDialog(true)}
@@ -166,7 +174,6 @@ const CustomerLookupPage = () => {
         </div>
       </div>
 
-      {/* Add Points Dialog */}
       <AddPointsDialog
         isOpen={showAddPointsDialog}
         onClose={() => setShowAddPointsDialog(false)}
@@ -176,14 +183,10 @@ const CustomerLookupPage = () => {
         onAddPoints={handleAddPoints}
       />
 
-      {/* Add Customer Dialog */}
-        <CustomerForm 
-          showCustomerForm={showCustomerForm}
-          setShowCustomerForm={setShowCustomerForm}
-          // onCustomerCreated={handleCustomerCreat}
-        />
-
-    
+      <CustomerForm 
+        showCustomerForm={showCustomerForm}
+        setShowCustomerForm={setShowCustomerForm}
+      />
     </div>
   );
 };

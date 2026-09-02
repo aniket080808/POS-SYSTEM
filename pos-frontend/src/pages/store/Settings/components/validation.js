@@ -10,7 +10,7 @@ export const StoreSettingsValidationSchema = Yup.object().shape({
     .email("Please enter a valid email address")
     .required("Store email is required"),
   storePhone: Yup.string()
-    .matches(/^[+]?[1-9][\d]{0,15}$/, "Please enter a valid phone number")
+    .matches(/^[\+]?[1-9][\d]{0,15}$/, "Please enter a valid phone number")
     .required("Store phone is required"),
   storeAddress: Yup.string()
     .min(10, "Address must be at least 10 characters")
@@ -71,8 +71,8 @@ export const TIMEZONE_OPTIONS = [
 
 // Date format options
 export const DATE_FORMAT_OPTIONS = [
-  { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
   { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
+  { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
   { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
   { value: "DD-MM-YYYY", label: "DD-MM-YYYY" },
 ]; 

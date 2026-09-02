@@ -16,8 +16,23 @@ public class RefundDTO {
     private String reason;
     private Double amount;
     private String cashierName;
+    private String customerName;
+    private com.aniket.domain.PaymentType paymentType;
     private Long shiftReportId;
     private Long branchId;
     private LocalDateTime createdAt;
     private String spikeReason;
+    private java.util.List<RefundItemDTO> items;
+
+    public RefundDTO(Long id, Long orderId, String reason, Double amount, String cashierName, Long shiftReportId, Long branchId, LocalDateTime createdAt, String spikeReason) {
+        this.id = id;
+        this.orderId = orderId;
+        this.reason = reason;
+        this.amount = amount;
+        this.cashierName = cashierName;
+        this.shiftReportId = shiftReportId;
+        this.branchId = branchId;
+        this.createdAt = createdAt;
+        this.spikeReason = spikeReason;
+    }
 }

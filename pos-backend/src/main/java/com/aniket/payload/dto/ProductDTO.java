@@ -27,4 +27,27 @@ public class ProductDTO {
     private Integer stock;
     private Double sellingPrice;
     private Boolean isActive;
+    private Integer quantity;
+
+    public ProductDTO(Long id, String name, String sku, String description, Double mrp,
+                      String brand, String image, Long categoryId, String category,
+                      LocalDateTime createdAt, LocalDateTime updatedAt, Long storeId,
+                      String storeName, Integer stock, Double sellingPrice, Boolean isActive) {
+        this.id = id;
+        this.name = name;
+        this.sku = sku;
+        this.description = description;
+        this.mrp = mrp;
+        this.brand = brand;
+        this.image = image;
+        this.categoryId = categoryId;
+        this.category = category;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.storeId = storeId;
+        this.storeName = storeName;
+        this.stock = stock;
+        this.sellingPrice = sellingPrice;
+        this.isActive = isActive;
+    }
 }

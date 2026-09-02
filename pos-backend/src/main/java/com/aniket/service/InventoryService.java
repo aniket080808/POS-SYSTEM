@@ -1,10 +1,9 @@
 package com.aniket.service;
 
-
+import com.aniket.exception.AccessDeniedException;
 import com.aniket.exception.UserException;
 import com.aniket.payload.dto.InventoryDTO;
 
-import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 public interface InventoryService {
@@ -14,6 +13,4 @@ public interface InventoryService {
     InventoryDTO getInventoryById(Long id);
     InventoryDTO getInventoryByProductId(Long productId);
     List<InventoryDTO> getInventoryByBranch(Long branchId);
-
 }
-

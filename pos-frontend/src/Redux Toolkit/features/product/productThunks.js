@@ -220,6 +220,34 @@ export const searchProducts = createAsyncThunk(
   }
 );
 
+// 🔹 Delete all products for a store (Clear Catalog)
+export const deleteAllProducts = createAsyncThunk(
+  "product/deleteAllByStore",
+  async (storeId, { rejectWithValue }) => {
+    try {
+      console.log('🔄 Deleting all products for store...', { storeId });
+
+      const headers = getAuthHeaders();
+      const res = await api.delete(`/api/products/store/${storeId}/all`, { headers });
+
+      console.log('✅ All products deleted successfully:', { storeId, deletedCount: res.data });
+
+      return res.data;
+    } catch (err) {
+      console.error('❌ Failed to delete all products:', {
+        storeId,
+        error: err.response?.data || err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText
+      });
+
+      return rejectWithValue(
+        err.response?.data?.message || err.response?.data || "Failed to clear product catalog"
+      );
+    }
+  }
+);
+
 // 🔹 Bulk create products (atomic import with plan-limit pre-check on backend)
 export const bulkCreateProducts = createAsyncThunk(
   "product/bulkCreate",

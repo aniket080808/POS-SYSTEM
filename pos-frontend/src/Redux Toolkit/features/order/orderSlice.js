@@ -7,7 +7,8 @@ import {
   getTodayOrdersByBranch,
   deleteOrder,
   getOrdersByCustomer,
-  getRecentOrdersByBranch
+  getRecentOrdersByBranch,
+  getPaginatedOrders
 } from './orderThunks';
 
 const initialState = {
@@ -18,6 +19,13 @@ const initialState = {
   loading: false,
   error: null,
   recentOrders: [], // Added for recent orders
+  paginatedOrders: {
+    content: [],
+    totalPages: 0,
+    totalElements: 0,
+    number: 0,
+    size: 10,
+  },
 };
 
 const orderSlice = createSlice({
@@ -50,17 +58,43 @@ const orderSlice = createSlice({
         state.error = action.payload;
       })
 
+      .addCase(getOrderById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(getOrderById.fulfilled, (state, action) => {
+        state.loading = false;
         state.selectedOrder = action.payload;
       })
-
-      .addCase(getOrdersByBranch.fulfilled, (state, action) => {
-        state.orders = action.payload;
+      .addCase(getOrderById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
 
+      .addCase(getOrdersByBranch.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getOrdersByBranch.fulfilled, (state, action) => {
+        state.loading = false;
+        state.orders = action.payload || [];
+      })
+      .addCase(getOrdersByBranch.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(getOrdersByCashier.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(getOrdersByCashier.fulfilled, (state, action) => {
-        state.orders = action.payload;
-        console.log("get order by cashier ", action.payload);
+        state.loading = false;
+        state.orders = action.payload || [];
+      })
+      .addCase(getOrdersByCashier.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
 
       .addCase(getTodayOrdersByBranch.fulfilled, (state, action) => {
@@ -73,6 +107,11 @@ const orderSlice = createSlice({
 
       .addCase(getRecentOrdersByBranch.fulfilled, (state, action) => {
         state.recentOrders = action.payload;
+      })
+
+      .addCase(getPaginatedOrders.fulfilled, (state, action) => {
+        state.paginatedOrders = action.payload;
+        state.loading = false;
       })
 
       .addCase(deleteOrder.fulfilled, (state, action) => {

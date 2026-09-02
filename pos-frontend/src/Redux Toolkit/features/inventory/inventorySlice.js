@@ -32,7 +32,16 @@ const inventorySlice = createSlice({
       })
       .addCase(createInventory.fulfilled, (state, action) => {
         state.loading = false;
-        state.inventories.push(action.payload);
+        if (!action.payload) return;
+        const index = state.inventories.findIndex(
+          (inv) => inv?.id === action.payload?.id ||
+                   (inv?.productId === action.payload?.productId && inv?.branchId === action.payload?.branchId)
+        );
+        if (index !== -1) {
+          state.inventories[index] = action.payload;
+        } else {
+          state.inventories.push(action.payload);
+        }
       })
       .addCase(createInventory.rejected, (state, action) => {
         state.loading = false;
@@ -40,6 +49,7 @@ const inventorySlice = createSlice({
       })
 
       .addCase(updateInventory.fulfilled, (state, action) => {
+        if (!action.payload) return;
         const index = state.inventories.findIndex(inv => inv.id === action.payload.id);
         if (index !== -1) state.inventories[index] = action.payload;
       })
@@ -53,7 +63,14 @@ const inventorySlice = createSlice({
       })
 
       .addCase(getInventoryByBranch.fulfilled, (state, action) => {
-        state.inventories = action.payload;
+        const payloadList = Array.isArray(action.payload) ? action.payload : [];
+        const seenIds = new Set();
+        state.inventories = payloadList.filter((item) => {
+          if (!item || !item.id) return false;
+          if (seenIds.has(item.id)) return false;
+          seenIds.add(item.id);
+          return true;
+        });
       })
 
       .addCase(getInventoryByProduct.fulfilled, (state, action) => {

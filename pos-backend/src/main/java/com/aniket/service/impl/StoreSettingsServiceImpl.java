@@ -3,6 +3,7 @@ package com.aniket.service.impl;
 import com.aniket.exception.UserException;
 import com.aniket.modal.Store;
 import com.aniket.modal.StoreSettings;
+import com.aniket.modal.User;
 import com.aniket.payload.dto.StoreSettingsDTO;
 import com.aniket.repository.StoreRepository;
 import com.aniket.repository.StoreSettingsRepository;
@@ -30,13 +31,18 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
     @Override
     public StoreSettingsDTO getSettingsForCurrentStore() {
         try {
-            Store store = storeRepository.findByStoreAdminId(userService.getCurrentUser().getId());
+            User currentUser = userService.getCurrentUser();
+            Store store = currentUser.getStore();
+            if (store == null) {
+                store = storeRepository.findByStoreAdminId(currentUser.getId());
+            }
             if (store == null) {
                 throw new RuntimeException("Store not found for current user");
             }
-            StoreSettings settings = storeSettingsRepository.findByStoreId(store.getId())
+            final Store targetStore = store;
+            StoreSettings settings = storeSettingsRepository.findByStoreId(targetStore.getId())
                     .orElseGet(() -> {
-                        StoreSettings defaultSettings = createDefaultSettingsEntity(store);
+                        StoreSettings defaultSettings = createDefaultSettingsEntity(targetStore);
                         return storeSettingsRepository.save(defaultSettings);
                     });
             return toDto(settings);
@@ -48,24 +54,41 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
     @Override
     @Transactional
     public StoreSettingsDTO updateSettings(Long storeId, StoreSettingsDTO dto) {
+        User currentUser = null;
+        try {
+            currentUser = userService.getCurrentUser();
+        } catch (Exception ignored) {}
+        return updateSettings(storeId, dto, currentUser);
+    }
+
+    @Override
+    @Transactional
+    public StoreSettingsDTO updateSettings(Long storeId, StoreSettingsDTO dto, User user) {
         StoreSettings settings = storeSettingsRepository.findByStoreId(storeId)
                 .orElseThrow(() -> new RuntimeException("Store settings not found for store: " + storeId));
 
-        // Update notification settings
+        // Always update operational settings (accessible by Store Admin and Store Manager)
         settings.setEmailNotifications(dto.isEmailNotifications());
         settings.setLowStockAlerts(dto.isLowStockAlerts());
         settings.setSalesReports(dto.isSalesReports());
         settings.setEmployeeActivity(dto.isEmployeeActivity());
 
-        // Update security settings
-        settings.setTwoFactorAuth(dto.isTwoFactorAuth());
-        settings.setIpRestriction(dto.isIpRestriction());
-        settings.setPasswordExpiry(dto.getPasswordExpiry());
-        int timeout = dto.getSessionTimeout();
-        if (timeout < 10) {
-            timeout = 10; // Enforce minimum to avoid throttle conflicts
+        // Update governance/security settings ONLY if the user is Store Admin or Super Admin
+        boolean isAdmin = user != null && (user.getRole() == com.aniket.domain.UserRole.ROLE_STORE_ADMIN || user.getRole() == com.aniket.domain.UserRole.ROLE_ADMIN);
+        if (isAdmin) {
+            settings.setTwoFactorAuth(dto.isTwoFactorAuth());
+            settings.setIpRestriction(dto.isIpRestriction());
+            if (dto.getPasswordExpiry() != null && dto.getPasswordExpiry() > 0) {
+                settings.setPasswordExpiry(dto.getPasswordExpiry());
+            }
+            if (dto.getSessionTimeout() != null && dto.getSessionTimeout() > 0) {
+                int timeout = dto.getSessionTimeout();
+                if (timeout < 10) {
+                    timeout = 10; // Enforce minimum to avoid throttle conflicts
+                }
+                settings.setSessionTimeout(timeout);
+            }
         }
-        settings.setSessionTimeout(timeout);
 
         StoreSettings saved = storeSettingsRepository.save(settings);
         return toDto(saved);

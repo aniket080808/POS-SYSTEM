@@ -5,28 +5,40 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-lg border px-2.5 py-0.5 text-xs font-semibold w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1.5 [&>svg]:pointer-events-none transition-colors",
+  "inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-semibold w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1.5 [&>svg]:pointer-events-none transition-colors",
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground",
-        secondary:
-          "border-border bg-secondary text-secondary-foreground",
+        // 1. Success / Active / Completed / In Stock / Paid (Light Warm Amber-Gold Pill)
+        success:
+          "border-[#FAD074] bg-[#FFF8E7] text-[#8C5800] font-bold shadow-2xs",
+        active:
+          "border-[#FAD074] bg-[#FFF8E7] text-[#8C5800] font-bold shadow-2xs",
+        
+        // 2. Warning / Pending / Processing / Low Stock (Light Warm Tangerine/Amber Pill)
+        warning:
+          "border-[#FED7AA] bg-[#FFF7ED] text-[#C2410C] font-semibold",
+        pending:
+          "border-[#FED7AA] bg-[#FFF7ED] text-[#C2410C] font-semibold",
+        
+        // 3. Error / Danger / Blocked / Rejected / Out of Stock (Light Warm Terracotta Pill)
         destructive:
-          "border-red-200 bg-red-50 text-red-700",
+          "border-[#FECACA] bg-[#FEF2F2] text-[#991B1B] font-semibold",
+        error:
+          "border-[#FECACA] bg-[#FEF2F2] text-[#991B1B] font-semibold",
+
+        // 4. Inactive / Draft / Neutral / Closed (Light Neutral Sand/Gray Pill)
+        secondary:
+          "border-[#E4DFD3] bg-[#F5F2EB] text-[#5C5952] font-medium",
+        inactive:
+          "border-[#E4DFD3] bg-[#F5F2EB] text-[#5C5952] font-medium",
+        neutral:
+          "border-[#E4DFD3] bg-[#F5F2EB] text-[#5C5952] font-medium",
+
+        default:
+          "border-[#FAD074] bg-[#FFF8E7] text-[#8C5800] font-bold",
         outline:
           "border-border text-foreground bg-card",
-        success:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 font-bold",
-        warning:
-          "border-amber-200 bg-amber-50 text-amber-700 font-bold",
-        amber:
-          "border-amber-300 bg-amber-100 text-amber-900 font-bold",
-        accent:
-          "border-transparent bg-accent text-accent-foreground font-bold",
-        info:
-          "border-slate-200 bg-slate-100 text-slate-700",
       },
     },
     defaultVariants: {

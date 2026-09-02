@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, XCircle, Clock, ShieldCheck, FileText, Store, Loader2 } from "lucide-react";
+import { Check, XCircle, Clock, ShieldCheck, FileText, Store, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
   fetchApprovalRequests,
@@ -34,7 +34,7 @@ import { formatDateTime } from "@/utils/formateDate";
 export default function PendingRequestsPage() {
   const dispatch = useDispatch();
   const { requests, pendingCounts, loading, error } = useSelector((state) => state.approvalRequest);
-  
+
   const [activeTab, setActiveTab] = useState("STORE_REGISTRATION");
   const [statusFilter, setStatusFilter] = useState("PENDING");
 
@@ -85,8 +85,10 @@ export default function PendingRequestsPage() {
           variant: "destructive",
         });
       } finally {
-        dispatch(fetchApprovalRequests({ type: activeTab, status: statusFilter === "ALL" ? undefined : statusFilter }));
-        dispatch(fetchPendingRequestCounts());
+        Promise.all([
+          dispatch(fetchApprovalRequests({ type: activeTab, status: statusFilter === "ALL" ? undefined : statusFilter })),
+          dispatch(fetchPendingRequestCounts()),
+        ]);
         setApprovalDialogOpen(false);
         setSelectedRequest(null);
         setUpdatingId(null);
@@ -115,8 +117,10 @@ export default function PendingRequestsPage() {
           variant: "destructive",
         });
       } finally {
-        dispatch(fetchApprovalRequests({ type: activeTab, status: statusFilter === "ALL" ? undefined : statusFilter }));
-        dispatch(fetchPendingRequestCounts());
+        Promise.all([
+          dispatch(fetchApprovalRequests({ type: activeTab, status: statusFilter === "ALL" ? undefined : statusFilter })),
+          dispatch(fetchPendingRequestCounts()),
+        ]);
         setRejectionDialogOpen(false);
         setSelectedRequest(null);
         setRejectionReason("");
@@ -131,47 +135,49 @@ export default function PendingRequestsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Tenant Approvals & Verification</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Review new store tenant signups and plan modification change requests.
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Tenant & Subscription Approval Requests
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Review and moderate store registration and plan subscription upgrade requests
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="warning" className="gap-1.5 px-3 py-1 text-xs rounded-full font-semibold">
-            <Store className="w-3.5 h-3.5" />
-            <span>{pendingCounts?.registrationPending || 0} Registrations</span>
+        <div className="flex gap-2">
+          <Badge variant="warning" className="flex items-center gap-1.5 px-3 py-1 text-xs">
+            <Store className="w-3.5 h-3.5 text-[#B8860B]" />
+            {pendingCounts?.registrationPending || 0} Registrations Pending
           </Badge>
-          <Badge variant="info" className="gap-1.5 px-3 py-1 text-xs rounded-full font-semibold">
+          <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1 text-xs">
             <FileText className="w-3.5 h-3.5" />
-            <span>{pendingCounts?.subscriptionPending || 0} Subscriptions</span>
+            {pendingCounts?.subscriptionPending || 0} Plan Upgrades Pending
           </Badge>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-border/80 pb-3">
-          <TabsList className="bg-muted/60 p-1 rounded-xl">
-            <TabsTrigger value="STORE_REGISTRATION" className="rounded-lg text-xs font-semibold gap-2">
-              <Store className="w-3.5 h-3.5" />
-              <span>Store Registrations ({pendingCounts?.registrationPending || 0})</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border/70 pb-3">
+          <TabsList className="bg-secondary p-1 rounded-xl">
+            <TabsTrigger value="STORE_REGISTRATION" className="flex items-center gap-2 text-xs font-bold">
+              <Store className="w-4 h-4" />
+              Store Registrations ({pendingCounts?.registrationPending || 0})
             </TabsTrigger>
-            <TabsTrigger value="SUBSCRIPTION_CHANGE" className="rounded-lg text-xs font-semibold gap-2">
-              <FileText className="w-3.5 h-3.5" />
-              <span>Subscription Requests ({pendingCounts?.subscriptionPending || 0})</span>
+            <TabsTrigger value="SUBSCRIPTION_CHANGE" className="flex items-center gap-2 text-xs font-bold">
+              <FileText className="w-4 h-4" />
+              Subscription Requests ({pendingCounts?.subscriptionPending || 0})
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border/60">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground font-semibold mr-1">Status:</span>
             {["PENDING", "APPROVED", "REJECTED", "ALL"].map((st) => (
               <Button
                 key={st}
-                variant={statusFilter === st ? "default" : "ghost"}
+                variant={statusFilter === st ? "default" : "outline"}
                 size="sm"
                 onClick={() => setStatusFilter(st)}
-                className="h-7 text-[11px] font-semibold rounded-lg px-2.5"
+                className="h-8 text-xs font-bold px-2.5"
               >
                 {st}
               </Button>
@@ -181,77 +187,82 @@ export default function PendingRequestsPage() {
 
         {/* STORE REGISTRATION TAB */}
         <TabsContent value="STORE_REGISTRATION" className="space-y-4">
-          <Card className="rounded-2xl border-border/80 shadow-2xs">
-            <CardContent className="p-0">
-              <div className="overflow-hidden">
+          <Card>
+            <CardHeader className="pb-3 border-b border-border/60">
+              <CardTitle className="text-base">Store Registration Queue</CardTitle>
+              <CardDescription className="text-xs">
+                New merchant applications awaiting super admin review and onboarding activation
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="border border-border rounded-2xl bg-card overflow-hidden">
                 {loading ? (
-                  <div className="flex items-center justify-center py-16 text-xs text-muted-foreground">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2 text-primary" />
-                    <span>Loading registration requests...</span>
+                  <div className="text-center py-10 text-xs text-muted-foreground font-semibold">
+                    Loading registration requests...
                   </div>
                 ) : error ? (
-                  <div className="text-center py-12 text-xs text-destructive">{error}</div>
+                  <div className="text-center py-8 text-xs text-destructive font-semibold">
+                    {error}
+                  </div>
                 ) : (
                   <Table>
-                    <TableHeader className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    <TableHeader>
                       <TableRow>
-                        <TableHead className="py-3">Store Brand</TableHead>
-                        <TableHead className="py-3">Owner</TableHead>
-                        <TableHead className="py-3">Contact Email</TableHead>
-                        <TableHead className="py-3">Store Category</TableHead>
-                        <TableHead className="py-3">Status</TableHead>
-                        <TableHead className="py-3">Submitted On</TableHead>
-                        <TableHead className="py-3 text-right">Moderation Actions</TableHead>
+                        <TableHead>Store Name</TableHead>
+                        <TableHead>Requested By</TableHead>
+                        <TableHead>Contact Email</TableHead>
+                        <TableHead>Business Type</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Submitted On</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-y divide-border/60 text-xs">
+                    <TableBody>
                       {filteredRequests.map((req) => (
-                        <TableRow key={req.id} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="font-semibold text-foreground py-3.5">{req.storeName}</TableCell>
-                          <TableCell className="text-foreground">{req.requestedBy?.fullName || "Store Admin"}</TableCell>
-                          <TableCell className="text-muted-foreground font-mono text-[11px]">{req.requestedBy?.email || "—"}</TableCell>
-                          <TableCell className="text-muted-foreground">{req.storeType || "—"}</TableCell>
+                        <TableRow key={req.id}>
+                          <TableCell className="font-bold text-foreground">{req.storeName}</TableCell>
+                          <TableCell className="text-sm font-medium">{req.requestedBy?.fullName || "Store Admin"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{req.requestedBy?.email || "—"}</TableCell>
+                          <TableCell className="text-xs font-semibold">{req.storeType || "—"}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
                                 req.status === "APPROVED"
-                                  ? "success"
+                                  ? "active"
                                   : req.status === "REJECTED"
                                   ? "destructive"
                                   : "warning"
                               }
-                              className="font-semibold text-[10px] rounded-full px-2.5"
                             >
                               {req.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-muted-foreground font-mono text-[11px]">{formatDateTime(req.createdAt)}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">
+                            {formatDateTime(req.createdAt)}
+                          </TableCell>
                           <TableCell className="text-right">
                             {req.status === "PENDING" ? (
                               <div className="flex items-center justify-end gap-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleApprove(req)}
-                                  className="text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10 h-7 rounded-lg text-xs font-semibold"
-                                  disabled={updatingId === req.id}
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
                                   onClick={() => handleReject(req)}
-                                  className="text-destructive border-destructive/30 hover:bg-destructive/10 h-7 rounded-lg text-xs font-semibold"
+                                  className="text-destructive hover:bg-destructive/10 text-xs font-bold h-8"
                                   disabled={updatingId === req.id}
                                 >
                                   <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
                                 </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApprove(req)}
+                                  className="text-xs font-bold h-8 gap-1.5"
+                                  disabled={updatingId === req.id}
+                                >
+                                  <Check className="w-3.5 h-3.5" /> Approve
+                                </Button>
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground font-mono text-[11px]">
-                                {req.resolvedAt ? `Resolved ${formatDateTime(req.resolvedAt)}` : "—"}
-                              </span>
+                              <span className="text-xs text-muted-foreground font-mono">Completed</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -261,106 +272,95 @@ export default function PendingRequestsPage() {
                 )}
               </div>
 
-              {filteredRequests.length === 0 && !loading && !error && (
-                <div className="text-center py-16 text-xs text-muted-foreground">
-                  No registration requests matching status "{statusFilter}".
+              {filteredRequests.length === 0 && !loading && (
+                <div className="text-center py-10 text-xs text-muted-foreground font-semibold">
+                  No registration requests in this view.
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* SUBSCRIPTION CHANGE TAB */}
+        {/* SUBSCRIPTION REQUESTS TAB */}
         <TabsContent value="SUBSCRIPTION_CHANGE" className="space-y-4">
-          <Card className="rounded-2xl border-border/80 shadow-2xs">
-            <CardContent className="p-0">
-              <div className="overflow-hidden">
-                {loading ? (
-                  <div className="flex items-center justify-center py-16 text-xs text-muted-foreground">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2 text-primary" />
-                    <span>Loading subscription requests...</span>
-                  </div>
-                ) : error ? (
-                  <div className="text-center py-12 text-xs text-destructive">{error}</div>
-                ) : (
-                  <Table>
-                    <TableHeader className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                      <TableRow>
-                        <TableHead className="py-3">Store Brand</TableHead>
-                        <TableHead className="py-3">Action</TableHead>
-                        <TableHead className="py-3">Current Plan</TableHead>
-                        <TableHead className="py-3">Requested Plan</TableHead>
-                        <TableHead className="py-3">Payment Reference</TableHead>
-                        <TableHead className="py-3">Status</TableHead>
-                        <TableHead className="py-3">Submitted On</TableHead>
-                        <TableHead className="py-3 text-right">Actions</TableHead>
+          <Card>
+            <CardHeader className="pb-3 border-b border-border/60">
+              <CardTitle className="text-base">Subscription Plan Upgrades & Change Requests</CardTitle>
+              <CardDescription className="text-xs">
+                Merchant tier changes requiring confirmation and billing activation
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="border border-border rounded-2xl bg-card overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Store Name</TableHead>
+                      <TableHead>Requested Tier</TableHead>
+                      <TableHead>Current Tier</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Submitted On</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRequests.map((req) => (
+                      <TableRow key={req.id}>
+                        <TableCell className="font-bold text-foreground">{req.storeName || req.store?.brand}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono text-xs">{req.targetPlanName || req.plan?.name || "Upgrade Plan"}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{req.currentPlanName || "Standard"}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              req.status === "APPROVED"
+                                ? "active"
+                                : req.status === "REJECTED"
+                                ? "destructive"
+                                : "warning"
+                            }
+                          >
+                            {req.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground font-mono">
+                          {formatDateTime(req.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {req.status === "PENDING" ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleReject(req)}
+                                className="text-destructive hover:bg-destructive/10 text-xs font-bold h-8"
+                                disabled={updatingId === req.id}
+                              >
+                                <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleApprove(req)}
+                                className="text-xs font-bold h-8 gap-1.5"
+                                disabled={updatingId === req.id}
+                              >
+                                <Check className="w-3.5 h-3.5" /> Approve
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground font-mono">Completed</span>
+                          )}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody className="divide-y divide-border/60 text-xs">
-                      {filteredRequests.map((req) => (
-                        <TableRow key={req.id} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="font-semibold text-foreground py-3.5">{req.storeName}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="text-[10px] font-semibold">{req.subscriptionAction || "NEW"}</Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">{req.currentPlanName || "None"}</TableCell>
-                          <TableCell className="font-semibold text-primary">
-                            {req.requestedPlanName} (₹{req.requestedPlanPrice})
-                          </TableCell>
-                          <TableCell className="font-mono text-[11px] text-muted-foreground">{req.paymentReference || "—"}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                req.status === "APPROVED"
-                                  ? "success"
-                                  : req.status === "REJECTED"
-                                  ? "destructive"
-                                  : "warning"
-                              }
-                              className="font-semibold text-[10px] rounded-full px-2.5"
-                            >
-                              {req.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground font-mono text-[11px]">{formatDateTime(req.createdAt)}</TableCell>
-                          <TableCell className="text-right">
-                            {req.status === "PENDING" ? (
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleApprove(req)}
-                                  className="text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10 h-7 rounded-lg text-xs font-semibold"
-                                  disabled={updatingId === req.id}
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReject(req)}
-                                  className="text-destructive border-destructive/30 hover:bg-destructive/10 h-7 rounded-lg text-xs font-semibold"
-                                  disabled={updatingId === req.id}
-                                >
-                                  <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground font-mono text-[11px]">
-                                {req.resolvedAt ? `Resolved ${formatDateTime(req.resolvedAt)}` : "—"}
-                              </span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
 
-              {filteredRequests.length === 0 && !loading && !error && (
-                <div className="text-center py-16 text-xs text-muted-foreground">
-                  No subscription requests matching status "{statusFilter}".
+              {filteredRequests.length === 0 && !loading && (
+                <div className="text-center py-10 text-xs text-muted-foreground font-semibold">
+                  No subscription change requests in this view.
                 </div>
               )}
             </CardContent>
@@ -368,65 +368,86 @@ export default function PendingRequestsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* APPROVAL DIALOG */}
+      {/* Approve Dialog */}
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
-        <DialogContent className="rounded-2xl bg-card border-border sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold text-foreground">Approve Verification Request</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Are you sure you want to approve this request for <strong className="text-foreground">{selectedRequest?.storeName}</strong>?
+            <DialogTitle className="text-lg font-bold">Confirm Request Approval</DialogTitle>
+            <DialogDescription className="text-xs">
+              Approve onboarding / subscription change for{" "}
+              <strong>{selectedRequest?.storeName}</strong>.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-2 py-2">
+            <label className="text-xs font-bold text-foreground">
+              Internal Admin Notes (Optional)
+            </label>
             <Textarea
-              placeholder="Add optional administrative note..."
+              placeholder="e.g., Verified GST document and business credentials."
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
-              rows={2}
-              className="text-xs rounded-xl resize-none"
+              rows={3}
+              className="text-xs bg-card"
             />
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setApprovalDialogOpen(false)} className="rounded-xl text-xs">
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setApprovalDialogOpen(false)}
+              className="text-xs h-9"
+            >
               Cancel
             </Button>
-            <Button size="sm" onClick={confirmApprove} className="rounded-xl text-xs font-semibold gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Approve Request
+            <Button
+              onClick={confirmApprove}
+              disabled={updatingId !== null}
+              className="text-xs font-bold h-9 gap-1.5"
+            >
+              {updatingId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              Confirm Approval
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* REJECTION DIALOG */}
+      {/* Reject Dialog */}
       <Dialog open={rejectionDialogOpen} onOpenChange={setRejectionDialogOpen}>
-        <DialogContent className="rounded-2xl bg-card border-border sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold text-foreground">Reject Request</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Please provide a reason for rejecting <strong className="text-foreground">{selectedRequest?.storeName}</strong>.
+            <DialogTitle className="text-lg font-bold text-destructive">Reject Request</DialogTitle>
+            <DialogDescription className="text-xs">
+              Provide a clear reason for rejecting the request for{" "}
+              <strong>{selectedRequest?.storeName}</strong>.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-2 py-2">
+            <label className="text-xs font-bold text-foreground">
+              Rejection Reason (Required)
+            </label>
             <Textarea
-              placeholder="Enter specific rejection reason..."
+              placeholder="e.g., Incomplete GST verification or duplicate registration."
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               rows={3}
-              className="text-xs rounded-xl resize-none"
+              className="text-xs bg-card"
             />
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setRejectionDialogOpen(false)} className="rounded-xl text-xs">
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRejectionDialogOpen(false)}
+              className="text-xs h-9"
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              size="sm"
               onClick={confirmReject}
-              disabled={!rejectionReason.trim()}
-              className="rounded-xl text-xs font-semibold gap-1.5"
+              disabled={!rejectionReason.trim() || updatingId !== null}
+              className="text-xs font-bold h-9 gap-1.5"
             >
-              <XCircle className="w-3.5 h-3.5" /> Reject Request
+              {updatingId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+              Confirm Rejection
             </Button>
           </DialogFooter>
         </DialogContent>

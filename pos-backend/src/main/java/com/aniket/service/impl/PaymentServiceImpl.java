@@ -133,7 +133,7 @@ public class PaymentServiceImpl implements PaymentService {
         JSONObject paymentDetails = razorpayService
                 .fetchPaymentDetails(request.getRazorpayPaymentId());
 
-        System.out.println("gatway payment details: " + paymentDetails);
+        log.debug("Fetched gateway payment verification details for paymentId: {}", request.getRazorpayPaymentId());
 
         long amount = paymentDetails.getLong("amount");
 

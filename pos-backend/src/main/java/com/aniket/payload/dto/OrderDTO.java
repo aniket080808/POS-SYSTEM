@@ -16,11 +16,26 @@ import java.util.List;
 public class OrderDTO {
     private Long id;
     private Double totalAmount;
+    private Double subtotal;
+    private Double discount;
+    private Double tax;
     private Long branchId;
     private Long cashierId;
+    private String cashierName;
     private Customer customer;
     private List<OrderItemDTO> items;
     private LocalDateTime createdAt;
     private PaymentType paymentType;
     private OrderStatus status;
+    private String offlineId;
+    private Boolean isOfflineSynced;
+    private Double cashAmount;
+    private Double upiAmount;
+    private Double cardAmount;
+    private Double loyaltyAmount;
+    private Double storeCreditAmount;
+    private Integer loyaltyPointsRedeemed;
+    private Integer loyaltyPointsEarned;
 }
+
+

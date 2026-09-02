@@ -27,7 +27,7 @@ public class ShiftReportMapper {
         dto.setBranchId(shiftReport.getBranch() != null ? shiftReport.getBranch().getId() : null);
 
         dto.setRecentOrders(mapOrders(shiftReport.getRecentOrders()));
-        dto.setTopSellingProducts(mapProducts(shiftReport.getTopSellingProducts()));
+        dto.setTopSellingProducts(shiftReport.getTopSellingProducts());
         dto.setRefunds(mapRefunds(shiftReport.getRefunds()));
         dto.setPaymentSummaries(shiftReport.getPaymentSummaries()); // assuming already a DTO-safe object
 

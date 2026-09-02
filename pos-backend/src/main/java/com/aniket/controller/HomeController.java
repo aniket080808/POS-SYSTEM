@@ -15,7 +15,7 @@ public class HomeController {
         return ResponseEntity.status(
                         HttpStatus.OK)
                 .body(new ApiResponse(
-                        "welcome to interview hub system"
+                        "Welcome to POS System API"
                 ));
     }
 }

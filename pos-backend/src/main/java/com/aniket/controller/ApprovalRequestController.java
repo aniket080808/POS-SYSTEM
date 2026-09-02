@@ -77,18 +77,21 @@ public class ApprovalRequestController {
     // ==========================================
 
     @GetMapping("/api/approval-requests/my-store")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'ADMIN')")
     public ResponseEntity<List<ApprovalRequestDTO>> getMyStoreRequests() throws UserException {
         User user = userService.getCurrentUser();
         return ResponseEntity.ok(approvalRequestService.getRequestsForStore(user));
     }
 
     @PostMapping("/api/approval-requests/re-register")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'ADMIN')")
     public ResponseEntity<ResubmitResponse> resubmitRegistration() throws UserException {
         User user = userService.getCurrentUser();
         return ResponseEntity.ok(approvalRequestService.resubmitRegistration(user));
     }
 
     @PostMapping("/api/approval-requests/re-request-subscription")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'ADMIN')")
     public ResponseEntity<ResubmitResponse> resubmitSubscriptionRequest(
             @RequestParam Long planId
     ) throws UserException {
@@ -97,6 +100,7 @@ public class ApprovalRequestController {
     }
 
     @GetMapping("/api/store-subscription/status")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'ADMIN')")
     public ResponseEntity<StoreSubscriptionStatusResponse> getStoreSubscriptionStatus() throws UserException {
         User user = userService.getCurrentUser();
         return ResponseEntity.ok(storeSubscriptionService.getStatusResponseForUser(user));

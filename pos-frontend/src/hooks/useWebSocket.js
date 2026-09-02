@@ -6,16 +6,19 @@ import { fetchUnreadCount } from '../Redux Toolkit/features/notification/notific
 
 export const useWebSocket = () => {
   const dispatch = useDispatch();
-  const { user } = useSelector(state => state.user);
+  const { user, userProfile } = useSelector(state => state.user);
+  const currentUser = userProfile || user;
   const stompClient = useRef(null);
 
   useEffect(() => {
-    if (!user || user.role !== 'ROLE_ADMIN') return;
+    if (!currentUser?.id) return;
 
     // Fetch initial unread count
     dispatch(fetchUnreadCount());
 
     const token = localStorage.getItem('jwt');
+    if (!token) return;
+
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const wsUrl = apiUrl.replace(/^http/, 'ws') + '/ws/websocket';
     
@@ -28,11 +31,14 @@ export const useWebSocket = () => {
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
-        console.log('Connected to WebSocket');
-        stompClient.current.subscribe(`/topic/admin-notifications/${user.id}`, (message) => {
+        stompClient.current.subscribe(`/topic/admin-notifications/${currentUser.id}`, (message) => {
           if (message.body) {
-            const notification = JSON.parse(message.body);
-            dispatch(addWebSocketNotification(notification));
+            try {
+              const notification = JSON.parse(message.body);
+              dispatch(addWebSocketNotification(notification));
+            } catch (e) {
+              console.error('Failed to parse WebSocket notification', e);
+            }
           }
         });
       },
@@ -58,5 +64,6 @@ export const useWebSocket = () => {
       }
       channel.close();
     };
-  }, [dispatch, user]);
+  }, [dispatch, currentUser?.id]);
 };
+

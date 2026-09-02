@@ -6,6 +6,7 @@ import com.aniket.service.SubscriptionPlanService;
 
 import com.aniket.exception.ResourceNotFoundException;
 import com.aniket.modal.SubscriptionPlan;
+import com.aniket.repository.ApprovalRequestRepository;
 import com.aniket.repository.StoreSubscriptionRepository;
 import com.aniket.repository.SubscriptionPlanRepository;
 import com.aniket.service.SubscriptionPlanService;
@@ -20,6 +21,7 @@ public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
 
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final StoreSubscriptionRepository storeSubscriptionRepository;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     /**
      * ➕ Create new plan
@@ -74,7 +76,7 @@ public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
     }
 
     /**
-     * 📦 Get all plans
+     * 📦 Get all active plans (for public & store owners)
      */
     @Override
     public List<SubscriptionPlan> getAllPlans() {
@@ -82,20 +84,36 @@ public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
     }
 
     /**
+     * 👑 Get all plans including inactive ones (for Super Admin console)
+     */
+    @Override
+    public List<SubscriptionPlan> getAllPlansForAdmin() {
+        return subscriptionPlanRepository.findAll();
+    }
+
+    /**
      * ❌ Delete plan
      */
     @Override
     public void deletePlan(Long id) throws ResourceNotFoundException {
-        if (!subscriptionPlanRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Subscription plan not found with id: " + id);
-        }
+        SubscriptionPlan plan = subscriptionPlanRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription plan not found with id: " + id));
 
-        long storesUsing = storeSubscriptionRepository.countByCurrentPlanId(id);
-        if (storesUsing > 0) {
+        long activeStores = storeSubscriptionRepository.countActiveStoresByPlanId(id);
+        if (activeStores > 0) {
             throw new IllegalArgumentException(
-                "Cannot delete plan — " + storesUsing + " store(s) are currently on it. Reassign them first.");
+                "Cannot delete plan — " + activeStores + " active store(s) are currently on it. Reassign them first.");
         }
 
-        subscriptionPlanRepository.deleteById(id);
+        long storesReferencing = storeSubscriptionRepository.countByPlanId(id);
+        long requestsReferencing = approvalRequestRepository.countByPlanId(id);
+
+        if (storesReferencing > 0 || requestsReferencing > 0) {
+            // Soft delete to preserve historical integrity and avoid FK violation
+            plan.setActive(false);
+            subscriptionPlanRepository.save(plan);
+        } else {
+            subscriptionPlanRepository.deleteById(id);
+        }
     }
 }

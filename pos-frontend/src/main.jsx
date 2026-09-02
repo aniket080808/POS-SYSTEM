@@ -7,6 +7,14 @@ import { Provider } from "react-redux";
 import globleState from "./Redux Toolkit/globleState.js";
 import { Toaster } from "@/components/ui/use-toast";
 
+// Apply persisted theme on startup to prevent theme flash
+const savedTheme = localStorage.getItem("nexpos-theme");
+if (savedTheme === "dark") {
+  document.documentElement.classList.add("dark");
+} else {
+  document.documentElement.classList.remove("dark");
+}
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
@@ -17,4 +25,3 @@ createRoot(document.getElementById("root")).render(
     </BrowserRouter>
   </StrictMode>
 );
-

@@ -58,20 +58,19 @@ const LayoutContent  = () => {
 
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Hamburger for all screen sizes */}
-
-      {/* Sidebar overlay for all screen sizes */}
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Mobile Sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/40"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden backdrop-blur-xs transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      {/* Sidebar */}
+
+      {/* Sidebar (Desktop docked, Mobile slide-in drawer) */}
       <div
-        className={`fixed z-30 h-full transition-transform duration-200 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed md:static inset-y-0 left-0 z-50 md:z-auto h-full shrink-0 transition-transform duration-200 ease-in-out ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
         <CashierSideBar
@@ -80,12 +79,11 @@ const LayoutContent  = () => {
           onClose={() => setSidebarOpen(false)}
         />
       </div>
+
       {/* Main Content */}
-    
-        <div className="flex-1 overflow-auto">
-          <Outlet />
-        </div>
-      
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        <Outlet />
+      </div>
     </div>
   );
 };

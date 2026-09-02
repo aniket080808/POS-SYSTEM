@@ -1,103 +1,101 @@
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { StarIcon, PlusIcon, Loader2, UserIcon } from 'lucide-react';
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StarIcon, PlusIcon, Loader2, UserIcon, ShoppingBag, CreditCard, Calendar } from "lucide-react";
 import { useCurrencyFormatter } from "@/utils/currencyUtils";
+import { useDateFormatter } from "@/utils/dateUtils";
 
 const CustomerDetails = ({ customer, onAddPoints, loading = false }) => {
   const { format: formatCurrency } = useCurrencyFormatter();
+  const { formatDate } = useDateFormatter();
 
   if (!customer) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
-        <UserIcon size={48} strokeWidth={1} />
-        <p className="mt-4">Select a customer to view details</p>
+      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8 space-y-2">
+        <UserIcon size={44} strokeWidth={1.5} className="text-muted-foreground/60" />
+        <p className="text-sm font-bold text-foreground">Select a Customer</p>
+        <p className="text-xs text-muted-foreground">Select from the directory on the left to view lifetime transactions</p>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
-        <Loader2 className="animate-spin h-8 w-8 mb-4" />
-        <p>Loading customer details...</p>
+      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8">
+        <Loader2 className="animate-spin h-6 w-6 mb-2 text-[#B8860B]" />
+        <p className="text-xs">Fetching customer profile data...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-start mb-6">
+    <div className="p-5 space-y-6">
+      <div className="flex justify-between items-start pb-4 border-b border-border/80">
         <div>
-          <h2 className="text-2xl font-bold">{customer.fullName || 'Unknown Customer'}</h2>
-          <p className="text-muted-foreground">{customer.phone || 'N/A'}</p>
-          <p className="text-muted-foreground">{customer.email || 'N/A'}</p>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
+            {customer.fullName || "Guest Profile"}
+          </h2>
+          <p className="text-xs font-mono text-muted-foreground mt-0.5">{customer.phone || "No phone number"}</p>
+          <p className="text-xs text-muted-foreground">{customer.email || "No email address registered"}</p>
         </div>
-        <Button onClick={onAddPoints} className="flex items-center gap-2">
-          <PlusIcon className="h-4 w-4" />
-          Add Points
+        <Button onClick={onAddPoints} size="sm" className="text-xs font-bold h-9 gap-1.5">
+          <PlusIcon className="h-3.5 w-3.5" />
+          Add Loyalty Points
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Card className="border-border shadow-2xs">
+          <CardHeader className="p-3.5 pb-1">
+            <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
               Loyalty Points
+              <StarIcon className="h-3.5 w-3.5 text-[#B8860B]" />
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <StarIcon className="h-5 w-5 text-yellow-500" />
-              <span className="text-2xl font-bold">{customer.loyaltyPoints || 0}</span>
+          <CardContent className="p-3.5 pt-0">
+            <div className="text-2xl font-black font-mono text-foreground mt-1">
+              {customer.loyaltyPoints || 0} <span className="text-xs font-normal text-muted-foreground">pts</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Orders
+        <Card className="border-border shadow-2xs">
+          <CardHeader className="p-3.5 pb-1">
+            <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+              Total Invoices
+              <ShoppingBag className="h-3.5 w-3.5 text-foreground" />
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <span className="text-2xl font-bold">{customer.totalOrders || 0}</span>
+          <CardContent className="p-3.5 pt-0">
+            <div className="text-2xl font-black font-mono text-foreground mt-1">
+              {customer.totalOrders || 0}
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Spent
+        <Card className="border-border shadow-2xs">
+          <CardHeader className="p-3.5 pb-1">
+            <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+              Lifetime Spent
+              <CreditCard className="h-3.5 w-3.5 text-[#B8860B]" />
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <span className="text-2xl font-bold">{formatCurrency(customer.totalSpent || 0)}</span>
+          <CardContent className="p-3.5 pt-0">
+            <div className="text-2xl font-black font-mono text-foreground mt-1">
+              {formatCurrency(customer.totalSpent || 0)}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {customer.averageOrderValue && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Average Order Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="text-2xl font-bold">{formatCurrency(customer.averageOrderValue)}</span>
-          </CardContent>
-        </Card>
-      )}
-
       {customer.lastVisit && (
-        <div className="mt-4">
-          <p className="text-sm text-muted-foreground">
-            Last Visit: {new Date(customer.lastVisit).toLocaleDateString()}
-          </p>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1 font-mono">
+          <Calendar className="w-3.5 h-3.5 text-[#B8860B]" />
+          <span>Last Visit: {formatDate(customer.lastVisit)}</span>
         </div>
       )}
     </div>
   );
 };
 
-export default CustomerDetails; 
+export default CustomerDetails;

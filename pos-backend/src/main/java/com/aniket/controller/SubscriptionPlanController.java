@@ -54,11 +54,11 @@ public class SubscriptionPlanController {
         }
 
         /**
-         * 📦 Get all subscription plans
+         * 📦 Get all subscription plans (active + inactive for Super Admin)
          */
         @GetMapping
         public List<SubscriptionPlan> getAllPlans() {
-            return subscriptionPlanService.getAllPlans();
+            return subscriptionPlanService.getAllPlansForAdmin();
         }
 
         /**

@@ -6,7 +6,21 @@ import RecentSales from "./RecentSales";
 import SalesTrend from "./SalesTrend";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
-import { Lock, BadgeDollarSign, Clock, XCircle, ShieldOff, RotateCcw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Lock,
+  BadgeDollarSign,
+  Clock,
+  XCircle,
+  ShieldOff,
+  RotateCcw,
+  AlertTriangle,
+  Zap,
+  Store,
+  Users,
+  Package,
+} from "lucide-react";
 import { resubmitRegistration, fetchStoreSubscriptionStatus } from "../../../Redux Toolkit/features/storeSubscription/storeSubscriptionThunks";
 
 export default function Dashboard() {
@@ -15,49 +29,62 @@ export default function Dashboard() {
   const { statusResponse } = useSelector((state) => state.storeSubscription);
   const { store } = useSelector((state) => state.store);
   const { userProfile } = useSelector((state) => state.user);
+  const { storeOverview } = useSelector((state) => state.storeAnalytics);
 
   const [resubmitLoading, setResubmitLoading] = useState(false);
 
+  const isSuperAdmin = userProfile?.role === "ROLE_ADMIN";
   const isStoreAdmin = userProfile?.role === "ROLE_STORE_ADMIN";
   const regStatus = statusResponse?.registrationStatus || store?.status || "PENDING";
   const subStatus = statusResponse?.subscriptionStatus || "NONE";
-  const isRegistrationApproved = regStatus === "ACTIVE";
-  const isSubscriptionActive = subStatus === "ACTIVE";
+  const isRegistrationApproved = isSuperAdmin || regStatus === "ACTIVE";
+  const isSubscriptionActive = isSuperAdmin || subStatus === "ACTIVE";
+
+  const currentPlan = statusResponse?.currentPlan;
+  const effectiveMaxBranches = store?.customMaxBranches || currentPlan?.maxBranches;
+  const effectiveMaxUsers = store?.customMaxUsers || currentPlan?.maxUsers;
+  const effectiveMaxProducts = store?.customMaxProducts || currentPlan?.maxProducts;
+
+  const branchesCount = storeOverview?.totalBranches || 0;
+  const employeesCount = storeOverview?.totalEmployees || 0;
+  const productsCount = storeOverview?.totalProducts || 0;
+
+  const branchPercent = effectiveMaxBranches ? Math.min(100, Math.round((branchesCount / effectiveMaxBranches) * 100)) : 0;
+  const userPercent = effectiveMaxUsers ? Math.min(100, Math.round((employeesCount / effectiveMaxUsers) * 100)) : 0;
+  const productPercent = effectiveMaxProducts ? Math.min(100, Math.round((productsCount / effectiveMaxProducts) * 100)) : 0;
 
   const handleResubmitRegistration = async () => {
     setResubmitLoading(true);
     try {
       await dispatch(resubmitRegistration()).unwrap();
       dispatch(fetchStoreSubscriptionStatus());
-    } catch {
-      // Handled via Redux
+    } catch (_err) {
+      // Error handled by Redux slice
     } finally {
       setResubmitLoading(false);
     }
   };
 
+  // ─── STATE 1: Registration NOT approved (Pending / Rejected / Blocked) ───
   const renderRegistrationCard = () => {
     if (regStatus === "PENDING") {
       return (
-        <Card className="border-amber-200/80 bg-amber-50/40 p-8 shadow-xs rounded-2xl">
+        <Card className="border-[#EED896] bg-[#FDF6E2]/70 shadow-xs">
           <CardContent className="flex flex-col items-center justify-center text-center space-y-4 py-8">
-            <div className="p-3.5 bg-amber-100 rounded-2xl text-amber-600">
+            <div className="p-3.5 bg-card border border-[#EED896] rounded-2xl text-[#B8860B] shadow-2xs">
               <Clock className="w-8 h-8" />
             </div>
-            <div className="max-w-md space-y-1.5">
-              <h2 className="text-xl font-bold tracking-tight text-foreground">
-                Store Registration Pending Review
+            <div className="max-w-md space-y-2">
+              <h2 className="text-xl font-bold tracking-tight text-[#785600]">
+                Store Registration Pending Approval
               </h2>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                Your store profile is under review by the platform administrator. Once approved, you can activate your subscription and access the full product catalog and multi-branch terminal features.
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Your store registration has been submitted and is awaiting approval by the super administrator.
+                Once approved, you can subscribe to a plan and unlock all operational modules.
               </p>
             </div>
-            <Button
-              onClick={() => navigate("/store/upgrade")}
-              variant="outline"
-              className="mt-2 text-xs font-semibold h-10 rounded-xl"
-            >
-              <BadgeDollarSign className="w-4 h-4 mr-1.5 text-accent" /> View Registration Status
+            <Button onClick={() => navigate("/store/upgrade")} variant="outline" className="mt-2 text-xs">
+              <BadgeDollarSign className="w-4 h-4 mr-2 text-[#B8860B]" /> View Status
             </Button>
           </CardContent>
         </Card>
@@ -66,38 +93,29 @@ export default function Dashboard() {
 
     if (regStatus === "REJECTED") {
       return (
-        <Card className="border-red-200 bg-red-50/40 p-8 shadow-xs rounded-2xl">
+        <Card className="border-[#EFC8BD] bg-[#FBF0EC]/80 shadow-xs">
           <CardContent className="flex flex-col items-center justify-center text-center space-y-4 py-8">
-            <div className="p-3.5 bg-red-100 rounded-2xl text-red-600">
+            <div className="p-3.5 bg-card border border-[#EFC8BD] rounded-2xl text-destructive shadow-2xs">
               <XCircle className="w-8 h-8" />
             </div>
-            <div className="max-w-md space-y-1.5">
-              <h2 className="text-xl font-bold tracking-tight text-foreground">
+            <div className="max-w-md space-y-2">
+              <h2 className="text-xl font-bold tracking-tight text-[#7A331E]">
                 Store Registration Rejected
               </h2>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                Your registration application was declined by the platform administrator.
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Your store registration was rejected by the super administrator.
                 {(statusResponse?.registrationRejectionReason || store?.registrationRejectionReason) && (
-                  <span className="block font-semibold text-red-700 mt-1">
+                  <span className="block font-semibold text-[#7A331E] mt-1">
                     Reason: "{statusResponse?.registrationRejectionReason || store?.registrationRejectionReason}"
                   </span>
                 )}
               </p>
             </div>
-            <div className="flex items-center gap-2.5 mt-2">
-              <Button
-                onClick={handleResubmitRegistration}
-                disabled={resubmitLoading}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold h-10 rounded-xl shadow-xs"
-              >
-                <RotateCcw className="w-4 h-4 mr-1.5" />
-                {resubmitLoading ? "Submitting..." : "Resubmit Application"}
+            <div className="flex items-center gap-3 mt-2">
+              <Button onClick={handleResubmitRegistration} disabled={resubmitLoading} variant="destructive" className="text-xs">
+                <RotateCcw className="w-4 h-4 mr-2" /> {resubmitLoading ? "Submitting..." : "Send Request Again"}
               </Button>
-              <Button
-                onClick={() => navigate("/store/upgrade")}
-                variant="outline"
-                className="text-xs font-semibold h-10 rounded-xl"
-              >
+              <Button onClick={() => navigate("/store/upgrade")} variant="outline" className="text-xs">
                 View Status
               </Button>
             </div>
@@ -108,17 +126,18 @@ export default function Dashboard() {
 
     if (regStatus === "BLOCKED") {
       return (
-        <Card className="border-red-200 bg-red-50/40 p-8 shadow-xs rounded-2xl">
+        <Card className="border-[#EFC8BD] bg-[#FBF0EC]/80 shadow-xs">
           <CardContent className="flex flex-col items-center justify-center text-center space-y-4 py-8">
-            <div className="p-3.5 bg-red-100 rounded-2xl text-red-600">
+            <div className="p-3.5 bg-card border border-[#EFC8BD] rounded-2xl text-destructive shadow-2xs">
               <ShieldOff className="w-8 h-8" />
             </div>
-            <div className="max-w-md space-y-1.5">
-              <h2 className="text-xl font-bold tracking-tight text-foreground">
-                Store Account Suspended
+            <div className="max-w-md space-y-2">
+              <h2 className="text-xl font-bold tracking-tight text-[#7A331E]">
+                Store Account Blocked
               </h2>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                This store has been temporarily suspended by the platform administrator. Terminal checkouts and branch operations are restricted.
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Your store account has been blocked by the platform administrator.
+                Access to all modules is restricted. Please contact support for assistance.
               </p>
             </div>
           </CardContent>
@@ -132,11 +151,11 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-          Store Operations Dashboard
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Dashboard Overview
         </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-          Real-time metrics, cross-branch revenue trends, and operational summaries
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Real-time insights and business performance across all branches
         </p>
       </div>
 
@@ -144,48 +163,132 @@ export default function Dashboard() {
         renderRegistrationCard()
       ) : !isSubscriptionActive ? (
         isStoreAdmin ? (
-          <Card className="border-amber-200/80 bg-amber-50/30 p-8 shadow-xs rounded-2xl">
+          <Card className="border-[#EED896] bg-[#FDF6E2]/70 shadow-xs">
             <CardContent className="flex flex-col items-center justify-center text-center space-y-4 py-8">
-              <div className="p-3.5 bg-amber-100 rounded-2xl text-amber-600">
+              <div className="p-3.5 bg-card border border-[#EED896] rounded-2xl text-[#B8860B] shadow-2xs">
                 <Lock className="w-8 h-8" />
               </div>
-              <div className="max-w-md space-y-1.5">
-                <h2 className="text-xl font-bold tracking-tight text-foreground">
-                  Active Subscription Required
+              <div className="max-w-md space-y-2">
+                <h2 className="text-xl font-bold tracking-tight text-[#785600]">
+                  No Active Subscription
                 </h2>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Your store registration is approved! Select an active subscription plan to unlock full product catalog management, branch terminal checkout, and analytics.
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Your store registration is approved! Subscribe to an active plan to unlock business statistics, product catalog, sales reports, and branch features.
                 </p>
               </div>
-              <Button
-                onClick={() => navigate("/store/upgrade")}
-                className="mt-2 bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold h-10 rounded-xl shadow-xs"
-              >
-                <BadgeDollarSign className="w-4 h-4 mr-1.5" />
-                Select Subscription Tier
+              <Button onClick={() => navigate("/store/upgrade")} className="mt-2 text-xs">
+                <BadgeDollarSign className="w-4 h-4 mr-2" /> Upgrade Plan / View Status
               </Button>
             </CardContent>
           </Card>
         ) : (
-          <Card className="border-border bg-card p-8 shadow-xs rounded-2xl">
-            <CardContent className="flex flex-col items-center justify-center text-center space-y-3 py-6">
-              <div className="p-3 bg-muted rounded-2xl text-muted-foreground">
-                <Clock className="w-7 h-7" />
+          <Card className="border-border bg-card shadow-xs">
+            <CardContent className="flex flex-col items-center justify-center text-center space-y-3 py-8">
+              <div className="p-3 bg-secondary rounded-2xl text-muted-foreground">
+                <Clock className="w-8 h-8" />
               </div>
               <div className="max-w-md space-y-1">
                 <h2 className="text-lg font-bold tracking-tight text-foreground">
                   Subscription Notice
                 </h2>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  This store's subscription requires renewal. Please contact your Store Admin.
+                <p className="text-muted-foreground text-xs">
+                  This store's subscription needs renewal. Please contact your Store Admin.
                 </p>
               </div>
             </CardContent>
           </Card>
         )
       ) : (
+        /* Fully active — normal dashboard */
         <>
           <DashboardStats />
+
+          {/* Subscription Quota & Store Capacity Health Card */}
+          {currentPlan && (
+            <Card className="border-border shadow-2xs bg-card overflow-hidden">
+              <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 bg-secondary/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-[#B8860B] shrink-0">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-foreground">
+                        Subscription Quota & Capacity Health
+                      </h3>
+                      <Badge variant="outline" className="text-[10px] font-bold border-amber-500/40 text-amber-700 bg-amber-500/10">
+                        {currentPlan.name || "Active Plan"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Resource allocations and live multi-tenant capacity limits
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/store/upgrade")}
+                  className="text-xs font-bold h-8 self-start md:self-auto gap-1.5 cursor-pointer"
+                >
+                  <BadgeDollarSign className="w-3.5 h-3.5 text-[#B8860B]" />
+                  Upgrade Plan / Limits
+                </Button>
+              </div>
+
+              <CardContent className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-5">
+                {/* Branches Quota */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <Store className="w-3.5 h-3.5 text-foreground" /> Branch Outlets
+                    </span>
+                    <span className="font-mono font-bold text-foreground">
+                      {branchesCount} / {effectiveMaxBranches || "∞"}
+                    </span>
+                  </div>
+                  <Progress value={branchPercent} className="h-2" />
+                  <p className="text-[11px] text-muted-foreground">
+                    {effectiveMaxBranches ? `${branchPercent}% capacity utilized` : "Unlimited locations"}
+                  </p>
+                </div>
+
+                {/* Staff Accounts Quota */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-blue-600" /> Staff & Cashiers
+                    </span>
+                    <span className="font-mono font-bold text-foreground">
+                      {employeesCount} / {effectiveMaxUsers || "∞"}
+                    </span>
+                  </div>
+                  <Progress value={userPercent} className="h-2" />
+                  <p className="text-[11px] text-muted-foreground">
+                    {effectiveMaxUsers ? `${userPercent}% capacity utilized` : "Unlimited staff"}
+                  </p>
+                </div>
+
+                {/* Product SKUs Quota */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <Package className="w-3.5 h-3.5 text-emerald-600" /> Catalog SKUs
+                    </span>
+                    <span className="font-mono font-bold text-foreground">
+                      {productsCount} / {effectiveMaxProducts || "∞"}
+                    </span>
+                  </div>
+                  <Progress value={productPercent} className="h-2" />
+                  <p className="text-[11px] text-muted-foreground">
+                    {effectiveMaxProducts ? `${productPercent}% capacity utilized` : "Unlimited catalog"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <RecentSales />
             <SalesTrend />

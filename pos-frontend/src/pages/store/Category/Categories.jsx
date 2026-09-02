@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Tag } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { getCategoriesByStore } from "@/Redux Toolkit/features/category/categoryThunks";
 import CategoryTable from "./CategoryTable";
 import CategoryForm from "./CategoryForm";
 
 export default function Categories() {
   const dispatch = useDispatch();
-  const { categories, loading, error } = useSelector((state) => state.category);
+  const { categories = [], loading, error } = useSelector((state) => state.category);
   const { store } = useSelector((state) => state.store);
   const { userProfile } = useSelector((state) => state.user);
 
@@ -29,11 +29,19 @@ export default function Categories() {
 
   const handleAddCategorySuccess = () => {
     setIsAddDialogOpen(false);
+    const token = localStorage.getItem("jwt");
+    if (activeStoreId && token) {
+      dispatch(getCategoriesByStore({ storeId: activeStoreId, token }));
+    }
   };
 
   const handleEditCategorySuccess = () => {
     setIsEditDialogOpen(false);
     setCurrentCategory(null);
+    const token = localStorage.getItem("jwt");
+    if (activeStoreId && token) {
+      dispatch(getCategoriesByStore({ storeId: activeStoreId, token }));
+    }
   };
 
   const openEditDialog = (category) => {
@@ -43,63 +51,65 @@ export default function Categories() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Product Categories
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Organize catalog inventory items into departments and product classifications
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Organize catalog inventory into intuitive merchandise groups for cashier checkout speed
           </p>
         </div>
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold h-10 px-4 rounded-xl shadow-xs cursor-pointer">
+            <Button className="text-xs font-bold h-10 gap-1.5">
               <Plus className="w-4 h-4" /> Add Category
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto rounded-2xl">
+          <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-card border-border">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-foreground">
-                Add New Product Category
-              </DialogTitle>
+              <DialogTitle className="text-lg font-bold">Create Product Category</DialogTitle>
+              <DialogDescription className="text-xs">
+                Add a new merchandise classification group to your catalog
+              </DialogDescription>
             </DialogHeader>
-            <CategoryForm 
-              onSubmit={handleAddCategorySuccess} 
+            <CategoryForm
+              onSubmit={handleAddCategorySuccess}
               onCancel={() => setIsAddDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto rounded-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold text-foreground">
-                Edit Product Category
-              </DialogTitle>
-            </DialogHeader>
-            <CategoryForm 
-              initialValues={currentCategory} 
-              onSubmit={handleEditCategorySuccess} 
-              onCancel={() => setIsEditDialogOpen(false)}
-              isEditing={true}
             />
           </DialogContent>
         </Dialog>
       </div>
 
-      {error && (
-        <div className="p-3 text-xs bg-red-50 border border-red-200 text-red-700 rounded-xl">
-          {error}
-        </div>
-      )}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Edit Category</DialogTitle>
+            <DialogDescription className="text-xs">
+              Update category name and department description
+            </DialogDescription>
+          </DialogHeader>
+          <CategoryForm
+            initialValues={currentCategory}
+            onSubmit={handleEditCategorySuccess}
+            onCancel={() => setIsEditDialogOpen(false)}
+            isEditing={true}
+          />
+        </DialogContent>
+      </Dialog>
 
-      <Card className="rounded-2xl border border-border/80 shadow-2xs overflow-hidden">
-        <CardContent className="p-0">
-          <CategoryTable 
-            categories={categories} 
-            loading={loading} 
+      <Card>
+        <CardHeader className="pb-3 border-b border-border/60">
+          <CardTitle className="text-base">Catalog Classification Directory</CardTitle>
+          <CardDescription className="text-xs">
+            Categories applied to product items for cashier filtering and category sales reports
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <CategoryTable
+            categories={categories}
+            loading={loading}
             onEdit={openEditDialog}
           />
         </CardContent>

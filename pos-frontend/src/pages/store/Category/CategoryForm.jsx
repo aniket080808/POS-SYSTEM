@@ -1,16 +1,25 @@
-import React from 'react';
-import { Formik, Form, Field, ErrorMessage } from 'formik';
-import * as Yup from 'yup';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { useDispatch, useSelector } from 'react-redux';
-import { createCategory, updateCategory } from '@/Redux Toolkit/features/category/categoryThunks';
-import { toast } from '@/components/ui/use-toast';
+import React from "react";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import * as Yup from "yup";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useDispatch, useSelector } from "react-redux";
+import { createCategory, updateCategory } from "@/Redux Toolkit/features/category/categoryThunks";
+import { toast } from "@/components/ui/use-toast";
+import { Loader2, Check } from "lucide-react";
 
 const validationSchema = Yup.object({
-  name: Yup.string().trim().min(2, 'Category name must be at least 2 characters').max(100, 'Category name must be less than 100 characters').required('Category name is required'),
-  description: Yup.string().trim().max(500, 'Description must be less than 500 characters').optional(),
+  name: Yup.string()
+    .trim()
+    .min(2, "Category name must be at least 2 characters")
+    .max(100, "Category name must be less than 100 characters")
+    .required("Category name is required"),
+  description: Yup.string()
+    .trim()
+    .max(500, "Description must be less than 500 characters")
+    .optional(),
 });
 
 const CategoryForm = ({ initialValues, onSubmit, onCancel, isEditing = false }) => {
@@ -19,13 +28,13 @@ const CategoryForm = ({ initialValues, onSubmit, onCancel, isEditing = false }) 
   const { store } = useSelector((state) => state.store);
 
   const defaultValues = {
-    name: initialValues?.name || '',
-    description: initialValues?.description || '',
+    name: initialValues?.name || "",
+    description: initialValues?.description || "",
   };
 
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
-      const token = localStorage.getItem('jwt');
+      const token = localStorage.getItem("jwt");
       const dto = {
         ...values,
         storeId: store.id,
@@ -33,19 +42,19 @@ const CategoryForm = ({ initialValues, onSubmit, onCancel, isEditing = false }) 
 
       if (isEditing && initialValues?.id) {
         await dispatch(updateCategory({ id: initialValues.id, dto, token })).unwrap();
-        toast({ title: 'Success', description: 'Category updated successfully' });
+        toast({ title: "Category Updated", description: `Category "${values.name}" updated successfully.` });
       } else {
         await dispatch(createCategory({ dto, token })).unwrap();
-        toast({ title: 'Success', description: 'Category added successfully' });
+        toast({ title: "Category Added", description: `Category "${values.name}" added to catalog.` });
         resetForm();
       }
 
       if (onSubmit) onSubmit();
     } catch (err) {
-      toast({ 
-        title: 'Error', 
-        description: err || `Failed to ${isEditing ? 'update' : 'add'} category`, 
-        variant: 'destructive' 
+      toast({
+        title: "Action Failed",
+        description: err || `Failed to ${isEditing ? "update" : "add"} category.`,
+        variant: "destructive",
       });
     } finally {
       setSubmitting(false);
@@ -59,58 +68,57 @@ const CategoryForm = ({ initialValues, onSubmit, onCancel, isEditing = false }) 
       onSubmit={handleSubmit}
       enableReinitialize
     >
-      {({ isSubmitting, touched, errors }) => (
-        <Form className="space-y-4 py-2 pr-2">
-          <div className="space-y-2">
-            <label htmlFor="name" className="block text-sm font-medium">Category Name</label>
+      {({ isSubmitting, errors, touched }) => (
+        <Form className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="category-name" className="text-sm font-semibold text-foreground">
+              Category Title *
+            </Label>
             <Field
               as={Input}
-              id="name"
+              id="category-name"
               name="name"
-              placeholder="Enter category name"
-              className={touched.name && errors.name ? 'border-red-300' : ''}
+              placeholder="e.g. Beverages, Dairy, Electronics"
+              className={`text-xs h-10 ${errors.name && touched.name ? "border-destructive" : ""}`}
             />
-            <ErrorMessage name="name" component="div" className="text-red-500 text-sm" />
+            <ErrorMessage name="name" component="div" className="text-destructive text-xs font-semibold mt-1" />
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="description" className="block text-sm font-medium">Description</label>
+          <div className="space-y-1.5">
+            <Label htmlFor="category-description" className="text-sm font-semibold text-foreground">
+              Description (Optional)
+            </Label>
             <Field
               as={Textarea}
-              id="description"
+              id="category-description"
               name="description"
-              placeholder="Enter category description"
+              placeholder="Brief summary of items within this department..."
               rows={3}
+              className="text-xs bg-card resize-none"
             />
-            <ErrorMessage name="description" component="div" className="text-red-500 text-sm" />
+            <ErrorMessage name="description" component="div" className="text-destructive text-xs font-semibold mt-1" />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            {onCancel && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-              >
-                Cancel
-              </Button>
-            )}
+          <div className="flex justify-end gap-2 pt-4 border-t border-border/60">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              className="text-xs h-10"
+            >
+              Cancel
+            </Button>
             <Button
               type="submit"
-              className="bg-emerald-600 hover:bg-emerald-700"
               disabled={isSubmitting || loading}
+              className="text-xs font-bold h-10 gap-1.5"
             >
               {isSubmitting || loading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {isEditing ? 'Updating...' : 'Adding...'}
-                </span>
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                isEditing ? 'Update Category' : 'Add Category'
+                <Check className="w-4 h-4" />
               )}
+              {isEditing ? "Save Changes" : "Create Category"}
             </Button>
           </div>
         </Form>

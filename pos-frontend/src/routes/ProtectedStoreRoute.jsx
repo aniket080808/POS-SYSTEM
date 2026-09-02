@@ -23,10 +23,11 @@ export default function ProtectedStoreRoute({ children }) {
   const { store } = useSelector((state) => state.store);
   const { userProfile } = useSelector((state) => state.user);
 
+  const isSuperAdmin = userProfile?.role === 'ROLE_ADMIN';
   const isStoreAdmin = userProfile?.role === 'ROLE_STORE_ADMIN';
   const regStatus = statusResponse?.registrationStatus || store?.status || 'PENDING';
   const subStatus = statusResponse?.subscriptionStatus || 'NONE';
-  const isFullyActive = regStatus === 'ACTIVE' && subStatus === 'ACTIVE';
+  const isFullyActive = isSuperAdmin || (regStatus === 'ACTIVE' && subStatus === 'ACTIVE');
 
   useEffect(() => {
     // Show toast only once per redirect (avoid re-renders re-toasting)

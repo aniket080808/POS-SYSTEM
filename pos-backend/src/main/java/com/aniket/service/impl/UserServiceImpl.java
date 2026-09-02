@@ -59,9 +59,19 @@ public class UserServiceImpl implements UserService {
 
 	@Override
 	public User getUserFromJwtToken(String jwt) throws UserException {
+		org.springframework.web.context.request.RequestAttributes attribs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+		if (attribs instanceof org.springframework.web.context.request.ServletRequestAttributes servletAttribs) {
+			User cached = (User) servletAttribs.getRequest().getAttribute("AUTHENTICATED_USER");
+			if (cached != null) {
+				return cached;
+			}
+		}
 		String email = jwtProvider.getEmailFromJwtToken(jwt);
 		User user = userRepository.findByEmail(email);
 		if(user==null) throw new UserException("user not exist with email "+email);
+		if (attribs instanceof org.springframework.web.context.request.ServletRequestAttributes servletAttribs) {
+			servletAttribs.getRequest().setAttribute("AUTHENTICATED_USER", user);
+		}
 		return user;
 	}
 
@@ -73,6 +83,32 @@ public class UserServiceImpl implements UserService {
 	@Override
 	public Set<User> getUserByRole(UserRole role) throws UserException {
 		return userRepository.findByRole(role);
+	}
+
+	@Override
+	public Set<User> getUserByRoleForCurrentUser(UserRole role) throws UserException {
+		User currentUser = getCurrentUser();
+		if (currentUser.getRole() == UserRole.ROLE_ADMIN) {
+			return userRepository.findByRole(role);
+		}
+
+		if (currentUser.getRole() == UserRole.ROLE_BRANCH_ADMIN ||
+			currentUser.getRole() == UserRole.ROLE_BRANCH_MANAGER ||
+			currentUser.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
+			if (currentUser.getBranch() != null) {
+				return userRepository.findByBranchIdAndRole(currentUser.getBranch().getId(), role);
+			}
+		}
+
+		Long storeId = currentUser.getStore() != null ? currentUser.getStore().getId()
+				: (currentUser.getBranch() != null && currentUser.getBranch().getStore() != null
+				? currentUser.getBranch().getStore().getId() : null);
+
+		if (storeId != null) {
+			return userRepository.findByStoreIdAndRole(storeId, role);
+		}
+
+		return Set.of();
 	}
 
 	@Override
@@ -120,6 +156,7 @@ public class UserServiceImpl implements UserService {
 		}
 		
 		user.setPassword(passwordEncoder.encode(newPassword));
+		user.setPasswordChangedAt(LocalDateTime.now());
 		userRepository.save(user);
 	}
 

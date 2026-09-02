@@ -19,50 +19,52 @@ import {
   ShoppingCart,
   Store,
   Users,
-  Edit,
   Ban,
-  CheckCircle2,
+  Check,
+  ExternalLink,
+  Shield,
+  CreditCard,
 } from "lucide-react";
 import StoreStatusBadge from "./StoreStatusBadge";
 import { formatDateTime } from "../../../utils/formateDate";
 import { getStoreSubscription } from "../../../Redux Toolkit/features/store/storeThunks";
 import { getStoreUsageForAdmin } from "../../../Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
+import { useNavigate } from "react-router";
 
-const UsageBar = ({ icon, label, used, limit, indicatorColor }) => {
-  const isUnlimited = limit === null || limit === -1 || limit === undefined;
+const UsageBar = ({ icon, label, used, limit, requestedLimit, isPending }) => {
+  const isUnlimited = limit === -1;
+  const percentage = isUnlimited ? 0 : limit > 0 ? Math.min(((used ?? 0) / limit) * 100, 100) : 0;
 
   return (
-    <div className="flex flex-col p-3 rounded-xl bg-muted/40 border border-border/60">
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2">
+    <div className="space-y-1.5 p-3 rounded-xl border border-border/70 bg-card">
+      <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5 font-bold text-foreground">
           {icon}
-          <span className="text-xs font-semibold text-foreground">{label}</span>
+          <span>{label}</span>
         </div>
-        <span className="text-xs font-bold font-mono text-foreground">
-          {isUnlimited ? "Unlimited" : `${used ?? 0}/${limit}`}
+        <span className="font-mono text-muted-foreground font-semibold">
+          {isPending ? (
+            <span className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">
+              {requestedLimit ? `0 / ${requestedLimit} (Pending)` : "Pending"}
+            </span>
+          ) : isUnlimited ? (
+            "Unlimited"
+          ) : (
+            `${used ?? 0} / ${limit ?? 0}`
+          )}
         </span>
       </div>
-      {!isUnlimited && (
-        <Progress
-          value={limit > 0 ? Math.min(((used ?? 0) / limit) * 100, 100) : 0}
-          className="h-1.5"
-          indicatorClassName={indicatorColor}
-        />
+      {!isUnlimited && !isPending && (
+        <Progress value={percentage} className="h-1.5 bg-secondary" />
       )}
     </div>
   );
 };
 
-const SectionLabel = ({ children }) => (
-  <small className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
-    {children}
-  </small>
-);
-
 const InfoRow = ({ label, value }) => (
-  <div className="flex items-baseline justify-between gap-4 py-1">
-    <span className="text-xs text-muted-foreground shrink-0">{label}</span>
-    <span className="text-xs font-semibold text-foreground text-right">{value}</span>
+  <div className="flex items-baseline justify-between gap-4 py-1.5">
+    <span className="text-xs text-muted-foreground font-medium shrink-0">{label}</span>
+    <span className="text-xs text-foreground font-semibold text-right">{value || "—"}</span>
   </div>
 );
 
@@ -72,199 +74,230 @@ export default function StoreDetailDrawer({
   onOpenChange,
   onBlockStore,
   onActivateStore,
-  onEditStore,
   actionLoadingId,
 }) {
   const dispatch = useDispatch();
-  const { storeSubscription } = useSelector((state) => state.store);
+  const navigate = useNavigate();
+  const { storeSubscription, loadingSubscription } = useSelector((state) => state.store);
   const { storeUsage } = useSelector((state) => state.storeAnalytics);
 
   useEffect(() => {
-    if (open && store?.id) {
+    if (store?.id && open) {
       dispatch(getStoreSubscription(store.id));
       dispatch(getStoreUsageForAdmin(store.id));
     }
-  }, [open, store?.id, dispatch]);
+  }, [store?.id, open, dispatch]);
 
   if (!store) return null;
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "N/A";
-    try {
-      return new Date(dateStr).toLocaleDateString();
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const getSubscriptionStatusBadge = (status) => {
-    if (!status) return <Badge variant="secondary">No Plan</Badge>;
-    const st = (typeof status === "string" ? status : status.name || "").toUpperCase();
-    if (st === "ACTIVE") return <Badge variant="success">Active</Badge>;
-    if (st === "TRIAL") return <Badge variant="info">Trial</Badge>;
-    if (st === "PENDING") return <Badge variant="warning">Pending</Badge>;
-    if (st === "EXPIRED" || st === "REJECTED") return <Badge variant="destructive">{st}</Badge>;
-    return <Badge variant="outline">{st}</Badge>;
-  };
+  const statusUpper = store.status?.toUpperCase();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[540px] p-0 flex flex-col bg-card border-l border-border">
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border/80 bg-card sticky top-0 z-10">
-          <SheetHeader className="space-y-0.5">
-            <SheetTitle className="text-lg font-bold text-foreground leading-tight">{store.brand}</SheetTitle>
-            <SheetDescription className="text-xs font-mono text-muted-foreground">Store ID: #{store.id}</SheetDescription>
-          </SheetHeader>
-
-          <div className="flex items-center justify-between mt-4">
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto bg-card border-l border-border p-6 space-y-6">
+        <SheetHeader className="space-y-1 text-left pb-4 border-b border-border/60">
+          <div className="flex items-center justify-between">
             <StoreStatusBadge status={store.status} />
-            {(() => {
-              const statusUpper = store.status?.toUpperCase();
-              return (
-                <div className="flex gap-2">
-                  {statusUpper === "ACTIVE" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onBlockStore?.(store.id)}
-                      disabled={actionLoadingId === store.id}
-                      className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 rounded-xl text-xs font-semibold"
-                    >
-                      <Ban className="w-3.5 h-3.5 mr-1" />
-                      {actionLoadingId === store.id ? "Working..." : "Block"}
-                    </Button>
-                  )}
-                  {statusUpper === "BLOCKED" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onActivateStore?.(store.id)}
-                      disabled={actionLoadingId === store.id}
-                      className="text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10 h-8 rounded-xl text-xs font-semibold"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                      {actionLoadingId === store.id ? "Working..." : "Activate"}
-                    </Button>
-                  )}
-                </div>
-              );
-            })()}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  sessionStorage.setItem("impersonate_store_id", store.id);
+                  sessionStorage.setItem("impersonate_store_name", store.brand || store.name || "Store");
+                  onOpenChange(false);
+                  navigate("/store/dashboard");
+                }}
+                className="text-xs font-bold gap-1 h-8 bg-[#B8860B]/10 border-[#B8860B]/30 text-[#B8860B] hover:bg-[#B8860B]/20 cursor-pointer"
+                title="Access store workstation directly"
+              >
+                Access Portal
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate(`/super-admin/stores/${store.id}`);
+                }}
+                className="text-xs font-bold gap-1.5 h-8 cursor-pointer"
+              >
+                Full Profile <ExternalLink className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+          <SheetTitle className="text-xl font-black text-foreground tracking-tight pt-2">
+            {store.brand || store.name || `Store #${store.id}`}
+          </SheetTitle>
+          <SheetDescription className="text-xs text-muted-foreground">
+            Registered tenant ID: #{store.id}
+          </SheetDescription>
+        </SheetHeader>
+
+        {/* Owner & Contact */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Contact & Ownership
+          </h4>
+          <div className="bg-secondary/40 rounded-2xl p-4 border border-border/60 divide-y divide-border/60">
+            <InfoRow label="Store Owner" value={store.storeAdmin?.fullName} />
+            <InfoRow label="Email Address" value={store.contact?.email || store.storeAdmin?.email} />
+            <InfoRow label="Phone Number" value={store.contact?.phone || store.storeAdmin?.phone} />
+            <InfoRow label="Location Address" value={store.contact?.address || store.address || store.location || "No physical address specified"} />
+            <InfoRow label="Registration Date" value={formatDateTime(store.createdAt)} />
           </div>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {/* Owner */}
-          <div>
-            <SectionLabel>Store Ownership</SectionLabel>
-            <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 space-y-2">
-              <p className="text-xs font-bold text-foreground">{store.storeAdmin?.fullName || "—"}</p>
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5 font-mono">
-                  <Phone className="w-3 h-3 text-primary" />
-                  {store.contact?.phone || "—"}
+        {/* Subscription Plan Tier */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Subscription Tier
+            </h4>
+            {(storeSubscription?.isPendingApproval || storeSubscription?.subscriptionStatus === "PENDING" || storeSubscription?.status === "PENDING") && (
+              <Badge variant="outline" className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold px-2 py-0.5">
+                PENDING APPROVAL
+              </Badge>
+            )}
+          </div>
+          <div className="bg-secondary/40 rounded-2xl p-4 border border-border/60 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground block">
+                  {storeSubscription?.requestedPlanName || storeSubscription?.planName || storeSubscription?.currentPlan?.name || "Free Trial Tier"}
                 </span>
-                <span className="flex items-center gap-1.5 font-mono">
-                  <Mail className="w-3 h-3 text-primary" />
-                  {store.contact?.email || "—"}
+                {(storeSubscription?.isPendingApproval || storeSubscription?.subscriptionStatus === "PENDING" || storeSubscription?.status === "PENDING") && (
+                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                    Requested Tier (Awaiting Approval)
+                  </span>
+                )}
+              </div>
+              <span className="font-mono font-black text-sm text-foreground text-right">
+                ₹{(storeSubscription?.requestedPlanPrice ?? storeSubscription?.planPrice ?? storeSubscription?.currentPlan?.price ?? 0).toLocaleString()}
+                <span className="text-xs text-muted-foreground font-normal ml-1">
+                  /{storeSubscription?.requestedPlanBillingCycle?.toLowerCase() || storeSubscription?.billingCycle?.toLowerCase() || "month"}
                 </span>
-              </div>
+              </span>
             </div>
-          </div>
+            <div className="flex items-center justify-between py-1.5">
+              <span className="text-xs text-muted-foreground font-medium shrink-0">Status</span>
+              {(() => {
+                const storeStatus = store?.status;
+                const isPending = storeSubscription?.isPendingApproval || storeSubscription?.subscriptionStatus === "PENDING" || storeSubscription?.status === "PENDING";
+                const isBlocked = storeStatus === "BLOCKED" || storeSubscription?.subscriptionStatus === "BLOCKED" || storeSubscription?.status === "BLOCKED";
+                const isActive = (storeSubscription?.subscriptionStatus === "ACTIVE" || storeSubscription?.status === "ACTIVE" || storeStatus === "ACTIVE") && !isPending && !isBlocked;
 
-          <Separator className="bg-border/60" />
-
-          {/* Store Details */}
-          <div>
-            <SectionLabel>Location & Registration</SectionLabel>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-start gap-2 text-foreground">
-                <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                <span>{store.contact?.address || "Address not provided"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground font-mono text-[11px]">
-                <Calendar className="w-3.5 h-3.5" />
-                Registered on {formatDateTime(store.createdAt)}
-              </div>
+                if (isBlocked) {
+                  return (
+                    <Badge variant="destructive" className="bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 font-bold text-[10px]">
+                      BLOCKED
+                    </Badge>
+                  );
+                }
+                if (isPending) {
+                  return (
+                    <Badge variant="outline" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold text-[10px]">
+                      PENDING APPROVAL
+                    </Badge>
+                  );
+                }
+                if (isActive) {
+                  return (
+                    <Badge variant="active" className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold text-[10px]">
+                      ACTIVE
+                    </Badge>
+                  );
+                }
+                return (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {storeSubscription?.status || storeSubscription?.subscriptionStatus || "ACTIVE"}
+                  </Badge>
+                );
+              })()}
             </div>
-          </div>
-
-          <Separator className="bg-border/60" />
-
-          {/* Business Documents */}
-          <div>
-            <SectionLabel>Tax & Identification</SectionLabel>
-            <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-muted/40 border border-border/60">
-              <InfoRow label="GST Number" value={store.gstNumber || "Not Provided"} />
-              <InfoRow label="PAN Number" value={store.panNumber || "Not Provided"} />
-            </div>
-          </div>
-
-          <Separator className="bg-border/60" />
-
-          {/* Subscription */}
-          <div>
-            <SectionLabel>Active Subscription</SectionLabel>
-            {storeSubscription && storeSubscription.planName ? (
-              <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/15 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-foreground">{storeSubscription.planName}</p>
-                  {getSubscriptionStatusBadge(storeSubscription.subscriptionStatus)}
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <InfoRow label="Start" value={formatDate(storeSubscription.startDate)} />
-                  <InfoRow label="Expiry" value={formatDate(storeSubscription.endDate)} />
-                  {storeSubscription.planPrice != null && (
-                    <InfoRow
-                      label="Rate"
-                      value={`₹${storeSubscription.planPrice}/${storeSubscription.billingCycle?.toLowerCase()}`}
-                    />
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/40 border border-border/60">
-                <span className="text-xs text-muted-foreground">No active subscription</span>
-                {getSubscriptionStatusBadge(storeSubscription?.subscriptionStatus || "NONE")}
+            {(storeSubscription?.isPendingApproval || storeSubscription?.subscriptionStatus === "PENDING" || storeSubscription?.status === "PENDING") && (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 font-medium mt-1">
+                ⚡ Plan upgrade request waiting for approval in <strong>Store Requests</strong>.
               </div>
             )}
           </div>
+        </div>
 
-          {/* Plan Usage */}
-          <div>
-            <SectionLabel>Allocated Quotas</SectionLabel>
-            {storeUsage && storeUsage.maxProducts != null ? (
-              <div className="space-y-2.5">
-                <UsageBar
-                  icon={<ShoppingCart className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
-                  label="Products"
-                  used={storeUsage.totalProductsUsed}
-                  limit={storeUsage.maxProducts}
-                  indicatorColor="bg-emerald-500"
-                />
-                <UsageBar
-                  icon={<Store className="w-3.5 h-3.5 text-primary" />}
-                  label="Branches"
-                  used={storeUsage.totalBranchesUsed}
-                  limit={storeUsage.maxBranches}
-                  indicatorColor="bg-primary"
-                />
-                <UsageBar
-                  icon={<Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
-                  label="Employees"
-                  used={storeUsage.totalEmployeesUsed}
-                  limit={storeUsage.maxUsers}
-                  indicatorColor="bg-amber-500"
-                />
-              </div>
-            ) : storeUsage ? (
-              <p className="text-xs text-muted-foreground">No active quota limits</p>
-            ) : null}
+        {/* Quota Consumption */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Resource Quota Consumption
+          </h4>
+          <div className="space-y-2">
+            <UsageBar
+              icon={<Store className="w-3.5 h-3.5 text-[#B8860B]" />}
+              label="Branch Workstations"
+              used={storeUsage?.totalBranchesUsed ?? storeUsage?.activeBranches ?? 0}
+              limit={storeSubscription?.maxBranches ?? storeSubscription?.currentPlan?.maxBranches ?? storeUsage?.maxBranches}
+              requestedLimit={storeSubscription?.requestedMaxBranches}
+              isPending={storeSubscription?.isPendingApproval || storeSubscription?.subscriptionStatus === "PENDING" || storeSubscription?.status === "PENDING"}
+            />
+            <UsageBar
+              icon={<Users className="w-3.5 h-3.5 text-[#B8860B]" />}
+              label="Staff Accounts"
+              used={storeUsage?.totalEmployeesUsed ?? storeUsage?.activeUsers ?? 0}
+              limit={storeSubscription?.maxUsers ?? storeSubscription?.currentPlan?.maxUsers ?? storeUsage?.maxUsers}
+              requestedLimit={storeSubscription?.requestedMaxUsers}
+              isPending={storeSubscription?.isPendingApproval || storeSubscription?.subscriptionStatus === "PENDING" || storeSubscription?.status === "PENDING"}
+            />
+            <UsageBar
+              icon={<ShoppingCart className="w-3.5 h-3.5 text-[#B8860B]" />}
+              label="Products Catalog"
+              used={storeUsage?.totalProductsUsed ?? storeUsage?.activeProducts ?? 0}
+              limit={storeSubscription?.maxProducts ?? storeSubscription?.currentPlan?.maxProducts ?? storeUsage?.maxProducts}
+              requestedLimit={storeSubscription?.requestedMaxProducts}
+              isPending={storeSubscription?.isPendingApproval || storeSubscription?.subscriptionStatus === "PENDING" || storeSubscription?.status === "PENDING"}
+            />
           </div>
+        </div>
+
+        {/* Moderation Actions */}
+        <div className="pt-4 border-t border-border/60 space-y-2">
+          {statusUpper === "ACTIVE" && (
+            <Button
+              variant="destructive"
+              className="w-full text-xs font-bold h-10 gap-2"
+              onClick={() => onBlockStore?.(store.id)}
+              disabled={actionLoadingId === store.id}
+            >
+              <Ban className="w-4 h-4" /> Block Store
+            </Button>
+          )}
+          {statusUpper === "BLOCKED" && (
+            <Button
+              className="w-full text-xs font-bold h-10 gap-2 bg-[#262422] text-white hover:bg-[#383532]"
+              onClick={() => onActivateStore?.(store.id)}
+              disabled={actionLoadingId === store.id}
+            >
+              <Check className="w-4 h-4 text-[#C9A227]" /> Activate Store
+            </Button>
+          )}
+          {statusUpper === "PENDING" && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 text-xs font-bold h-10 text-destructive hover:bg-destructive/10"
+                onClick={() => onBlockStore?.(store.id)}
+                disabled={actionLoadingId === store.id}
+              >
+                <Ban className="w-4 h-4 mr-1" /> Reject
+              </Button>
+              <Button
+                className="flex-1 text-xs font-bold h-10 gap-1.5"
+                onClick={() => onActivateStore?.(store.id)}
+                disabled={actionLoadingId === store.id}
+              >
+                <Check className="w-4 h-4" /> Approve
+              </Button>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
   );
 }
-

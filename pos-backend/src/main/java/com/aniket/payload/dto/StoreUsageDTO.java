@@ -38,4 +38,17 @@ public class StoreUsageDTO {
     private Integer totalProductsUsed;
     private Integer totalBranchesUsed;
     private Integer totalEmployeesUsed;
+
+    // Direct aliases for frontend property binding
+    public Integer getActiveBranches() {
+        return totalBranchesUsed != null ? totalBranchesUsed : 0;
+    }
+
+    public Integer getActiveUsers() {
+        return totalEmployeesUsed != null ? totalEmployeesUsed : 0;
+    }
+
+    public Integer getActiveProducts() {
+        return totalProductsUsed != null ? totalProductsUsed : 0;
+    }
 }

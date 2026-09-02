@@ -37,12 +37,19 @@ public interface SubscriptionPlanService {
     SubscriptionPlan getPlanById(Long id) throws ResourceNotFoundException;
 
     /**
-     * 📦 Get all available subscription plans
-     * Can be used for admin listing or public pricing page
+     * 📦 Get all available subscription plans (active only)
+     * Used for public pricing page and onboarding
      *
-     * @return list of SubscriptionPlans
+     * @return list of active SubscriptionPlans
      */
     List<SubscriptionPlan> getAllPlans();
+
+    /**
+     * 👑 Get all subscription plans for Super Admin (active + inactive)
+     *
+     * @return list of all SubscriptionPlans
+     */
+    List<SubscriptionPlan> getAllPlansForAdmin();
 
     /**
      * ❌ Delete a plan by ID

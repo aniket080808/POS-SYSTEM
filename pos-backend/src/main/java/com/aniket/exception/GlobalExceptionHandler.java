@@ -32,9 +32,50 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<String> handleAccessDenied(AccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ExceptionResponse> handleInsufficientStockException(
+            InsufficientStockException ex, WebRequest req) {
+        ExceptionResponse response = new ExceptionResponse(
+                ex.getMessage(),
+                req.getDescription(false),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<ExceptionResponse> handleIllegalArgumentException(
+            RuntimeException ex, WebRequest req) {
+        ExceptionResponse response = new ExceptionResponse(
+                ex.getMessage(),
+                req.getDescription(false),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({AccessDeniedException.class, org.springframework.security.access.AccessDeniedException.class})
+    public ResponseEntity<ExceptionResponse> handleAccessDenied(Exception ex, WebRequest req) {
+        String message = ex.getMessage();
+        if (message == null || message.trim().isEmpty() || message.equalsIgnoreCase("Access is denied")) {
+            message = "Access Denied: You do not have permission to access this resource";
+        }
+        ExceptionResponse response = new ExceptionResponse(
+                message,
+                req.getDescription(false),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler({ResourceNotFoundException.class, jakarta.persistence.EntityNotFoundException.class, NoSuchElementException.class})
+    public ResponseEntity<ExceptionResponse> handleNotFoundException(Exception ex, WebRequest req) {
+        ExceptionResponse response = new ExceptionResponse(
+                ex.getMessage(),
+                req.getDescription(false),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -59,16 +100,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ExceptionResponse> ResourceNotFoundExceptionHandler(
-            ResourceNotFoundException ex, WebRequest req) {
-        ExceptionResponse response = new ExceptionResponse(
-                ex.getMessage(),
-                req.getDescription(false),
-                LocalDateTime.now()
-        );
-        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
-    }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolationException(
@@ -86,6 +117,8 @@ public class GlobalExceptionHandler {
             String lower = message.toLowerCase();
             if (lower.contains("sku") && (lower.contains("unique") || lower.contains("duplicate") || lower.contains("already exists"))) {
                 sanitizedMessage = "SKU already exists";
+            } else if (lower.contains("value too long") || lower.contains("too long") || lower.contains("length")) {
+                sanitizedMessage = "One or more input values exceed maximum allowed character length";
             } else if (lower.contains("unique") || lower.contains("duplicate")) {
                 // Extract the constraint name if available
                 if (lower.contains("uk_store_product")) {
@@ -128,6 +161,34 @@ public class GlobalExceptionHandler {
         response.put("message", ex.getMessage());
         response.put("timestamp", LocalDateTime.now());
         return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationExceptions(
+            org.springframework.web.bind.MethodArgumentNotValidException ex, WebRequest req) {
+        Map<String, Object> response = new HashMap<>();
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+            errors.put(error.getField(), error.getDefaultMessage())
+        );
+        String firstError = ex.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+                .orElse("Validation failed");
+
+        response.put("message", firstError);
+        response.put("errors", errors);
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolationException(
+            jakarta.validation.ConstraintViolationException ex, WebRequest req) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)

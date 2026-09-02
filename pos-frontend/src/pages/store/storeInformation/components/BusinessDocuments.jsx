@@ -1,25 +1,26 @@
 import React from "react";
-import { FileText } from "lucide-react";
+import { FileText, ShieldCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
 const BusinessDocuments = ({ storeData }) => {
   return (
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Business Documents</h3>
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-gray-400" />
-          <div>
-            <Label className="text-sm text-muted-foreground">GST Number</Label>
-            <p className="text-base">{storeData.gstNumber || "No GST number provided"}</p>
+    <div className="space-y-4">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tax & Legal Registration</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border/60">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            <ShieldCheck className="h-3.5 w-3.5 text-[#B8860B]" />
+            <span>GST Number</span>
           </div>
+          <p className="text-xs font-mono font-bold text-foreground mt-1">{storeData?.gstNumber || "Not provided"}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-gray-400" />
-          <div>
-            <Label className="text-sm text-muted-foreground">PAN Number</Label>
-            <p className="text-base">{storeData.panNumber || "No PAN number provided"}</p>
+
+        <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border/60">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            <FileText className="h-3.5 w-3.5 text-[#B8860B]" />
+            <span>PAN Number</span>
           </div>
+          <p className="text-xs font-mono font-bold text-foreground mt-1">{storeData?.panNumber || "Not provided"}</p>
         </div>
       </div>
     </div>

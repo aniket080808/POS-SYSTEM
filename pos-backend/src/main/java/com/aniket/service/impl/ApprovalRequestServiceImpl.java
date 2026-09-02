@@ -10,6 +10,7 @@ import com.aniket.payload.response.ResubmitResponse;
 import com.aniket.repository.*;
 import com.aniket.service.ApprovalRequestService;
 import com.aniket.service.EmailService;
+import com.aniket.service.EmailTemplateService;
 import com.aniket.service.NotificationService;
 import com.aniket.service.StoreSubscriptionService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
     private final StoreSubscriptionService storeSubscriptionService;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
 
     @Override
     @Transactional
@@ -149,7 +151,7 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
                     storeSub.setStatus(StoreSubscriptionStatus.INACTIVE);
                 }
             } else {
-                storeSub.setStatus(StoreSubscriptionStatus.ACTIVE);
+                storeSub.setStatus(StoreSubscriptionStatus.NONE);
             }
             storeSubscriptionRepository.save(storeSub);
             log.info("APPROVED store registration for store ID: {}", store.getId());
@@ -166,12 +168,17 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
                     store.getStoreAdmin().getId()
             );
 
-            // Send fail-safe email notification
-            sendFailSafeEmail(
-                store.getStoreAdmin(),
-                "Store Registration Approved",
-                "Your store \"" + store.getBrand() + "\" has been approved and is now active."
-            );
+            // Send fail-safe themed email notification
+            if (store.getStoreAdmin() != null && store.getStoreAdmin().getEmail() != null) {
+                String planTitle = storeSub.getCurrentPlan() != null ? storeSub.getCurrentPlan().getName() : "Starter";
+                String emailBody = emailTemplateService.buildStoreApprovedEmail(
+                        store.getStoreAdmin().getFullName(),
+                        store.getBrand(),
+                        planTitle,
+                        "http://localhost:5173/auth/login"
+                );
+                sendFailSafeEmail(store.getStoreAdmin(), "Your Store Has Been Approved! 🎉", emailBody);
+            }
         } else if (request.getType() == ApprovalRequestType.SUBSCRIPTION_CHANGE) {
             StoreSubscription storeSub = storeSubscriptionService.getOrCreateForStore(store);
             storeSub.setStatus(StoreSubscriptionStatus.ACTIVE);
@@ -206,12 +213,17 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
                     store.getStoreAdmin().getId()
             );
 
-            // Send fail-safe email notification
-            sendFailSafeEmail(
-                store.getStoreAdmin(),
-                "Subscription Approved",
-                "Your subscription to \"" + request.getRequestedPlan().getName() + "\" has been approved."
-            );
+            // Send fail-safe themed email notification
+            if (store.getStoreAdmin() != null && store.getStoreAdmin().getEmail() != null) {
+                String emailBody = emailTemplateService.buildSubscriptionApprovedEmail(
+                        store.getStoreAdmin().getFullName(),
+                        store.getBrand(),
+                        request.getRequestedPlan().getName(),
+                        request.getRequestedPlan().getPrice(),
+                        "http://localhost:5173/store/settings"
+                );
+                sendFailSafeEmail(store.getStoreAdmin(), "Subscription Plan Upgrade Approved! ⚡", emailBody);
+            }
         }
 
         return approvalRequestRepository.save(request);
@@ -260,12 +272,16 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
                     store.getStoreAdmin().getId()
             );
 
-            // Send fail-safe email notification
-            sendFailSafeEmail(
-                store.getStoreAdmin(),
-                "Store Registration Rejected",
-                "Your store \"" + store.getBrand() + "\" registration was rejected. Reason: " + reason
-            );
+            // Send fail-safe themed email notification
+            if (store.getStoreAdmin() != null && store.getStoreAdmin().getEmail() != null) {
+                String emailBody = emailTemplateService.buildStoreRejectedEmail(
+                        store.getStoreAdmin().getFullName(),
+                        store.getBrand(),
+                        reason,
+                        "http://localhost:5173/auth/onboarding"
+                );
+                sendFailSafeEmail(store.getStoreAdmin(), "Important: Store Registration Application Update", emailBody);
+            }
         } else if (request.getType() == ApprovalRequestType.SUBSCRIPTION_CHANGE) {
             StoreSubscription storeSub = storeSubscriptionService.getOrCreateForStore(store);
             // Keep status as REJECTED so the store admin's upgrade page can show the rejection banner.
@@ -288,12 +304,18 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
                     store.getStoreAdmin().getId()
             );
 
-            // Send fail-safe email notification
-            sendFailSafeEmail(
-                store.getStoreAdmin(),
-                "Subscription Rejected",
-                "Your subscription change request was rejected. Reason: " + reason
-            );
+            // Send fail-safe themed email notification
+            if (store.getStoreAdmin() != null && store.getStoreAdmin().getEmail() != null) {
+                String planName = request.getRequestedPlan() != null ? request.getRequestedPlan().getName() : "Requested Plan";
+                String emailBody = emailTemplateService.buildSubscriptionRejectedEmail(
+                        store.getStoreAdmin().getFullName(),
+                        store.getBrand(),
+                        planName,
+                        reason,
+                        "http://localhost:5173/store/upgrade"
+                );
+                sendFailSafeEmail(store.getStoreAdmin(), "Subscription Plan Request Update", emailBody);
+            }
         }
 
         return approvalRequestRepository.save(request);
@@ -303,16 +325,10 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
      * Sends an email notification to the store admin in a fail-safe manner.
      * If the email fails to send (SMTP down, bad address), the transaction is NOT rolled back.
      */
-    private void sendFailSafeEmail(User storeAdmin, String subject, String message) {
+    private void sendFailSafeEmail(User storeAdmin, String subject, String htmlBody) {
         if (storeAdmin == null || storeAdmin.getEmail() == null) return;
         try {
-            String emailBody = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto'>"
-                + "<h2 style='color:#333'>" + subject + "</h2>"
-                + "<p style='font-size:16px;color:#555'>" + message + "</p>"
-                + "<hr style='border:none;border-top:1px solid #eee;margin:20px 0'/>"
-                + "<p style='font-size:14px;color:#999'>This is an automated message from the POS System.</p>"
-                + "</div>";
-            emailService.sendEmail(storeAdmin.getEmail(), subject, emailBody);
+            emailService.sendEmail(storeAdmin.getEmail(), subject, htmlBody);
         } catch (Exception e) {
             log.warn("Failed to send email to {}: {}", storeAdmin.getEmail(), e.getMessage());
         }

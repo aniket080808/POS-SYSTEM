@@ -8,7 +8,6 @@ export const signup = createAsyncThunk(
     try {
       const res = await api.post("/auth/signup", userData);
       localStorage.setItem("jwt", res.data.data.jwt);
-      console.log("Signup success:", res.data.data);
       return res.data.data;
     } catch (err) {
       console.error("Signup error:", err);
@@ -21,14 +20,10 @@ export const signup = createAsyncThunk(
 export const login = createAsyncThunk(
   "auth/login",
   async (credentials, { rejectWithValue }) => {
-
-    console.log("Credentials:", credentials);
     try {
       const res = await api.post("/auth/login", credentials);
       const data = res.data.data;
-      console.log("Login success:", data);
       localStorage.setItem("jwt", data.jwt);
-      // Optional: Save token to localStorage
       if (data.token) {
         localStorage.setItem("token", data.token);
       }
@@ -47,7 +42,6 @@ export const forgotPassword = createAsyncThunk(
   async (email, { rejectWithValue }) => {
     try {
       const res = await api.post("/auth/forgot-password", { email });
-      console.log("Forgot password success:", res.data);
       return res.data;
     } catch (err) {
       console.error("Forgot password error:", err);
@@ -62,7 +56,6 @@ export const resetPassword = createAsyncThunk(
   async ({ token, password }, { rejectWithValue }) => {
     try {
       const res = await api.post("/auth/reset-password", { token, password });
-      console.log("Reset password success:", res.data);
       return res.data;
     } catch (err) {
       console.error("Reset password error:", err);

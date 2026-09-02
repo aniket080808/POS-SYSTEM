@@ -30,6 +30,7 @@ import com.aniket.repository.UserRepository;
 import com.aniket.service.ActivityLogService;
 import com.aniket.service.ApprovalRequestService;
 import com.aniket.service.EmailService;
+import com.aniket.service.EmailTemplateService;
 import com.aniket.service.NotificationService;
 import com.aniket.service.StoreService;
 import com.aniket.service.StoreSettingsService;
@@ -69,6 +70,7 @@ public class StoreServiceImpl implements StoreService {
     private final ApprovalRequestRepository approvalRequestRepository;
     private final StoreSettingsService storeSettingsService;
     private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
     @Override
     public StoreDTO createStore(StoreDTO storeDto, User user) throws UserException {
         if (storeRepository.findByStoreAdminId(user.getId()) != null) {
@@ -78,7 +80,7 @@ public class StoreServiceImpl implements StoreService {
         // Check for duplicate store contact email/phone
         validateStoreContactUniqueness(storeDto.getContact(), null);
 
-        System.out.println(storeDto);
+        log.debug("Creating new merchant store: {}", storeDto.getBrand());
 
         Store store = StoreMapper.toEntity(storeDto, user);
 
@@ -90,6 +92,9 @@ public class StoreServiceImpl implements StoreService {
         Store savedStoreEntity = storeRepository.save(store);
         user.setOwnedStore(savedStoreEntity);
         user.setStore(savedStoreEntity);
+        if (storeDto.getContact() != null && storeDto.getContact().getPhone() != null && !storeDto.getContact().getPhone().isBlank()) {
+            user.setPhone(storeDto.getContact().getPhone());
+        }
         userRepository.save(user);
 
         storeSubscriptionService.getOrCreateForStore(savedStoreEntity);
@@ -131,7 +136,7 @@ public class StoreServiceImpl implements StoreService {
     @Override
     public StoreDTO getStoreById(Long id) throws ResourceNotFoundException {
         Store store = storeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Store not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
 
         User currentUser;
         try {
@@ -139,9 +144,25 @@ public class StoreServiceImpl implements StoreService {
         } catch (UserException e) {
             throw new AccessDeniedException("You are not authorized to view this store.", e);
         }
-        Store userStore = storeRepository.findByStoreAdminId(currentUser.getId());
-        if (userStore == null || !userStore.getId().equals(store.getId())) {
-            throw new AccessDeniedException("You are not authorized to view this store.");
+
+        // Super Admin can view any store
+        if (currentUser.getRole() == UserRole.ROLE_ADMIN) {
+            return StoreMapper.toDto(store);
+        }
+
+        // Store staff can only view their own store
+        Long userStoreId = null;
+        if (currentUser.getStore() != null) {
+            userStoreId = currentUser.getStore().getId();
+        } else {
+            Store adminStore = storeRepository.findByStoreAdminId(currentUser.getId());
+            if (adminStore != null) {
+                userStoreId = adminStore.getId();
+            }
+        }
+
+        if (userStoreId == null || !userStoreId.equals(store.getId())) {
+            throw new AccessDeniedException("You are not authorized to view another store.");
         }
 
         return StoreMapper.toDto(store);
@@ -174,13 +195,33 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     public Store getStoreByAdminId() throws UserException {
-        User currentUser=userService.getCurrentUser();
-        if (currentUser.getStore() != null) {
-            return currentUser.getStore();
+        User currentUser = userService.getCurrentUser();
+
+        // 🛡️ Super Admin Impersonation Support: Check for X-Impersonate-Store-Id header
+        if (currentUser.getRole() == com.aniket.domain.UserRole.ROLE_ADMIN) {
+            org.springframework.web.context.request.RequestAttributes attribs =
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attribs instanceof org.springframework.web.context.request.ServletRequestAttributes servletAttribs) {
+                String impId = servletAttribs.getRequest().getHeader("X-Impersonate-Store-Id");
+                if (impId != null && !impId.trim().isEmpty()) {
+                    try {
+                        Long storeId = Long.parseLong(impId.trim());
+                        return storeRepository.findById(storeId)
+                                .orElseThrow(() -> new UserException("Impersonated store not found with ID: " + storeId));
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
         }
-        return storeRepository.findByStoreAdminId(
-                currentUser.getId()
-        );
+
+        Store store = currentUser.getStore();
+        if (store != null) {
+            return store;
+        }
+        Store adminStore = storeRepository.findByStoreAdminId(currentUser.getId());
+        if (adminStore != null) {
+            return adminStore;
+        }
+        throw new UserException("Store not found for user: " + currentUser.getEmail());
     }
 
     @Override
@@ -196,12 +237,26 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     public StoreDTO updateStore(Long id, StoreDTO storeDto) throws ResourceNotFoundException, UserException {
-        User currentUser=userService.getCurrentUser();
-        Store existing = storeRepository.findByStoreAdminId(currentUser.getId());
+        User currentUser = userService.getCurrentUser();
+        Store existing = storeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
 
-        if(existing == null) {
-            throw new ResourceNotFoundException("store not found");
+        if (currentUser.getRole() == UserRole.ROLE_ADMIN) {
+            // Super Admin is authorized to update any store
+        } else if (currentUser.getRole() == UserRole.ROLE_STORE_ADMIN) {
+            if (existing.getStoreAdmin() == null || !existing.getStoreAdmin().getId().equals(currentUser.getId())) {
+                throw new AccessDeniedException("You are not authorized to update another store.");
+            }
+        } else if (currentUser.getRole() == UserRole.ROLE_STORE_MANAGER) {
+            if (currentUser.getStore() == null || !currentUser.getStore().getId().equals(existing.getId())) {
+                throw new AccessDeniedException("You are not authorized to update another store.");
+            }
+        } else {
+            throw new AccessDeniedException("You do not have permission to update this store.");
         }
+
+        // Check for duplicate store contact email/phone, excluding current store
+        validateStoreContactUniqueness(storeDto.getContact(), id);
 
         applyStoreUpdateFields(existing, storeDto);
 
@@ -253,8 +308,12 @@ public class StoreServiceImpl implements StoreService {
      * updateStoreAsSuperAdmin (admin-scoped). Includes GST/PAN format validation.
      */
     private void applyStoreUpdateFields(Store existing, StoreDTO storeDto) throws UserException {
-        existing.setBrand(storeDto.getBrand());
-        existing.setDescription(storeDto.getDescription());
+        if (storeDto.getBrand() != null && !storeDto.getBrand().trim().isEmpty()) {
+            existing.setBrand(storeDto.getBrand().trim());
+        }
+        if (storeDto.getDescription() != null) {
+            existing.setDescription(storeDto.getDescription());
+        }
 
         // Convert string storeType to enum, if not null
         if (storeDto.getStoreType() != null) {
@@ -269,27 +328,40 @@ public class StoreServiceImpl implements StoreService {
                     .email(storeDto.getContact().getEmail())
                     .build();
             existing.setContact(contact);
+
+            if (existing.getStoreAdmin() != null && contact.getPhone() != null && !contact.getPhone().isBlank()) {
+                existing.getStoreAdmin().setPhone(contact.getPhone());
+                userRepository.save(existing.getStoreAdmin());
+            }
         }
 
-        // Set business documents (GST/PAN) with validation if provided
-        String gstNumber = storeDto.getGstNumber();
-        if (gstNumber != null && !gstNumber.trim().isEmpty()) {
-            if (!gstNumber.matches("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$")) {
-                throw new UserException("Invalid GST number format. Expected 15-char format: 2 digits + 5 letters + 4 digits + 1 letter + 1 alphanumeric + Z + 1 alphanumeric");
-            }
-            existing.setGstNumber(gstNumber.trim());
-        } else {
-            existing.setGstNumber(null);
-        }
+        // Set business documents (GST/PAN) — updated by Store Admin / Store Manager / Super Admin
+        boolean isAdminUser = false;
+        try {
+            User current = userService.getCurrentUser();
+            isAdminUser = current != null && (current.getRole() == UserRole.ROLE_STORE_ADMIN || current.getRole() == UserRole.ROLE_STORE_MANAGER || current.getRole() == UserRole.ROLE_ADMIN);
+        } catch (Exception ignored) {}
 
-        String panNumber = storeDto.getPanNumber();
-        if (panNumber != null && !panNumber.trim().isEmpty()) {
-            if (!panNumber.matches("^[A-Z]{5}[0-9]{4}[A-Z]{1}$")) {
-                throw new UserException("Invalid PAN number format. Expected 10-char format: 5 letters + 4 digits + 1 letter");
+        if (isAdminUser) {
+            String gstNumber = storeDto.getGstNumber();
+            if (gstNumber != null && !gstNumber.trim().isEmpty()) {
+                if (!gstNumber.matches("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$")) {
+                    throw new UserException("Invalid GST number format. Expected 15-char format: 2 digits + 5 letters + 4 digits + 1 letter + 1 alphanumeric + Z + 1 alphanumeric");
+                }
+                existing.setGstNumber(gstNumber.trim());
+            } else if (storeDto.getGstNumber() != null) {
+                existing.setGstNumber(null);
             }
-            existing.setPanNumber(panNumber.trim());
-        } else {
-            existing.setPanNumber(null);
+
+            String panNumber = storeDto.getPanNumber();
+            if (panNumber != null && !panNumber.trim().isEmpty()) {
+                if (!panNumber.matches("^[A-Z]{5}[0-9]{4}[A-Z]{1}$")) {
+                    throw new UserException("Invalid PAN number format. Expected 10-char format: 5 letters + 4 digits + 1 letter");
+                }
+                existing.setPanNumber(panNumber.trim());
+            } else if (storeDto.getPanNumber() != null) {
+                existing.setPanNumber(null);
+            }
         }
 
         // Store business settings
@@ -311,17 +383,52 @@ public class StoreServiceImpl implements StoreService {
         if (storeDto.getAcceptedPaymentMethods() != null) {
             existing.setAcceptedPaymentMethods(storeDto.getAcceptedPaymentMethods());
         }
+        if (storeDto.getUpiId() != null) {
+            existing.setUpiId(storeDto.getUpiId());
+        }
+        if (storeDto.getMerchantName() != null) {
+            existing.setMerchantName(storeDto.getMerchantName());
+        }
     }
 
     @Override
     public void deleteStore() throws ResourceNotFoundException, UserException {
         User currentUser = userService.getCurrentUser();
-        Store store = getStoreByAdminId();
-
-        if (store==null) {
-            throw new ResourceNotFoundException("Store not found");
+        if (currentUser.getRole() != UserRole.ROLE_STORE_ADMIN) {
+            throw new AccessDeniedException("Only store admins can delete their store.");
+        }
+        Store store = storeRepository.findByStoreAdminId(currentUser.getId());
+        if (store == null && currentUser.getStore() != null) {
+            store = currentUser.getStore();
         }
 
+        if (store == null || store.getStoreAdmin() == null || !store.getStoreAdmin().getId().equals(currentUser.getId())) {
+            throw new ResourceNotFoundException("Store not found for current user");
+        }
+
+        performStoreDeletion(store, currentUser);
+    }
+
+    @Override
+    public void deleteStore(Long id) throws ResourceNotFoundException, UserException {
+        User currentUser = userService.getCurrentUser();
+        Store store = storeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+
+        if (currentUser.getRole() == UserRole.ROLE_ADMIN) {
+            // Super Admin is authorized to delete any store
+        } else if (currentUser.getRole() == UserRole.ROLE_STORE_ADMIN) {
+            if (store.getStoreAdmin() == null || !store.getStoreAdmin().getId().equals(currentUser.getId())) {
+                throw new AccessDeniedException("You are not authorized to delete another store.");
+            }
+        } else {
+            throw new AccessDeniedException("You do not have permission to delete stores.");
+        }
+
+        performStoreDeletion(store, currentUser);
+    }
+
+    private void performStoreDeletion(Store store, User currentUser) {
         String storeName = store.getBrand();
         Long storeId = store.getId();
         storeRepository.deleteById(storeId);
@@ -390,6 +497,7 @@ public class StoreServiceImpl implements StoreService {
         store.setStatus(action);
         Store updatedStore = storeRepository.save(store);
 
+        boolean requestResolved = false;
         // 2. Sync Subscription status and ApprovalRequest based on action
         switch (action) {
             case PENDING:
@@ -412,11 +520,11 @@ public class StoreServiceImpl implements StoreService {
                         storeSub.setStatus(StoreSubscriptionStatus.INACTIVE);
                     }
                 } else {
-                    storeSub.setStatus(StoreSubscriptionStatus.ACTIVE);
+                    storeSub.setStatus(StoreSubscriptionStatus.NONE);
                 }
                 storeSubscriptionRepository.save(storeSub);
                 // Resolve any pending re-approval request via the existing approveRequest method
-                resolvePendingApprovalRequest(store, adminUser, true, null);
+                requestResolved = resolvePendingApprovalRequest(store, adminUser, true, null);
                 break;
 
             case BLOCKED:
@@ -428,7 +536,7 @@ public class StoreServiceImpl implements StoreService {
                 // Set subscription to REJECTED
                 storeSubscriptionService.updateStatus(storeId, StoreSubscriptionStatus.REJECTED);
                 // Resolve any pending re-approval request via the existing rejectRequest method
-                resolvePendingApprovalRequest(store, adminUser, false, "Store rejected by admin");
+                requestResolved = resolvePendingApprovalRequest(store, adminUser, false, "Store rejected by admin");
                 break;
         }
 
@@ -475,12 +583,13 @@ public class StoreServiceImpl implements StoreService {
             );
         });
 
-        // Notify the store admin about the status change
-        if (updatedStore.getStoreAdmin() != null) {
+        // Notify the store admin about the status change (if not already notified via approveRequest/rejectRequest)
+        if (updatedStore.getStoreAdmin() != null && !requestResolved) {
             String storeAdminMessage;
             com.aniket.domain.Priority storeAdminPriority;
             String storeAdminTitle;
             String storeAdminActionUrl;
+            String emailBody;
 
             switch (action) {
                 case ACTIVE:
@@ -488,30 +597,63 @@ public class StoreServiceImpl implements StoreService {
                     storeAdminMessage = "Your store \"" + updatedStore.getBrand() + "\" has been approved and is now active.";
                     storeAdminPriority = com.aniket.domain.Priority.SUCCESS;
                     storeAdminActionUrl = "/store/dashboard";
+                    emailBody = emailTemplateService.buildStoreApprovedEmail(
+                            updatedStore.getStoreAdmin().getFullName(),
+                            updatedStore.getBrand(),
+                            "Starter",
+                            "http://localhost:5173/auth/login"
+                    );
                     break;
                 case BLOCKED:
-                    storeAdminTitle = "Store Blocked";
+                    storeAdminTitle = "Store Account Suspended";
                     storeAdminMessage = "Your store \"" + updatedStore.getBrand() + "\" has been blocked. Please contact support for more information.";
                     storeAdminPriority = com.aniket.domain.Priority.ERROR;
                     storeAdminActionUrl = "/store/upgrade";
+                    emailBody = emailTemplateService.buildStoreBlockedEmail(
+                            updatedStore.getStoreAdmin().getFullName(),
+                            updatedStore.getBrand(),
+                            "Administrative policy enforcement or compliance review.",
+                            "support@nexpos.com"
+                    );
                     break;
                 case PENDING:
                     storeAdminTitle = "Store Pending Review";
                     storeAdminMessage = "Your store \"" + updatedStore.getBrand() + "\" is now pending review. Please wait for admin approval.";
                     storeAdminPriority = com.aniket.domain.Priority.WARNING;
                     storeAdminActionUrl = "/store/upgrade";
+                    emailBody = emailTemplateService.buildStoreSubmittedEmail(
+                            updatedStore.getStoreAdmin().getFullName(),
+                            updatedStore.getBrand(),
+                            updatedStore.getStoreType()
+                    );
                     break;
                 case REJECTED:
-                    storeAdminTitle = "Store Rejected";
+                    storeAdminTitle = "Store Registration Rejected";
                     storeAdminMessage = "Your store \"" + updatedStore.getBrand() + "\" registration has been rejected. Reason: " + (updatedStore.getRegistrationRejectionReason() != null ? updatedStore.getRegistrationRejectionReason() : "Not specified");
                     storeAdminPriority = com.aniket.domain.Priority.ERROR;
                     storeAdminActionUrl = "/store/upgrade";
+                    emailBody = emailTemplateService.buildStoreRejectedEmail(
+                            updatedStore.getStoreAdmin().getFullName(),
+                            updatedStore.getBrand(),
+                            updatedStore.getRegistrationRejectionReason(),
+                            "http://localhost:5173/auth/onboarding"
+                    );
                     break;
                 default:
                     storeAdminTitle = "Store Status Updated";
                     storeAdminMessage = "Your store \"" + updatedStore.getBrand() + "\" is now " + action.name();
                     storeAdminPriority = com.aniket.domain.Priority.INFO;
                     storeAdminActionUrl = "/store/dashboard";
+                    emailBody = emailTemplateService.buildGeneralNotificationEmail(
+                            updatedStore.getStoreAdmin().getFullName(),
+                            "Store Status Updated",
+                            action.name(),
+                            "info",
+                            storeAdminMessage,
+                            java.util.Map.of("Store Brand", updatedStore.getBrand(), "New Status", action.name()),
+                            "Open Dashboard",
+                            "http://localhost:5173/store/dashboard"
+                    );
             }
 
             notificationService.createNotification(
@@ -525,17 +667,10 @@ public class StoreServiceImpl implements StoreService {
                     updatedStore.getStoreAdmin().getId()
             );
 
-            // Send fail-safe email notification to the store admin
+            // Send fail-safe themed email notification to the store admin
             if (updatedStore.getStoreAdmin().getEmail() != null) {
                 try {
-                    String emailSubject = storeAdminTitle;
-                    String emailBody = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto'>"
-                        + "<h2 style='color:#333'>" + storeAdminTitle + "</h2>"
-                        + "<p style='font-size:16px;color:#555'>" + storeAdminMessage + "</p>"
-                        + "<hr style='border:none;border-top:1px solid #eee;margin:20px 0'/>"
-                        + "<p style='font-size:14px;color:#999'>This is an automated message from the POS System.</p>"
-                        + "</div>";
-                    emailService.sendEmail(updatedStore.getStoreAdmin().getEmail(), emailSubject, emailBody);
+                    emailService.sendEmail(updatedStore.getStoreAdmin().getEmail(), storeAdminTitle, emailBody);
                 } catch (Exception emailEx) {
                     log.warn("Failed to send store status email to {}: {}", updatedStore.getStoreAdmin().getEmail(), emailEx.getMessage());
                 }
@@ -550,15 +685,15 @@ public class StoreServiceImpl implements StoreService {
      * by calling the existing approveRequest/rejectRequest methods to ensure
      * consistent audit trail (resolvedBy, resolvedAt, adminNotes, etc.).
      */
-    private void resolvePendingApprovalRequest(Store store, User adminUser, boolean approve, String reason) {
-        if (adminUser == null) return;
+    private boolean resolvePendingApprovalRequest(Store store, User adminUser, boolean approve, String reason) {
+        if (adminUser == null) return false;
 
         // Find the most recent PENDING STORE_REGISTRATION request for this store
         java.util.Optional<ApprovalRequest> pendingOpt = approvalRequestRepository
                 .findFirstByStoreIdAndTypeAndStatusOrderByCreatedAtDesc(
                         store.getId(), ApprovalRequestType.STORE_REGISTRATION, ApprovalRequestStatus.PENDING);
 
-        if (pendingOpt.isEmpty()) return;
+        if (pendingOpt.isEmpty()) return false;
 
         Long requestId = pendingOpt.get().getId();
 
@@ -568,6 +703,7 @@ public class StoreServiceImpl implements StoreService {
         } else {
             approvalRequestService.rejectRequest(requestId, adminUser, reason);
         }
+        return true;
     }
 
     /**

@@ -1,163 +1,187 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { TrendingUp } from "lucide-react";
 import {
-  getSalesTrends,
-  getDailySales,
-} from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
-import { useToast } from "@/components/ui/use-toast";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { TrendingUp, Calendar, Loader2 } from "lucide-react";
 import { useCurrencyFormatter } from "@/utils/currencyUtils";
+import { PRIMARY_CHART_COLOR } from "@/utils/chartColors";
+import { getDailySales, getMonthlySales } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
 
-const SalesTrend = () => {
+export default function SalesTrend({
+  dailySales = [],
+  weeklySales = [],
+  monthlySales = [],
+  loading = false,
+}) {
   const dispatch = useDispatch();
-  const { toast } = useToast();
-  const { format: formatCurrency, symbol: currencySymbol } = useCurrencyFormatter();
-  const { salesTrends, dailySales, loading } = useSelector(
-    (state) => state.storeAnalytics
-  );
+  const { store } = useSelector((state) => state.store);
   const { userProfile } = useSelector((state) => state.user);
-  const [period, setPeriod] = useState("daily");
+  const {
+    dailySales: reduxDaily = [],
+    monthlySales: reduxMonthly = [],
+    loading: reduxLoading,
+  } = useSelector((state) => state.storeAnalytics);
 
-  const fetchSalesData = useCallback(async () => {
-    if (!userProfile?.id) return;
-    try {
-      if (period === "daily") {
-        await dispatch(getDailySales(userProfile.id)).unwrap();
-      } else {
-        await dispatch(
-          getSalesTrends({ storeAdminId: userProfile.id, period })
-        ).unwrap();
-      }
-    } catch (err) {
-      console.error("Sales trend fetch error:", err);
-      toast({
-        description: err || "Failed to load sales trend data.",
-        duration: 5000,
-      });
-    }
-  }, [dispatch, userProfile?.id, period, toast]);
+  const [timeframe, setTimeframe] = useState("daily");
+  const { format: formatCurrency, symbol: currencySymbol } = useCurrencyFormatter();
+
+  const effectiveDaily = dailySales?.length ? dailySales : reduxDaily;
+  const effectiveMonthly = monthlySales?.length ? monthlySales : reduxMonthly;
+  const effectiveLoading = loading || reduxLoading;
 
   useEffect(() => {
-    fetchSalesData();
-  }, [fetchSalesData]);
+    const adminId = store?.storeAdmin?.id || userProfile?.id;
+    if (adminId) {
+      if (timeframe === "daily" && (!effectiveDaily || effectiveDaily.length === 0)) {
+        dispatch(getDailySales(adminId));
+      } else if (timeframe === "monthly" && (!effectiveMonthly || effectiveMonthly.length === 0)) {
+        dispatch(getMonthlySales(adminId));
+      }
+    }
+  }, [timeframe, store?.storeAdmin?.id, userProfile?.id, dispatch]);
 
   const getChartData = () => {
-    if (period === "daily" && dailySales) {
-      return dailySales.map((item) => ({
-        date: new Date(item.date).toLocaleDateString("en-IN", {
-          timeZone: "Asia/Kolkata",
-          month: "short",
-          day: "numeric",
-        }),
-        sales: item.totalAmount,
-      }));
-    } else if (salesTrends?.points) {
-      return salesTrends.points.map((item) => ({
-        date: item.date,
-        sales: item.totalAmount,
-      }));
+    switch (timeframe) {
+      case "weekly":
+        return (weeklySales || []).map((item) => ({
+          date: item.week || item.label || item.date || "Week",
+          sales: item.totalSales || item.sales || 0,
+        }));
+      case "monthly":
+        return (effectiveMonthly || []).map((item) => ({
+          date: item.month || item.label || item.date || "Month",
+          sales: item.totalSales || item.sales || 0,
+        }));
+      case "daily":
+      default:
+        return (effectiveDaily || []).map((item) => ({
+          date: item.day || item.label || (item.date ? new Date(item.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : "Day"),
+          sales: item.totalSales || item.sales || 0,
+        }));
     }
-    return [];
   };
 
   const chartData = getChartData();
+  const totalSalesInPeriod = chartData.reduce((sum, item) => sum + item.sales, 0);
 
   return (
-    <Card className="rounded-2xl border border-border/80 shadow-2xs">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base font-bold text-foreground">
-              Sales Revenue Velocity
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Periodic trend analysis across daily, weekly, and monthly periods
-            </CardDescription>
-          </div>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-28 h-8 text-xs">
-              <SelectValue />
+    <Card className="flex flex-col border-border shadow-2xs">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-border/60">
+        <div>
+          <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-[#F5A623]" />
+            Sales Trend
+          </CardTitle>
+          <CardDescription className="text-xs text-muted-foreground mt-0.5">
+            Total sales in period:{" "}
+            <span className="font-mono font-bold text-foreground">
+              {formatCurrency(totalSalesInPeriod)}
+            </span>
+          </CardDescription>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={timeframe} onValueChange={setTimeframe}>
+            <SelectTrigger className="w-28 h-8 text-xs font-semibold">
+              <Calendar className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Timeframe" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="daily" className="text-xs">Daily</SelectItem>
-              <SelectItem value="weekly" className="text-xs">Weekly</SelectItem>
-              <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex items-center justify-center h-56">
-            <div className="text-center space-y-2">
-              <div className="w-8 h-8 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs text-muted-foreground">Loading sales data...</p>
-            </div>
+      <CardContent className="pt-6 flex-1">
+        {effectiveLoading ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center space-y-2">
+            <Loader2 className="w-7 h-7 animate-spin text-[#F5A623]" />
+            <p className="text-xs text-muted-foreground">Calculating sales trend...</p>
           </div>
         ) : chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
-              <XAxis
-                dataKey="date"
-                stroke="#888888"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#888888"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `${currencySymbol}${value}`}
-              />
-              <Tooltip
-                formatter={(value) => [formatCurrency(value), "Sales"]}
-                labelFormatter={(label) => `Date: ${label}`}
-                contentStyle={{
-                  backgroundColor: "var(--card)",
-                  borderColor: "var(--border)",
-                  borderRadius: "0.75rem",
-                  fontSize: "0.75rem",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="sales"
-                stroke="#d97706"
-                strokeWidth={2.5}
-                dot={{ fill: "#d97706", strokeWidth: 2, r: 3 }}
-                activeDot={{ r: 5, fill: "#d97706" }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="storeSalesTrendGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#F5A623" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#F5A623" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4DFD3" />
+                <XAxis
+                  dataKey="date"
+                  stroke="#8C877D"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#8C877D"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${currencySymbol}${value}`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#FFFFFF",
+                    borderColor: "#E4DFD3",
+                    borderRadius: "0.75rem",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                    fontSize: "12px",
+                    color: "#262422",
+                  }}
+                  formatter={(value) => [formatCurrency(value), "Sales"]}
+                  labelFormatter={(label) => `Period: ${label}`}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="sales"
+                  stroke="#F5A623"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#storeSalesTrendGradient)"
+                  dot={{ fill: "#F5A623", stroke: "#FFFFFF", strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, fill: "#F5A623" }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-56 text-center">
-            <TrendingUp className="w-10 h-10 text-muted-foreground/40 mb-2" />
-            <p className="text-xs text-muted-foreground">No sales trend points available for this period.</p>
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <div className="p-3 bg-secondary rounded-2xl text-muted-foreground/60 mb-2">
+              <TrendingUp className="w-8 h-8" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">No sales data available</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Transactions will automatically populate this revenue trend.
+            </p>
           </div>
         )}
       </CardContent>
     </Card>
   );
-};
-
-export default SalesTrend;
+}

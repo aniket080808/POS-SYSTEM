@@ -7,12 +7,6 @@ import NotificationSettingsForm from "./components/NotificationSettingsForm";
 import SystemSettingsForm from "./components/SystemSettingsForm";
 import { useSettingsState } from "./components/useSettingsState";
 
-const SettingsTabTrigger = ({ value, children }) => (
-  <TabsTrigger value={value} className="flex items-center gap-2 rounded-lg text-xs font-semibold">
-    {children}
-  </TabsTrigger>
-);
-
 export default function SettingsPage() {
   const {
     profileData,
@@ -31,35 +25,37 @@ export default function SettingsPage() {
   } = useSettingsState();
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">Platform Settings</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Manage administrator profile credentials, security policies, and system preferences.
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Platform Governance & System Settings
+        </h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Manage super admin security credentials, automated review policies, and notification dispatch
         </p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="bg-muted/60 p-1 rounded-xl w-full grid grid-cols-2 sm:grid-cols-4 max-w-xl">
-          <SettingsTabTrigger value="profile">
+        <TabsList className="bg-secondary p-1 rounded-xl grid grid-cols-2 sm:grid-cols-4 max-w-2xl">
+          <TabsTrigger value="profile" className="flex items-center gap-2 text-xs font-bold">
             <User className="w-3.5 h-3.5" />
-            Profile
-          </SettingsTabTrigger>
-          <SettingsTabTrigger value="security">
+            Profile Info
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2 text-xs font-bold">
             <Shield className="w-3.5 h-3.5" />
-            Security
-          </SettingsTabTrigger>
-          <SettingsTabTrigger value="notifications">
+            Security & Passwords
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex items-center gap-2 text-xs font-bold">
             <Bell className="w-3.5 h-3.5" />
-            Notifications
-          </SettingsTabTrigger>
-          <SettingsTabTrigger value="system">
+            Alerts & Notices
+          </TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center gap-2 text-xs font-bold">
             <SettingsIcon className="w-3.5 h-3.5" />
-            System
-          </SettingsTabTrigger>
+            Platform Engine
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile">
+        <TabsContent value="profile" className="space-y-4">
           <ProfileSettingsForm
             profileData={profileData}
             onUpdate={handleProfileUpdate}
@@ -68,7 +64,7 @@ export default function SettingsPage() {
           />
         </TabsContent>
 
-        <TabsContent value="security">
+        <TabsContent value="security" className="space-y-4">
           <SecuritySettingsForm
             passwordData={passwordData}
             showPasswords={showPasswords}
@@ -78,14 +74,14 @@ export default function SettingsPage() {
           />
         </TabsContent>
 
-        <TabsContent value="notifications">
+        <TabsContent value="notifications" className="space-y-4">
           <NotificationSettingsForm
             notifications={notifications}
             onToggle={handleNotificationToggle}
           />
         </TabsContent>
 
-        <TabsContent value="system">
+        <TabsContent value="system" className="space-y-4">
           <SystemSettingsForm
             systemSettings={systemSettings}
             onToggle={handleSystemSettingToggle}
@@ -95,4 +91,3 @@ export default function SettingsPage() {
     </div>
   );
 }
- 

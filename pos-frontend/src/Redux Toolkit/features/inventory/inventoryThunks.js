@@ -25,7 +25,7 @@ export const createInventory = createAsyncThunk(
 // 🔹 Update inventory
 export const updateInventory = createAsyncThunk(
   'inventory/update',
-  async ({ id, dto }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     const token = localStorage.getItem('jwt');
     const config = {
       headers: {
@@ -33,7 +33,9 @@ export const updateInventory = createAsyncThunk(
       },
     };
     try {
-      const res = await api.put(`/api/inventories/${id}`, dto, config);
+      const id = payload?.id;
+      const body = payload?.dto ? payload.dto : payload;
+      const res = await api.put(`/api/inventories/${id}`, body, config);
       console.log('updateInventory fulfilled:', res.data);
       return res.data;
     } catch (err) {

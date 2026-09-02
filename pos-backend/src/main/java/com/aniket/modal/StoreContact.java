@@ -15,6 +15,7 @@ import lombok.*;
 @Builder
 public class StoreContact {
 
+    @Column(columnDefinition = "TEXT")
     private String address;
 
     @Column(unique = true)

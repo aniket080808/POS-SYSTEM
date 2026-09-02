@@ -8,19 +8,23 @@ import CashierPerformance from "./CashierPerformance";
 import RecentOrders from "./RecentOrders";
 import { getTodayOverview, getPaymentBreakdown, getDailySalesChart, getTopProductsByQuantity, getTopCashiersByRevenue } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
 import { getRecentOrdersByBranch } from "@/Redux Toolkit/features/order/orderThunks";
+import { findBranchEmployees } from "@/Redux Toolkit/features/employee/employeeThunks";
+import { getLocalDateString } from "@/utils/formateDate";
 import PaymentBreakdown from "./PaymentBreakdown";
 import TodayOverview from "./TodayOverview";
+import BranchSettlementStrip from "./BranchSettlementStrip";
 
 export default function Dashboard() {
   const dispatch = useDispatch();
   const { branch } = useSelector((state) => state.branch);
-  const branchId = branch?.id;
+  const { userProfile } = useSelector((state) => state.user);
+  const branchId = branch?.id || userProfile?.branchId || userProfile?.branch?.id;
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadAllData = React.useCallback(() => {
+  const loadAllData = () => {
     if (branchId) {
       setRefreshing(true);
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getLocalDateString();
       Promise.all([
         dispatch(getTodayOverview(branchId)),
         dispatch(getPaymentBreakdown({ branchId, date: today })),
@@ -28,17 +32,18 @@ export default function Dashboard() {
         dispatch(getTopProductsByQuantity(branchId)),
         dispatch(getTopCashiersByRevenue(branchId)),
         dispatch(getRecentOrdersByBranch(branchId)),
+        dispatch(findBranchEmployees({ branchId })),
       ]).finally(() => {
         setRefreshing(false);
       });
     }
-  }, [branchId, dispatch]);
+  };
 
   useEffect(() => {
     if (branchId) {
       loadAllData();
     }
-  }, [branchId, loadAllData]);
+  }, [branchId, dispatch]);
 
   return (
     <div className="space-y-6">
@@ -72,6 +77,9 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       <TodayOverview />
+
+      {/* Counter Settlement & Cash Drawer Strip */}
+      <BranchSettlementStrip />
       
       {/* Payment Breakdown */}
       <PaymentBreakdown />

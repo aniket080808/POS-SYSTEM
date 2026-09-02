@@ -16,6 +16,9 @@ public interface StoreSubscriptionRepository extends JpaRepository<StoreSubscrip
 
     boolean existsByStoreId(Long storeId);
 
-    @Query("SELECT COUNT(ss) FROM StoreSubscription ss WHERE ss.currentPlan.id = :planId")
-    long countByCurrentPlanId(@Param("planId") Long planId);
+    @Query("SELECT COUNT(ss) FROM StoreSubscription ss WHERE (ss.currentPlan IS NOT NULL AND ss.currentPlan.id = :planId) OR (ss.requestedPlan IS NOT NULL AND ss.requestedPlan.id = :planId)")
+    long countByPlanId(@Param("planId") Long planId);
+
+    @Query("SELECT COUNT(ss) FROM StoreSubscription ss WHERE ss.currentPlan IS NOT NULL AND ss.currentPlan.id = :planId AND ss.status = 'ACTIVE'")
+    long countActiveStoresByPlanId(@Param("planId") Long planId);
 }

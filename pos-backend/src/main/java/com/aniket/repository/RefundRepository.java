@@ -25,6 +25,8 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
 
     List<Refund> findByBranchId(Long branchId);
 
+    List<Refund> findByBranch_Store_Id(Long storeId);
+
     // store analysis
     @Query("SELECT COUNT(r) FROM Refund r WHERE r.order.branch.store.storeAdmin.id = :storeAdminId")
     int countByStoreAdminId(@Param("storeAdminId") Long storeAdminId);

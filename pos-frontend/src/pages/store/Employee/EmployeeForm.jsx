@@ -13,26 +13,27 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { BRANCH_LEVEL_ROLES, canManageEmployee } from "../../../utils/userRole";
+import { BRANCH_LEVEL_ROLES, canManageEmployee, getRoleDisplayName } from "../../../utils/userRole";
+import { Loader2, Save, Check } from "lucide-react";
 
 const getValidationSchema = (isEdit) =>
   Yup.object({
-    fullName: Yup.string().required("Employee name is required"),
+    fullName: Yup.string().required("Full name is required"),
     email: Yup.string()
-      .email("Invalid email address")
-      .required("Email is required"),
+      .email("Enter a valid email address")
+      .required("Email address is required"),
     phone: Yup.string().required("Phone number is required"),
-    role: Yup.string().required("Role is required"),
+    role: Yup.string().required("Role assignment is required"),
     branchId: Yup.string().when("role", {
       is: (role) => BRANCH_LEVEL_ROLES.includes(role),
-      then: (schema) => schema.required("Branch is required for branch-level roles"),
+      then: (schema) => schema.required("Branch location is required for this role"),
       otherwise: (schema) => schema.notRequired(),
     }),
     password: isEdit
-      ? Yup.string().min(8, "Password must be at least 8 characters").notRequired()
+      ? Yup.string().min(6, "Password must be at least 6 characters").notRequired()
       : Yup.string()
-          .min(8, "Password must be at least 8 characters")
-          .required("Password is required"),
+          .min(6, "Password must be at least 6 characters")
+          .required("Login password is required"),
   });
 
 const getInitialValues = (data, defaultBranchId) => ({
@@ -41,291 +42,234 @@ const getInitialValues = (data, defaultBranchId) => ({
   password: data?.password || "",
   phone: data?.phone || "",
   role: data?.role || "",
-  branchId: data?.branchId
+  branchId: data?.branchId != null
     ? String(data.branchId)
-    : defaultBranchId
+    : data?.branch?.id != null
+    ? String(data.branch.id)
+    : defaultBranchId != null
     ? String(defaultBranchId)
     : "",
 });
 
-const EmployeeForm = ({ initialData, onSubmit, roles, defaultBranchId }) => {
+const EmployeeForm = ({ initialData, onSubmit, roles, defaultBranchId, onCancel }) => {
   const dispatch = useDispatch();
-  const { branches, branch } = useSelector((state) => state.branch);
-  const { store } = useSelector((state) => state.store);
-  const { userProfile } = useSelector((state) => state.user);
+  const { branch, branches = [] } = useSelector((state) => state.branch || {});
+  const { store } = useSelector((state) => state.store || {});
+  const { userProfile, user: userFromUserSlice } = useSelector((state) => state.user || {});
+  const { user: authUser } = useSelector((state) => state.auth || {});
 
+  const currentRole = userProfile?.role || userFromUserSlice?.role || authUser?.role || "ROLE_STORE_ADMIN";
   const isEdit = Boolean(initialData && initialData.id);
 
-  // 🔒 Filter roles to only those the current user can manage (defense-in-depth)
-  const filteredRoles = useMemo(() => {
-    if (!roles || !userProfile?.role) return roles || [];
-    return roles.filter((role) => canManageEmployee(userProfile.role, role));
-  }, [roles, userProfile?.role]);
+  const activeStoreId = store?.id || userProfile?.storeId || userProfile?.store?.id || branch?.storeId || userProfile?.branch?.storeId;
 
-  // Active store resolution from multiple potential sources
-  const activeStoreId =
-    store?.id ||
-    userProfile?.store?.id ||
-    userProfile?.storeId ||
-    userProfile?.branch?.store?.id ||
-    branch?.store?.id ||
-    branch?.storeId;
+  const effectiveBranches = useMemo(() => {
+    if (branches && branches.length > 0) return branches;
+    if (branch?.id) return [branch];
+    if (userProfile?.branch?.id) return [userProfile.branch];
+    if (initialData?.branch) return [initialData.branch];
+    return [];
+  }, [branches, branch, userProfile?.branch, initialData?.branch]);
 
-  // Fetch branches by store if storeId is known
+  const availableRoles = useMemo(() => {
+    if (!roles || !Array.isArray(roles)) return [];
+    const normalized = roles
+      .map((r) => {
+        if (typeof r === "string") {
+          return { value: r, label: getRoleDisplayName(r) };
+        }
+        if (r && typeof r === "object") {
+          const val = r.value || r.id || r.role;
+          return {
+            value: val,
+            label: r.label || r.name || getRoleDisplayName(val),
+          };
+        }
+        return null;
+      })
+      .filter((r) => Boolean(r && r.value));
+
+    if (!currentRole) return normalized;
+    const filtered = normalized.filter((r) => canManageEmployee(currentRole, r.value));
+    return filtered.length > 0 ? filtered : normalized;
+  }, [roles, currentRole]);
+
   useEffect(() => {
-    const jwt = localStorage.getItem("jwt");
-    if (activeStoreId && jwt) {
-      dispatch(
-        getAllBranchesByStore({
-          storeId: activeStoreId,
-          jwt,
-        })
-      );
+    if (activeStoreId && branches.length === 0) {
+      const jwt = localStorage.getItem("jwt");
+      if (jwt) dispatch(getAllBranchesByStore({ storeId: activeStoreId, jwt }));
     }
-  }, [dispatch, activeStoreId]);
-
-  // Consolidate available branches from all state sources
-  const availableBranches = useMemo(() => {
-    const branchMap = new Map();
-
-    // 1. From branches list in Redux
-    (branches || []).forEach((b) => {
-      if (b && b.id) {
-        branchMap.set(String(b.id), { id: b.id, name: b.name || `Branch #${b.id}` });
-      }
-    });
-
-    // 2. From active branch in Redux state
-    if (branch && branch.id) {
-      branchMap.set(String(branch.id), { id: branch.id, name: branch.name || `Branch #${branch.id}` });
-    }
-
-    // 3. From user profile branch
-    if (userProfile?.branch && userProfile.branch.id) {
-      branchMap.set(String(userProfile.branch.id), {
-        id: userProfile.branch.id,
-        name: userProfile.branch.name || `Branch #${userProfile.branch.id}`,
-      });
-    } else if (userProfile?.branchId) {
-      if (!branchMap.has(String(userProfile.branchId))) {
-        branchMap.set(String(userProfile.branchId), {
-          id: userProfile.branchId,
-          name: userProfile.branchName || branch?.name || `Branch #${userProfile.branchId}`,
-        });
-      }
-    }
-
-    // 4. From initialData branch or explicit defaultBranchId
-    if (initialData?.branch && initialData.branch.id) {
-      branchMap.set(String(initialData.branch.id), {
-        id: initialData.branch.id,
-        name: initialData.branch.name || `Branch #${initialData.branch.id}`,
-      });
-    }
-    if (defaultBranchId && !branchMap.has(String(defaultBranchId))) {
-      branchMap.set(String(defaultBranchId), {
-        id: defaultBranchId,
-        name: branch?.name || userProfile?.branch?.name || `Branch #${defaultBranchId}`,
-      });
-    }
-
-    return Array.from(branchMap.values());
-  }, [branches, branch, userProfile, initialData, defaultBranchId]);
-
-  const isBranchUser =
-    userProfile?.role === "ROLE_BRANCH_ADMIN" ||
-    userProfile?.role === "ROLE_BRANCH_MANAGER";
-
-  // 🔒 Restrict available branches to current branch if caller is branch admin/manager (Bug #2 Prevention)
-  const scopedBranches = useMemo(() => {
-    if (isBranchUser || defaultBranchId) {
-      const bId = defaultBranchId || userProfile?.branchId || branch?.id;
-      if (bId) {
-        const matching = availableBranches.find((b) => String(b.id) === String(bId));
-        return matching
-          ? [matching]
-          : [{ id: bId, name: branch?.name || userProfile?.branch?.name || `Branch #${bId}` }];
-      }
-    }
-    return availableBranches;
-  }, [isBranchUser, defaultBranchId, availableBranches, userProfile, branch]);
-
-  // Determine fallback branch ID if single branch or default provided
-  const resolvedDefaultBranchId = useMemo(() => {
-    if (defaultBranchId) return String(defaultBranchId);
-    if (userProfile?.branchId) return String(userProfile.branchId);
-    if (branch?.id) return String(branch.id);
-    if (scopedBranches.length === 1) return String(scopedBranches[0].id);
-    return "";
-  }, [defaultBranchId, userProfile, branch, scopedBranches]);
+  }, [dispatch, activeStoreId, branches.length]);
 
   const formik = useFormik({
-    initialValues: getInitialValues(initialData, resolvedDefaultBranchId),
+    initialValues: getInitialValues(initialData, defaultBranchId),
     validationSchema: getValidationSchema(isEdit),
-    onSubmit: (values) => {
-      // If role is store-level, don't send branchId
-      const payload = { ...values };
-      if (!BRANCH_LEVEL_ROLES.includes(values.role)) {
-        delete payload.branchId;
+    enableReinitialize: true,
+    onSubmit: async (values, { setSubmitting }) => {
+      try {
+        const payload = { ...values };
+        if (!BRANCH_LEVEL_ROLES.includes(payload.role)) {
+          delete payload.branchId;
+        }
+        if (isEdit && !payload.password) {
+          delete payload.password;
+        }
+        await onSubmit(payload);
+      } finally {
+        setSubmitting(false);
       }
-      if (isEdit && !payload.password) {
-        delete payload.password;
-      }
-      onSubmit(payload);
     },
   });
 
-  useEffect(() => {
-    if (initialData && initialData.id) {
-      formik.setValues(getInitialValues(initialData, resolvedDefaultBranchId));
-    } else {
-      formik.resetForm();
-      if (resolvedDefaultBranchId) {
-        formik.setFieldValue("branchId", resolvedDefaultBranchId);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialData, resolvedDefaultBranchId]);
-
-  // Auto-set branchId when a branch-level role is selected and there's a default/single branch available
-  useEffect(() => {
-    if (BRANCH_LEVEL_ROLES.includes(formik.values.role)) {
-      if (!formik.values.branchId && resolvedDefaultBranchId) {
-        formik.setFieldValue("branchId", resolvedDefaultBranchId);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formik.values.role, formik.values.branchId, resolvedDefaultBranchId]);
+  const showBranchSelect = BRANCH_LEVEL_ROLES.includes(formik.values.role);
 
   return (
-    <form onSubmit={formik.handleSubmit} className="space-y-4 py-2 pr-2">
-      <div className="space-y-2">
-        <Label htmlFor="fullName">Full Name</Label>
+    <form onSubmit={formik.handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="emp-name" className="text-sm font-semibold text-foreground">
+          Staff Member Full Name *
+        </Label>
         <Input
-          id="fullName"
+          id="emp-name"
           name="fullName"
+          placeholder="e.g. Rahul Sharma"
           value={formik.values.fullName}
           onChange={formik.handleChange}
           onBlur={formik.handleBlur}
-          placeholder="Enter employee name"
+          className={`text-xs h-10 ${formik.touched.fullName && formik.errors.fullName ? "border-destructive" : ""}`}
         />
-        {formik.touched.fullName && formik.errors.fullName ? (
-          <div className="text-red-500 text-sm">{formik.errors.fullName}</div>
-        ) : null}
+        {formik.touched.fullName && formik.errors.fullName && (
+          <div className="text-destructive text-xs font-semibold mt-1">{formik.errors.fullName}</div>
+        )}
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          value={formik.values.email}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          placeholder="Enter email address"
-        />
-        {formik.touched.email && formik.errors.email ? (
-          <div className="text-red-500 text-sm">{formik.errors.email}</div>
-        ) : null}
-      </div>
-      {!isEdit && (
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="emp-email" className="text-sm font-semibold text-foreground">
+            Work Email Address *
+          </Label>
           <Input
-            id="password"
-            name="password"
-            type="password"
-            value={formik.values.password}
+            id="emp-email"
+            name="email"
+            type="email"
+            placeholder="cashier@store.com"
+            value={formik.values.email}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            placeholder="Enter password (min 8 chars)"
+            className={`text-xs h-10 ${formik.touched.email && formik.errors.email ? "border-destructive" : ""}`}
           />
-          {formik.touched.password && formik.errors.password ? (
-            <div className="text-red-500 text-sm">{formik.errors.password}</div>
-          ) : null}
+          {formik.touched.email && formik.errors.email && (
+            <div className="text-destructive text-xs font-semibold mt-1">{formik.errors.email}</div>
+          )}
         </div>
-      )}
-      <div className="space-y-2">
-        <Label htmlFor="phone">Phone</Label>
-        <Input
-          id="phone"
-          name="phone"
-          value={formik.values.phone}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          placeholder="Enter phone number"
-        />
-        {formik.touched.phone && formik.errors.phone ? (
-          <div className="text-red-500 text-sm">{formik.errors.phone}</div>
-        ) : null}
+
+        <div className="space-y-1.5">
+          <Label htmlFor="emp-phone" className="text-sm font-semibold text-foreground">
+            Contact Mobile Number *
+          </Label>
+          <Input
+            id="emp-phone"
+            name="phone"
+            placeholder="+91 9876543210"
+            value={formik.values.phone}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            className={`text-xs h-10 font-mono ${formik.touched.phone && formik.errors.phone ? "border-destructive" : ""}`}
+          />
+          {formik.touched.phone && formik.errors.phone && (
+            <div className="text-destructive text-xs font-semibold mt-1">{formik.errors.phone}</div>
+          )}
+        </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="role">Role</Label>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="emp-role" className="text-sm font-semibold text-foreground">
+            Role & Security Clearance *
+          </Label>
           <Select
             value={formik.values.role}
-            onValueChange={(value) => {
-              formik.setFieldValue("role", value);
-              // Clear branchId when a store-level role is selected, or set default if branch-level
-              if (!BRANCH_LEVEL_ROLES.includes(value)) {
-                formik.setFieldValue("branchId", "");
-              } else if (!formik.values.branchId && resolvedDefaultBranchId) {
-                formik.setFieldValue("branchId", resolvedDefaultBranchId);
-              }
-            }}
-            onOpenChange={() => formik.setFieldTouched("role", true)}
-            className="w-full"
+            onValueChange={(val) => formik.setFieldValue("role", val)}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select role" />
+            <SelectTrigger id="emp-role" className="text-xs h-10">
+              <SelectValue placeholder="Select Staff Role" />
             </SelectTrigger>
             <SelectContent>
-              {filteredRoles?.map((role) => (
-                <SelectItem key={role} value={role}>
-                  {role.replace("ROLE_", "").replace(/_/g, " ")}
+              {availableRoles.map((r, idx) => (
+                <SelectItem key={r.value ? String(r.value) : `role-${idx}`} value={String(r.value)}>
+                  {r.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {formik.touched.role && formik.errors.role ? (
-            <div className="text-red-500 text-sm">{formik.errors.role}</div>
-          ) : null}
+          {formik.touched.role && formik.errors.role && (
+            <div className="text-destructive text-xs font-semibold mt-1">{formik.errors.role}</div>
+          )}
         </div>
-        {BRANCH_LEVEL_ROLES.includes(formik.values.role) && (
-          <div className="space-y-2">
-            <Label htmlFor="branchId">Branch</Label>
-            {scopedBranches && scopedBranches.length > 0 ? (
-              <Select
-                value={formik.values.branchId}
-                onValueChange={(value) => formik.setFieldValue("branchId", value)}
-                onOpenChange={() => formik.setFieldTouched("branchId", true)}
-                disabled={isBranchUser || scopedBranches.length === 1}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {scopedBranches.map((b) => (
-                    <SelectItem key={b.id} value={String(b.id)}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-md">
-                No branches found. Please create a branch first before assigning branch-level staff, or select <strong>Store Manager</strong> above.
-              </div>
+
+        {showBranchSelect && (
+          <div className="space-y-1.5">
+            <Label htmlFor="emp-branch" className="text-sm font-semibold text-foreground">
+              Workstation Branch *
+            </Label>
+            <Select
+              value={formik.values.branchId}
+              onValueChange={(val) => formik.setFieldValue("branchId", val)}
+            >
+              <SelectTrigger id="emp-branch" className="text-xs h-10">
+                <SelectValue placeholder="Assign Branch Location" />
+              </SelectTrigger>
+              <SelectContent>
+                {effectiveBranches.map((b, idx) => (
+                  <SelectItem key={b.id ? String(b.id) : `branch-${idx}`} value={String(b.id)}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formik.touched.branchId && formik.errors.branchId && (
+              <div className="text-destructive text-xs font-semibold mt-1">{formik.errors.branchId}</div>
             )}
-            {formik.touched.branchId && formik.errors.branchId ? (
-              <div className="text-red-500 text-sm">{formik.errors.branchId}</div>
-            ) : null}
           </div>
         )}
       </div>
-      <div className="flex justify-end pt-4">
-        <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-          {isEdit ? "Save Changes" : "Add Employee"}
+
+      <div className="space-y-1.5">
+        <Label htmlFor="emp-password" className="text-sm font-semibold text-foreground">
+          {isEdit ? "New Password (Leave blank to keep existing)" : "Terminal Password *"}
+        </Label>
+        <Input
+          id="emp-password"
+          name="password"
+          type="password"
+          placeholder="At least 6 characters"
+          value={formik.values.password}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          className={`text-xs h-10 ${formik.touched.password && formik.errors.password ? "border-destructive" : ""}`}
+        />
+        {formik.touched.password && formik.errors.password && (
+          <div className="text-destructive text-xs font-semibold mt-1">{formik.errors.password}</div>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4 border-t border-border/60">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel} className="text-xs h-10">
+            Cancel
+          </Button>
+        )}
+        <Button
+          type="submit"
+          disabled={formik.isSubmitting}
+          className="text-xs font-bold h-10 gap-1.5"
+        >
+          {formik.isSubmitting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Check className="w-4 h-4" />
+          )}
+          {isEdit ? "Save Profile Changes" : "Create Staff Account"}
         </Button>
       </div>
     </form>

@@ -9,6 +9,7 @@ import com.aniket.payload.response.PaymentInitiateResponse;
 import com.aniket.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class SubscriptionController {
 
     // 🆕 Store subscribes to a plan (TRIAL or NEW)
     @PostMapping("/subscribe")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'ADMIN')")
     public ResponseEntity<?> createSubscription(
             @RequestParam Long storeId,
             @RequestParam Long planId,
@@ -37,6 +39,7 @@ public class SubscriptionController {
 
     // 🔁 Store upgrades to a new plan (ACTIVE)
     @PostMapping("/upgrade")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'ADMIN')")
     public ResponseEntity<?> upgradePlan(
             @RequestParam Long storeId,
             @RequestParam Long planId,
@@ -50,18 +53,21 @@ public class SubscriptionController {
 
     // ✅ Admin activates a subscription
     @PutMapping("/{subscriptionId}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
     public Subscription activateSubscription(@PathVariable Long subscriptionId) {
         return subscriptionService.activateSubscription(subscriptionId);
     }
 
     // ❌ Admin cancels a subscription
     @PutMapping("/{subscriptionId}/cancel")
+    @PreAuthorize("hasRole('ADMIN')")
     public Subscription cancelSubscription(@PathVariable Long subscriptionId) {
         return subscriptionService.cancelSubscription(subscriptionId);
     }
 
     // 💳 Update payment status manually (if needed)
     @PutMapping("/{subscriptionId}/payment-status")
+    @PreAuthorize("hasRole('ADMIN')")
     public Subscription updatePaymentStatus(
             @PathVariable Long subscriptionId,
             @RequestParam PaymentStatus status
@@ -71,6 +77,7 @@ public class SubscriptionController {
 
     // 📦 Store: Get all subscriptions (or by status)
     @GetMapping("/store/{storeId}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'ADMIN')")
     public List<Subscription> getStoreSubscriptions(
             @PathVariable Long storeId,
             @RequestParam(required = false) SubscriptionStatus status
@@ -80,6 +87,7 @@ public class SubscriptionController {
 
     // 🗂️ Admin: Get all subscriptions (optionally filter by status)
     @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<Subscription> getAllSubscriptions(
             @RequestParam(required = false) SubscriptionStatus status
     ) {
@@ -88,6 +96,7 @@ public class SubscriptionController {
 
     // ⌛ Admin: Get subscriptions expiring within X days
     @GetMapping("/admin/expiring")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<Subscription> getExpiringSubscriptions(
             @RequestParam(defaultValue = "7") int days
     ) {
@@ -96,6 +105,7 @@ public class SubscriptionController {
 
     // 📊 Count total subscriptions by status
     @GetMapping("/admin/count")
+    @PreAuthorize("hasRole('ADMIN')")
     public Long countByStatus(
             @RequestParam SubscriptionStatus status
     ) {

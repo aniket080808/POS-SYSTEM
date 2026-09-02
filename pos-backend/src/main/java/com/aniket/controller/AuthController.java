@@ -43,10 +43,38 @@ public class AuthController {
     private final AuthService authService;
     private final OnboardingService onboardingService;
 
-    // Rate limit: 5 login attempts per minute (brute-force protection)
-    private final Bucket loginBucket = Bucket.builder()
-            .addLimit(Bandwidth.classic(5, Refill.greedy(5, Duration.ofMinutes(1))))
-            .build();
+    // Per-IP Rate limit: 20 login attempts per minute per client IP (production-grade brute-force protection)
+    private final java.util.Map<String, Bucket> ipBuckets = new java.util.concurrent.ConcurrentHashMap<>();
+
+    // Per-IP Rate limit: 5 forgot-password requests per minute per client IP (abuse & email-bombing protection)
+    private final java.util.Map<String, Bucket> forgotPasswordIpBuckets = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private String extractClientIp(jakarta.servlet.http.HttpServletRequest request) {
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null || clientIp.isBlank()) {
+            clientIp = request.getRemoteAddr();
+        } else {
+            clientIp = clientIp.split(",")[0].trim();
+        }
+        if (clientIp == null || clientIp.isBlank()) {
+            clientIp = "UNKNOWN";
+        }
+        return clientIp;
+    }
+
+    private Bucket resolveBucket(jakarta.servlet.http.HttpServletRequest request) {
+        String clientIp = extractClientIp(request);
+        return ipBuckets.computeIfAbsent(clientIp, k -> Bucket.builder()
+                .addLimit(Bandwidth.classic(20, Refill.greedy(20, Duration.ofMinutes(1))))
+                .build());
+    }
+
+    private Bucket resolveForgotPasswordBucket(jakarta.servlet.http.HttpServletRequest request) {
+        String clientIp = extractClientIp(request);
+        return forgotPasswordIpBuckets.computeIfAbsent(clientIp, k -> Bucket.builder()
+                .addLimit(Bandwidth.classic(5, Refill.greedy(5, Duration.ofMinutes(1))))
+                .build());
+    }
 
     @PostMapping("/onboarding")
     public ResponseEntity<ApiResponseBody<AuthResponse>> onboardingHandler(
@@ -72,9 +100,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponseBody<AuthResponse>> loginHandler(
+            jakarta.servlet.http.HttpServletRequest request,
             @RequestBody LoginDto req) throws UserException {
 
-        if (!loginBucket.tryConsume(1)) {
+        Bucket clientBucket = resolveBucket(request);
+        if (!clientBucket.tryConsume(1)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(new ApiResponseBody<>(false,
                             "Too many login attempts. Please try again later.", null));
@@ -90,10 +120,17 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse> forgotPassword(
-            @RequestBody ForgotPasswordRequest request
+            jakarta.servlet.http.HttpServletRequest request,
+            @RequestBody @Valid ForgotPasswordRequest forgotPasswordReq
     ) throws UserException {
 
-        authService.createPasswordResetToken(request.getEmail());
+        Bucket clientBucket = resolveForgotPasswordBucket(request);
+        if (!clientBucket.tryConsume(1)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(new ApiResponse("Too many password reset requests. Please try again later."));
+        }
+
+        authService.createPasswordResetToken(forgotPasswordReq.getEmail());
 
         ApiResponse res= new ApiResponse(
                 "A Reset link was sent to your email."
@@ -103,7 +140,7 @@ public class AuthController {
 
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse> resetPassword(
-            @RequestBody ResetPasswordRequest request) {
+            @RequestBody @Valid ResetPasswordRequest request) {
          authService.resetPassword(request.getToken(), request.getPassword());
         ApiResponse res= new ApiResponse(
                 "Password reset successful"

@@ -28,14 +28,24 @@ public class BranchInventory {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
+    @Builder.Default
     @Column(nullable = false)
     private Integer stock = 0;
 
     @Column(nullable = false)
     private Double sellingPrice;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean isActive = true;
+
+    private String batchNumber;
+
+    private LocalDateTime manufacturingDate;
+
+    private LocalDateTime expiryDate;
+
+    private Double costPrice;
 
     private LocalDateTime createdAt;
 

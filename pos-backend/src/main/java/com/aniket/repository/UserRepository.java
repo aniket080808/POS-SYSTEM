@@ -21,8 +21,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	@Query("SELECT u FROM User u WHERE u.fullName = :q OR u.email = :q")
 	User findByFullNameOrEmail(@Param("q") String q);
 	Set<User> findByRole(UserRole role);
-	List<User> findByBranchId(Long branchId);
-	List<User>findByStoreId(Long storeId);
+
+	@Query("SELECT u FROM User u WHERE u.branch.id = :branchId")
+	List<User> findByBranchId(@Param("branchId") Long branchId);
+
+	@Query("SELECT u FROM User u WHERE u.store.id = :storeId")
+	List<User> findByStoreId(@Param("storeId") Long storeId);
+
 	List<User> findByStoreAndRoleIn(com.aniket.modal.Store store, List<UserRole> roles);
 	List<User> findByBranchAndRoleIn(com.aniket.modal.Branch branch, List<UserRole> roles);
 
@@ -30,6 +35,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	// Use explicit LEFT JOIN so store-level staff (branch_id IS NULL) are not dropped by an implicit INNER JOIN
 	@Query("SELECT u FROM User u LEFT JOIN u.branch b WHERE u.store.id = :storeId OR b.store.id = :storeId")
 	List<User> findAllEmployeesByStoreId(@Param("storeId") Long storeId);
+
+	@Query("SELECT u FROM User u LEFT JOIN u.branch b WHERE (u.store.id = :storeId OR b.store.id = :storeId) AND u.role = :role")
+	Set<User> findByStoreIdAndRole(@Param("storeId") Long storeId, @Param("role") UserRole role);
+
+	@Query("SELECT u FROM User u WHERE u.branch.id = :branchId AND u.role = :role")
+	Set<User> findByBranchIdAndRole(@Param("branchId") Long branchId, @Param("role") UserRole role);
 
 //	analysis
 @Query("""

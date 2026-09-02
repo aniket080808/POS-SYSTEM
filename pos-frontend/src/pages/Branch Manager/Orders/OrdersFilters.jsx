@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -8,8 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, X, User } from "lucide-react";
-import { useEffect } from "react";
+import { Search, Filter, X } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { paymentModeMap, statusMap } from "./data";
 import { getOrdersByBranch } from "../../../Redux Toolkit/features/order/orderThunks";
@@ -19,7 +18,6 @@ const OrdersFilters = ({ searchTerm, setSearchTerm, filters, setFilters }) => {
   const branchId = useSelector((state) => state.branch.branch?.id);
   const { employees } = useSelector((state) => state.employee);
 
-  // Strictly filter to ROLE_BRANCH_CASHIER only
   const cashiers = employees
     ? employees.filter((emp) => emp.role === "ROLE_BRANCH_CASHIER")
     : [];
@@ -32,7 +30,6 @@ const OrdersFilters = ({ searchTerm, setSearchTerm, filters, setFilters }) => {
         paymentType: paymentModeMap[filters.paymentMode],
         status: statusMap[filters.status],
       };
-      console.log("Fetching orders with filters:", data);
       dispatch(getOrdersByBranch(data));
     }
   }, [branchId, filters.cashierId, filters.paymentMode, filters.status, dispatch]);
@@ -53,112 +50,87 @@ const OrdersFilters = ({ searchTerm, setSearchTerm, filters, setFilters }) => {
   };
 
   return (
-    <div className="space-y-3 bg-card p-4 rounded-xl border shadow-sm">
+    <div className="space-y-3 bg-card p-4 rounded-2xl border border-border shadow-2xs">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Search Bar */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Search Order ID, Customer, Cashier..."
+            placeholder="Search Order # or Customer..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 pr-8"
+            className="pl-9 text-xs h-10"
           />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
 
-        {/* Payment Mode Filter */}
-        <div>
-          <Select
-            value={filters.paymentMode}
-            onValueChange={(value) =>
-              setFilters({ ...filters, paymentMode: value })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <div className="flex items-center gap-2 truncate">
-                <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-                <SelectValue placeholder="All Payment Modes" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Payment Modes</SelectItem>
-              <SelectItem value="Cash">Cash</SelectItem>
-              <SelectItem value="UPI">UPI</SelectItem>
-              <SelectItem value="Card">Card</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Cashier Filter (Role-filtered) */}
+        {/* Cashier Filter */}
         <div>
           <Select
             value={filters.cashierId}
-            onValueChange={(value) =>
-              setFilters({ ...filters, cashierId: value })
-            }
+            onValueChange={(val) => setFilters({ ...filters, cashierId: val })}
           >
-            <SelectTrigger className="w-full">
-              <div className="flex items-center gap-2 truncate">
-                <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                <SelectValue placeholder="All Cashiers" />
-              </div>
+            <SelectTrigger className="text-xs h-10">
+              <SelectValue placeholder="All Cashiers" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Cashiers</SelectItem>
-              {cashiers.map((emp) => (
-                <SelectItem key={emp.id} value={String(emp.id)}>
-                  {emp.fullName}
+              {cashiers.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.fullName}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Status Filter */}
+        {/* Payment Filter */}
         <div>
           <Select
-            value={filters.status}
-            onValueChange={(value) => setFilters({ ...filters, status: value })}
+            value={filters.paymentMode}
+            onValueChange={(val) => setFilters({ ...filters, paymentMode: val })}
           >
-            <SelectTrigger className="w-full">
-              <div className="flex items-center gap-2 truncate">
-                <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-                <SelectValue placeholder="All Status" />
-              </div>
+            <SelectTrigger className="text-xs h-10">
+              <SelectValue placeholder="All Payment Types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="Completed">Completed</SelectItem>
-              <SelectItem value="Refunded">Refunded</SelectItem>
-              <SelectItem value="Pending">Pending</SelectItem>
-              <SelectItem value="Cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">All Payment Types</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+              <SelectItem value="card">Card</SelectItem>
+              <SelectItem value="upi">UPI</SelectItem>
             </SelectContent>
           </Select>
         </div>
-      </div>
 
-      {hasActiveFilters && (
-        <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground border-t">
-          <span>Active filters applied</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleReset}
-            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+        {/* Status Filter */}
+        <div className="flex items-center gap-2">
+          <Select
+            value={filters.status}
+            onValueChange={(val) => setFilters({ ...filters, status: val })}
           >
-            <X className="h-3 w-3" />
-            Clear Filters
-          </Button>
+            <SelectTrigger className="text-xs h-10 flex-1">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleReset}
+              className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground"
+              title="Reset Filters"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

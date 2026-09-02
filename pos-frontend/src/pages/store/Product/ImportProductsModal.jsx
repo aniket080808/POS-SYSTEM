@@ -185,7 +185,7 @@ function trimVal(v) {
  */
 function toNumber(v) {
   if (v === null || v === undefined || v === "") return null;
-  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.-]/g, ""));
+  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
   if (isNaN(n) || n < 0) return null;
   return n;
 }
@@ -278,11 +278,21 @@ function validateRows(rows, categoryMap) {
   });
 }
 
-export default function ImportProductsModal({ open, onOpenChange }) {
+export default function ImportProductsModal({
+  open,
+  isOpen,
+  onOpenChange,
+  onClose,
+  onSuccess,
+}) {
   const dispatch = useDispatch();
   const { format: formatCurrency } = useCurrencyFormatter();
   const { store } = useSelector((state) => state.store);
+  const { userProfile } = useSelector((state) => state.user);
   const { categories } = useSelector((state) => state.category);
+
+  const activeStoreId = store?.id || userProfile?.storeId || userProfile?.store?.id;
+  const isDialogOpen = open !== undefined ? open : (isOpen !== undefined ? isOpen : false);
 
   const [file, setFile] = useState(null);
   const [parsing, setParsing] = useState(false);
@@ -315,13 +325,13 @@ export default function ImportProductsModal({ open, onOpenChange }) {
 
   // Ensure categories are loaded for the current store
   useEffect(() => {
-    if (store?.id && open) {
+    if (activeStoreId && isDialogOpen) {
       const token = localStorage.getItem("jwt");
       if (token && (!categories || categories.length === 0)) {
-        dispatch(getCategoriesByStore({ storeId: store.id, token }));
+        dispatch(getCategoriesByStore({ storeId: activeStoreId, token }));
       }
     }
-  }, [store, open, dispatch, categories]);
+  }, [activeStoreId, isDialogOpen, dispatch, categories]);
 
   const validRows = useMemo(
     () => validatedRows.filter((r) => r.errors.length === 0),
@@ -384,7 +394,8 @@ export default function ImportProductsModal({ open, onOpenChange }) {
 
   const handleDialogChange = (openVal) => {
     if (!openVal) resetState();
-    onOpenChange(openVal);
+    if (onOpenChange) onOpenChange(openVal);
+    if (!openVal && onClose) onClose();
   };
 
   const handleDownloadTemplate = () => {
@@ -514,6 +525,14 @@ export default function ImportProductsModal({ open, onOpenChange }) {
               title: "Import complete ✨",
               description: `Successfully imported ${successCount} products into your store.`,
             });
+            if (typeof onSuccess === "function") {
+              onSuccess();
+            }
+            try {
+              const channel = new BroadcastChannel("products_catalog_channel");
+              channel.postMessage({ type: "CATALOG_UPDATED" });
+              channel.close();
+            } catch (e) {}
           } else {
             const reason = normalizeApiError(apiErrorData);
             const failures = validRows.map((row) => ({
@@ -553,7 +572,7 @@ export default function ImportProductsModal({ open, onOpenChange }) {
     // Refresh products catalog in background
     try {
       await dispatch(getProductsByStore(store.id)).unwrap();
-    } catch {
+    } catch (e) {
       // ignore refresh error
     }
   };
@@ -602,7 +621,7 @@ export default function ImportProductsModal({ open, onOpenChange }) {
   );
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogChange}>
+    <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
       <DialogContent className="sm:max-w-[1100px] max-h-[92vh] overflow-y-auto p-0 border-0 bg-gradient-to-b from-card to-card/95 shadow-2xl rounded-2xl">
         {/* Custom scoped animations */}
         <style>{`

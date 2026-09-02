@@ -34,6 +34,7 @@ public class StoreSubscriptionServiceImpl implements StoreSubscriptionService {
     private final StoreRepository storeRepository;
     private final ApprovalRequestRepository approvalRequestRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final com.aniket.repository.SubscriptionPlanRepository subscriptionPlanRepository;
 
     @Override
     @Transactional
@@ -82,7 +83,10 @@ public class StoreSubscriptionServiceImpl implements StoreSubscriptionService {
     @Override
     @Transactional(readOnly = true)
     public StoreSubscriptionStatusResponse getStatusResponseForUser(User user) {
-        Store store = storeRepository.findByStoreAdminId(user.getId());
+        Store store = user.getStore();
+        if (store == null) {
+            store = storeRepository.findByStoreAdminId(user.getId());
+        }
         if (store == null) {
             return StoreSubscriptionStatusResponse.builder().build();
         }
@@ -117,11 +121,16 @@ public class StoreSubscriptionServiceImpl implements StoreSubscriptionService {
             return StoreSubscriptionDetailDTO.builder()
                     .storeId(storeId)
                     .subscriptionStatus(StoreSubscriptionStatus.NONE)
+                    .status("NONE")
                     .build();
         }
 
         StoreSubscription storeSub = getOrCreateForStore(store);
         SubscriptionPlan currentPlan = storeSub.getCurrentPlan();
+        SubscriptionPlan requestedPlan = storeSub.getRequestedPlan();
+
+        // Check if there is an active pending subscription change request
+        boolean isPending = storeSub.getStatus() == StoreSubscriptionStatus.PENDING || requestedPlan != null;
 
         // Find the latest ACTIVE or TRIAL subscription record for start/end dates
         List<Subscription> subs = subscriptionRepository.findByStore(store);
@@ -130,21 +139,80 @@ public class StoreSubscriptionServiceImpl implements StoreSubscriptionService {
                 .max(Comparator.comparing(Subscription::getStartDate))
                 .orElse(null);
 
-        StoreSubscriptionDetailDTO.StoreSubscriptionDetailDTOBuilder builder = StoreSubscriptionDetailDTO.builder()
-                .storeId(storeId)
-                .subscriptionStatus(storeSub.getStatus());
-
-        if (currentPlan != null) {
-            builder.planId(currentPlan.getId())
-                    .planName(currentPlan.getName())
-                    .planPrice(currentPlan.getPrice())
-                    .billingCycle(currentPlan.getBillingCycle());
+        // If not pending, resolve currentPlan from active subscription record if null
+        if (!isPending && currentPlan == null && latestActiveSub != null && latestActiveSub.getPlan() != null) {
+            currentPlan = latestActiveSub.getPlan();
         }
 
-        if (latestActiveSub != null) {
-            builder.status(latestActiveSub.getStatus())
-                    .startDate(latestActiveSub.getStartDate())
-                    .endDate(latestActiveSub.getEndDate());
+        StoreSubscriptionDetailDTO.StoreSubscriptionDetailDTOBuilder builder = StoreSubscriptionDetailDTO.builder()
+                .storeId(storeId)
+                .subscriptionStatus(storeSub.getStatus())
+                .isPendingApproval(isPending);
+
+        if (requestedPlan != null) {
+            builder.requestedPlanId(requestedPlan.getId())
+                    .requestedPlanName(requestedPlan.getName())
+                    .requestedPlanPrice(requestedPlan.getPrice())
+                    .requestedPlanBillingCycle(requestedPlan.getBillingCycle())
+                    .requestedMaxBranches(requestedPlan.getMaxBranches())
+                    .requestedMaxUsers(requestedPlan.getMaxUsers())
+                    .requestedMaxProducts(requestedPlan.getMaxProducts())
+                    .requestedPlan(requestedPlan);
+        }
+
+        if (isPending) {
+            // When pending, show requested plan info with explicit PENDING status
+            builder.status("PENDING");
+            if (currentPlan != null) {
+                builder.planId(currentPlan.getId())
+                        .planName(currentPlan.getName())
+                        .planPrice(currentPlan.getPrice())
+                        .billingCycle(currentPlan.getBillingCycle())
+                        .maxBranches(currentPlan.getMaxBranches())
+                        .maxUsers(currentPlan.getMaxUsers())
+                        .maxProducts(currentPlan.getMaxProducts())
+                        .currentPlan(currentPlan);
+            } else if (requestedPlan != null) {
+                builder.planId(requestedPlan.getId())
+                        .planName(requestedPlan.getName())
+                        .planPrice(requestedPlan.getPrice())
+                        .billingCycle(requestedPlan.getBillingCycle())
+                        .maxBranches(0)
+                        .maxUsers(0)
+                        .maxProducts(0)
+                        .currentPlan(null);
+            }
+        } else {
+            // Active or regular state
+            if (currentPlan != null) {
+                builder.planId(currentPlan.getId())
+                        .planName(currentPlan.getName())
+                        .planPrice(currentPlan.getPrice())
+                        .billingCycle(currentPlan.getBillingCycle())
+                        .maxBranches(currentPlan.getMaxBranches())
+                        .maxUsers(currentPlan.getMaxUsers())
+                        .maxProducts(currentPlan.getMaxProducts())
+                        .currentPlan(currentPlan);
+            }
+
+            if (store.getStatus() == com.aniket.domain.StoreStatus.BLOCKED || storeSub.getStatus() == StoreSubscriptionStatus.INACTIVE) {
+                builder.status("BLOCKED");
+            } else if (storeSub.getStatus() == StoreSubscriptionStatus.ACTIVE) {
+                builder.status("ACTIVE");
+            } else if (latestActiveSub != null) {
+                builder.status(latestActiveSub.getStatus().name());
+            } else {
+                builder.status(storeSub.getStatus() != null ? storeSub.getStatus().name() : "ACTIVE");
+            }
+
+            if (latestActiveSub != null) {
+                builder.startDate(latestActiveSub.getStartDate())
+                        .endDate(latestActiveSub.getEndDate());
+            } else {
+                java.time.LocalDate start = store.getCreatedAt() != null ? store.getCreatedAt().toLocalDate() : java.time.LocalDate.now();
+                builder.startDate(start)
+                        .endDate(start.plusMonths(1));
+            }
         }
 
         return builder.build();

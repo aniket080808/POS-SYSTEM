@@ -1,21 +1,29 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
-import { Upload, Plus } from "lucide-react";
-import { getInventoryByBranch, createInventory, updateInventory } from "@/Redux Toolkit/features/inventory/inventoryThunks";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Package, RefreshCw, Download } from "lucide-react";
+import * as XLSX from "xlsx";
+import {
+  getInventoryByBranch,
+  createInventory,
+  updateInventory,
+} from "@/Redux Toolkit/features/inventory/inventoryThunks";
 import { getProductsByStore } from "@/Redux Toolkit/features/product/productThunks";
 import { toast } from "@/components/ui/use-toast";
 import InventoryTable from "./InventoryTable";
-import InventoryStats from "./InventoryStats";
 import InventoryFilters from "./InventoryFilters";
 import InventoryFormDialog from "./InventoryFormDialog";
 
 const Inventory = () => {
   const dispatch = useDispatch();
-  const branch = useSelector((state) => state.branch.branch);
-  const inventories = useSelector((state) => state.inventory.inventories);
-  const products = useSelector((state) => state.product.products);
-  const fileInputRef = useRef(null);
+  const { branch } = useSelector((state) => state.branch);
+  const { userProfile } = useSelector((state) => state.user);
+  const { store } = useSelector((state) => state.store);
+  const branchId = branch?.id || userProfile?.branchId || userProfile?.branch?.id;
+  const storeId = branch?.storeId || branch?.store?.id || store?.id || userProfile?.storeId || userProfile?.store?.id;
+  const inventories = useSelector((state) => state.inventory.inventories) || [];
+  const products = useSelector((state) => state.product.products) || [];
 
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("all");
@@ -25,27 +33,40 @@ const Inventory = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editInventory, setEditInventory] = useState(null);
   const [editQuantity, setEditQuantity] = useState(1);
-  const [editProductId, setEditProductId] = useState("");
 
   useEffect(() => {
-    if (branch?.id) dispatch(getInventoryByBranch(branch?.id));
-    if (branch?.storeId) dispatch(getProductsByStore(branch?.storeId));
-  }, [branch, dispatch]);
+    if (branchId) dispatch(getInventoryByBranch(branchId));
+    if (storeId) dispatch(getProductsByStore(storeId));
+  }, [branchId, storeId, dispatch]);
 
-  // Map inventory to table rows with product info
-  const inventoryRows = (inventories || []).map((inv) => {
-    const product = (products || []).find((p) => p?.id === inv.productId) || {};
-    return {
-      id: inv?.id,
-      sku: product.sku || inv.productId,
-      name: product.name || "Unknown Product",
-      quantity: inv.quantity,
-      category: product.category || "",
-      productId: inv.productId,
-    };
-  });
+  const inventoryRows = useMemo(() => {
+    const seenIds = new Set();
+    return inventories
+      .filter((inv) => {
+        if (!inv || !inv.id) return false;
+        if (seenIds.has(inv.id)) return false;
+        seenIds.add(inv.id);
+        return true;
+      })
+      .map((inv) => {
+        const product = products.find((p) => p?.id === inv.productId) || {};
+        const categoryName = typeof product.category === "object"
+          ? (product.category?.name || "General")
+          : (product.category || product.categoryName || "General");
 
-  // Filter inventory based on search and filters
+        return {
+          id: inv.id,
+          sku: product.sku || inv.productId,
+          name: product.name || "Unknown Product",
+          quantity: inv.quantity,
+          category: categoryName,
+          productId: inv.productId,
+          sellingPrice: product.sellingPrice || product.mrp || 0,
+          image: product.image,
+        };
+      });
+  }, [inventories, products]);
+
   const filteredRows = inventoryRows.filter((row) => {
     const matchesSearch =
       !searchTerm.trim() ||
@@ -56,179 +77,149 @@ const Inventory = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Add Inventory
   const handleAddInventory = async () => {
-    if (!selectedProductId || !quantity || !branch?.id) return;
+    if (!selectedProductId) {
+      toast({ title: "Validation Error", description: "Please select a product.", variant: "destructive" });
+      return;
+    }
     try {
       await dispatch(
         createInventory({
           branchId: branch?.id,
-          productId: Number(selectedProductId),
+          productId: selectedProductId,
           quantity: Number(quantity),
         })
       ).unwrap();
-      toast({
-        title: "Inventory Added",
-        description: `Successfully added inventory for selected product.`,
-      });
+      toast({ title: "Inventory Added", description: "Product stock recorded successfully." });
       setIsAddDialogOpen(false);
       setSelectedProductId("");
       setQuantity(1);
-      dispatch(getInventoryByBranch(branch?.id));
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to add inventory",
-        variant: "destructive",
-      });
+      if (branch?.id) dispatch(getInventoryByBranch(branch?.id));
+    } catch (err) {
+      toast({ title: "Error", description: err || "Failed to add stock.", variant: "destructive" });
     }
   };
 
-  // Edit Inventory
-  const handleOpenEditDialog = (row) => {
-    setEditInventory(row);
-    setEditQuantity(row.quantity);
-    setEditProductId(row.productId);
+  const handleOpenEdit = (item) => {
+    setEditInventory(item);
+    setEditQuantity(item.quantity);
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateInventory = async () => {
-    if (!editInventory?.id || !branch?.id) return;
+    if (!editInventory?.id) return;
     try {
       await dispatch(
         updateInventory({
           id: editInventory.id,
-          dto: {
-            branchId: branch.id,
-            productId: editInventory.productId,
-            quantity: Number(editQuantity),
-          },
+          quantity: Number(editQuantity),
         })
       ).unwrap();
-      toast({
-        title: "Inventory Updated",
-        description: `Updated quantity to ${editQuantity}.`,
-      });
+      toast({ title: "Stock Updated", description: "Inventory count updated successfully." });
       setIsEditDialogOpen(false);
       setEditInventory(null);
-      setEditQuantity(1);
-      setEditProductId("");
-      dispatch(getInventoryByBranch(branch.id));
-    } catch (error) {
+      if (branch?.id) dispatch(getInventoryByBranch(branch?.id));
+    } catch (err) {
+      toast({ title: "Error", description: err || "Failed to update stock.", variant: "destructive" });
+    }
+  };
+
+  const handleExportStockSheet = () => {
+    if (!filteredRows || filteredRows.length === 0) {
       toast({
-        title: "Error",
-        description: error?.message || "Failed to update inventory",
+        title: "No Data",
+        description: "No branch stock items available to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const exportData = filteredRows.map((item, idx) => ({
+        "S.No": idx + 1,
+        "SKU / Barcode": item.sku || "-",
+        "Product Name": item.name || "-",
+        "Category": item.category || "General",
+        "Shelf Stock Qty": item.quantity ?? 0,
+        "Selling Price (₹)": item.sellingPrice || 0,
+        "Stock Status": (item.quantity ?? 0) <= 0 ? "Out of Stock" : (item.quantity ?? 0) <= 5 ? "Low Stock" : "In Stock",
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Branch Stock Audit");
+      const branchName = (branch?.name || "Branch").replace(/[^a-zA-Z0-9]/g, "_");
+      XLSX.writeFile(wb, `${branchName}_Stock_Audit_${new Date().toISOString().split("T")[0]}.xlsx`);
+
+      toast({
+        title: "Stock Audit Exported",
+        description: `Exported ${exportData.length} inventory items successfully.`,
+      });
+    } catch (err) {
+      console.error("Export error:", err);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate Excel file.",
         variant: "destructive",
       });
     }
   };
 
-  // CSV Import handler
-  const handleImportCSV = (e) => {
-    const file = e.target.files[0];
-    if (!file || !branch?.id) return;
-
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        const text = evt.target.result;
-        const lines = text.split(/\r\n|\n/).filter((line) => line.trim() !== "");
-        if (lines.length < 2) {
-          toast({
-            title: "Invalid CSV",
-            description: "CSV file must contain at least a header row and one data row.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
-        const skuIdx = headers.findIndex((h) => h.includes("sku") || h.includes("code"));
-        const nameIdx = headers.findIndex((h) => h.includes("name") || h.includes("product"));
-        const qtyIdx = headers.findIndex((h) => h.includes("qty") || h.includes("quantity") || h.includes("stock"));
-
-        let importedCount = 0;
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(",").map((c) => c.trim());
-          if (cols.length === 0) continue;
-
-          let matchedProduct = null;
-          if (skuIdx !== -1 && cols[skuIdx]) {
-            matchedProduct = products.find((p) => p.sku && p.sku.toLowerCase() === cols[skuIdx].toLowerCase());
-          }
-          if (!matchedProduct && nameIdx !== -1 && cols[nameIdx]) {
-            matchedProduct = products.find((p) => p.name && p.name.toLowerCase() === cols[nameIdx].toLowerCase());
-          }
-
-          const parsedQty = qtyIdx !== -1 && !isNaN(Number(cols[qtyIdx])) ? Number(cols[qtyIdx]) : 1;
-
-          if (matchedProduct) {
-            await dispatch(
-              createInventory({
-                branchId: branch.id,
-                productId: matchedProduct.id,
-                quantity: parsedQty,
-              })
-            ).unwrap();
-            importedCount++;
-          }
-        }
-
-        toast({
-          title: "Import Completed",
-          description: `Successfully imported / updated ${importedCount} items from CSV.`,
-        });
-        dispatch(getInventoryByBranch(branch.id));
-      } catch (err) {
-        toast({
-          title: "Import Error",
-          description: err?.message || "Failed to parse CSV file.",
-          variant: "destructive",
-        });
-      } finally {
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }
-    };
-    reader.readAsText(file);
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Inventory Management</h1>
-        <div className="flex gap-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".csv"
-            className="hidden"
-            onChange={handleImportCSV}
-          />
-          <Button className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add Inventory
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Branch Inventory & Stock
+            </h1>
+            <Badge variant="secondary" className="px-2.5 py-0.5 text-xs font-mono font-bold">
+              {filteredRows.length} {filteredRows.length === 1 ? "Item" : "Items"}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Surveillance of local workstation stock levels, SKU allocations, and safety reorders
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="text-xs h-10 gap-1.5 cursor-pointer"
+            onClick={handleExportStockSheet}
+          >
+            <Download className="h-3.5 w-3.5" /> Export Stock (.xlsx)
           </Button>
-          <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4" />
-            Import CSV
+
+          <Button
+            variant="outline"
+            className="text-xs h-10 gap-1.5 cursor-pointer"
+            onClick={() => branch?.id && dispatch(getInventoryByBranch(branch.id))}
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Sync
+          </Button>
+
+          <Button
+            onClick={() => setIsAddDialogOpen(true)}
+            className="text-xs font-bold h-10 gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" /> Allocate Stock
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
       <InventoryFilters
         searchTerm={searchTerm}
         onSearch={(e) => setSearchTerm(e.target.value)}
         category={category}
         onCategoryChange={setCategory}
-        products={products || []}
-        inventoryRows={inventoryRows}
+        products={products}
+        inventoryRows={filteredRows}
       />
 
-      {/* Table */}
-      <InventoryTable rows={filteredRows} onEdit={handleOpenEditDialog} />
+      <InventoryTable rows={filteredRows} onEdit={handleOpenEdit} />
 
-      {/* Add/Edit Dialog (reused) */}
+      {/* Add Dialog */}
       <InventoryFormDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
@@ -239,11 +230,13 @@ const Inventory = () => {
         onSubmit={handleAddInventory}
         mode="add"
       />
+
+      {/* Edit Dialog */}
       <InventoryFormDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        selectedProductId={editProductId}
-        setSelectedProductId={setEditProductId}
+        selectedProductId={editInventory?.productId}
+        setSelectedProductId={() => {}}
         quantity={editQuantity}
         setQuantity={setEditQuantity}
         onSubmit={handleUpdateInventory}

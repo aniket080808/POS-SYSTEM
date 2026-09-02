@@ -15,6 +15,7 @@ public interface UserService {
 	User getUserFromJwtToken(String jwt) throws UserException;
 	User getUserById(Long id) throws UserException;
 	Set<User> getUserByRole(UserRole role) throws UserException;
+	Set<User> getUserByRoleForCurrentUser(UserRole role) throws UserException;
 	List<User> getUsers() throws UserException;
 	User getCurrentUser() throws UserException;
 	User updateProfile(User user, String fullName, String phone, String email) throws UserException;

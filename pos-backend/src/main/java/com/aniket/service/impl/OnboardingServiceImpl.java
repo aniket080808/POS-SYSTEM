@@ -18,6 +18,8 @@ import com.aniket.repository.StoreRepository;
 import com.aniket.repository.UserRepository;
 import com.aniket.service.ActivityLogService;
 import com.aniket.service.ApprovalRequestService;
+import com.aniket.service.EmailService;
+import com.aniket.service.EmailTemplateService;
 import com.aniket.service.NotificationService;
 import com.aniket.service.OnboardingService;
 import com.aniket.service.StoreSubscriptionService;
@@ -47,6 +49,8 @@ public class OnboardingServiceImpl implements OnboardingService {
     private final NotificationService notificationService;
     private final ApprovalRequestService approvalRequestService;
     private final StoreSubscriptionService storeSubscriptionService;
+    private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
 
     @Override
     public AuthResponse completeOnboarding(OnboardingRequestDTO dto) throws UserException {
@@ -86,6 +90,20 @@ public class OnboardingServiceImpl implements OnboardingService {
                     admin.getId()
             );
         });
+
+        // Send themed Welcome & Application Confirmation Email to the store owner
+        if (savedUser.getEmail() != null) {
+            try {
+                String emailBody = emailTemplateService.buildStoreSubmittedEmail(
+                        savedUser.getFullName(),
+                        savedStore.getBrand(),
+                        savedStore.getStoreType()
+                );
+                emailService.sendEmail(savedUser.getEmail(), "Welcome to NexPOS — Application Received", emailBody);
+            } catch (Exception e) {
+                // Fail-safe: do not fail onboarding if SMTP has network issues
+            }
+        }
 
         // Step 4: Construct AuthResponse with user and store details
         UserDTO userDTO = UserMapper.toDTO(savedUser);
@@ -139,7 +157,7 @@ public class OnboardingServiceImpl implements OnboardingService {
         StoreContact contact = new StoreContact();
         contact.setAddress(dto.getStoreAddress() != null ? dto.getStoreAddress() : "");
         contact.setEmail(dto.getEmail());
-        contact.setPhone(dto.getPhone() != null ? dto.getPhone() : "");
+        contact.setPhone(dto.getPhone() != null && !dto.getPhone().trim().isEmpty() ? dto.getPhone().trim() : null);
         store.setContact(contact);
 
         boolean autoApprove = systemSettingService.getBooleanSetting("autoApproveStores", false);

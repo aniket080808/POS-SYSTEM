@@ -61,4 +61,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     boolean existsBySku(String sku);
     
     Optional<Product> findBySku(String sku);
+
+    @Query("""
+        SELECT COUNT(DISTINCT p.id)
+        FROM Product p
+        JOIN BranchInventory bi ON bi.product.id = p.id
+        WHERE bi.store.id = :storeId
+    """)
+    long countByStoreId(@Param("storeId") Long storeId);
 }

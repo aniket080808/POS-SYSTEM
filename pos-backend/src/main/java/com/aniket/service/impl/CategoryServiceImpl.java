@@ -1,4 +1,3 @@
-
 package com.aniket.service.impl;
 
 import com.aniket.domain.UserRole;
@@ -32,10 +31,11 @@ public class CategoryServiceImpl implements CategoryService {
         Store store = storeRepository.findById(dto.getStoreId())
                 .orElseThrow(() -> new EntityNotFoundException("Store not found"));
 
-        checkAuthority(user, store);
+        checkManageAuthority(user, store);
 
         Category category = Category.builder()
                 .name(dto.getName())
+                .description(dto.getDescription())
                 .store(store)
                 .build();
 
@@ -48,9 +48,10 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
         User user = userService.getCurrentUser();
-        checkAuthority(user, category.getStore());
+        checkManageAuthority(user, category.getStore());
 
         category.setName(dto.getName());
+        category.setDescription(dto.getDescription());
         return CategoryMapper.toDto(categoryRepository.save(category));
     }
 
@@ -64,7 +65,7 @@ public class CategoryServiceImpl implements CategoryService {
         } catch (UserException e) {
             throw new AccessDeniedException("You are not authorized to view this store's categories.", e);
         }
-        checkAuthority(user, store);
+        checkViewAuthority(user, store);
         return categoryRepository.findByStoreId(storeId).stream()
                 .map(CategoryMapper::toDto)
                 .collect(Collectors.toList());
@@ -76,23 +77,42 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
         User user = userService.getCurrentUser();
-        checkAuthority(user, category.getStore());
+        checkManageAuthority(user, category.getStore());
 
         categoryRepository.delete(category);
     }
 
-    private void checkAuthority(User user, Store store) {
-        boolean isAdmin = user.getRole().equals(UserRole.ROLE_STORE_ADMIN);
-        boolean isManager = user.getRole().equals(UserRole.ROLE_STORE_MANAGER);
-        boolean isSameStore = user.getStore() != null && user.getStore().getId().equals(store.getId());
-
-        if (isAdmin && isSameStore) {
+    private void checkViewAuthority(User user, Store store) {
+        if (user.getRole() == UserRole.ROLE_ADMIN) {
             return;
         }
-        if (isManager && isSameStore) {
+
+        Long userStoreId = null;
+        if (user.getStore() != null) {
+            userStoreId = user.getStore().getId();
+        } else if (user.getBranch() != null && user.getBranch().getStore() != null) {
+            userStoreId = user.getBranch().getStore().getId();
+        }
+
+        if (userStoreId != null && userStoreId.equals(store.getId())) {
+            return;
+        }
+        throw new AccessDeniedException("You do not have permission to view categories for this store.");
+    }
+
+    private void checkManageAuthority(User user, Store store) {
+        if (user.getRole() == UserRole.ROLE_ADMIN) {
+            return;
+        }
+        boolean isStoreAdmin = user.getRole().equals(UserRole.ROLE_STORE_ADMIN);
+        boolean isStoreManager = user.getRole().equals(UserRole.ROLE_STORE_MANAGER);
+
+        Long userStoreId = user.getStore() != null ? user.getStore().getId() : null;
+        boolean isSameStore = userStoreId != null && userStoreId.equals(store.getId());
+
+        if ((isStoreAdmin || isStoreManager) && isSameStore) {
             return;
         }
         throw new AccessDeniedException("You do not have permission to manage this category.");
     }
 }
-

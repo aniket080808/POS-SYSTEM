@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Store, CheckCircle, Clock } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { getStoreByAdmin, updateStore } from "@/Redux Toolkit/features/store/storeThunks";
 import { fetchStoreSubscriptionStatus } from "@/Redux Toolkit/features/storeSubscription/storeSubscriptionThunks";
@@ -13,7 +13,6 @@ import {
   EditStoreDialog,
   LoadingState,
   EmptyState,
-  getInitialValues
 } from "./components";
 
 export default function Stores() {
@@ -23,9 +22,22 @@ export default function Stores() {
   const { statusResponse } = useSelector((state) => state.storeSubscription);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [storeData, setStoreData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchStoreData = useCallback(async () => {
+  useEffect(() => {
+    if (!store?.id) {
+      fetchStoreData();
+    }
+  }, [dispatch, store?.id]);
+
+  useEffect(() => {
+    if (store) {
+      setStoreData(store);
+    }
+  }, [store]);
+
+  const fetchStoreData = async () => {
     setRefreshing(true);
     try {
       await dispatch(getStoreByAdmin()).unwrap();
@@ -38,33 +50,26 @@ export default function Stores() {
     } finally {
       setRefreshing(false);
     }
-  }, [dispatch]);
-
-  useEffect(() => {
-    fetchStoreData();
-    dispatch(fetchStoreSubscriptionStatus());
-  }, [dispatch, fetchStoreData, user]);
-
-  const storeData = store;
+  };
 
   const handleEditStore = async (values, { setSubmitting, resetForm }) => {
     try {
-      await dispatch(updateStore({ 
-        id: storeData.id, 
-        storeData: values
-      })).unwrap();
-      
-      setEditDialogOpen(false);
+      await dispatch(
+        updateStore({
+          id: storeData.id,
+          storeData: values,
+        })
+      ).unwrap();
       toast({
-        title: "Success",
-        description: "Store updated successfully",
+        title: "Store Profile Updated",
+        description: "Store profile information has been saved.",
       });
+      setEditDialogOpen(false);
       fetchStoreData();
-      resetForm({ values });
     } catch (err) {
       toast({
-        title: "Error",
-        description: err || "Failed to update store",
+        title: "Update Failed",
+        description: err || "Failed to update store information",
         variant: "destructive",
       });
     } finally {
@@ -72,84 +77,67 @@ export default function Stores() {
     }
   };
 
-  const handleEditClick = () => {
-    setEditDialogOpen(true);
-  };
+  if (loading && !refreshing && !storeData) {
+    return <LoadingState />;
+  }
+
+  if (!storeData && !loading) {
+    return <EmptyState onRefresh={fetchStoreData} refreshing={refreshing} />;
+  }
+
+  const currentPlan = statusResponse?.currentPlan;
+  const isSubscriptionActive = statusResponse?.subscriptionStatus === "ACTIVE";
 
   return (
     <div className="space-y-6">
-      <StoreHeader 
+      <StoreHeader
+        storeData={storeData}
         onRefresh={fetchStoreData}
         refreshing={refreshing}
-        loading={loading}
       />
 
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-2xl">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      {loading ? (
-        <LoadingState />
-      ) : !storeData ? (
-        <EmptyState />
-      ) : (
-        <div className="grid gap-6">
-          <StoreInfoCard 
-            storeData={storeData}
-            onEditClick={handleEditClick}
-          />
-
-          {/* Subscription Summary */}
-          {statusResponse && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5" />
-                  Current Subscription
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {statusResponse.currentPlan ? (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-base font-medium">{statusResponse.currentPlan.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        ₹{statusResponse.currentPlan.price} / {statusResponse.currentPlan.billingCycle?.toLowerCase()}
-                      </p>
-                    </div>
-                    {statusResponse.subscriptionStatus === 'ACTIVE' && (
-                      <Badge className="bg-green-600 hover:bg-green-600 text-white">Active</Badge>
-                    )}
-                    {statusResponse.subscriptionStatus === 'PENDING' && (
-                      <Badge className="bg-yellow-500 hover:bg-yellow-500 text-white">Pending</Badge>
-                    )}
-                    {statusResponse.subscriptionStatus === 'REJECTED' && (
-                      <Badge className="bg-red-600 hover:bg-red-600 text-white">Rejected</Badge>
-                    )}
-                    {statusResponse.subscriptionStatus === 'NONE' && (
-                      <Badge variant="secondary">No Plan</Badge>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">No active subscription plan</p>
-                    <Badge variant="secondary">No Plan</Badge>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
+      {/* Subscription Tier Summary Card */}
+      {currentPlan && (
+        <Card className="border-[#262422] bg-card shadow-sm">
+          <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-[#262422] text-white flex items-center justify-center shadow-xs">
+                <CreditCard className="w-6 h-6 text-[#C9A227]" />
+              </div>
+              <div>
+                <div className="font-bold text-base text-foreground">
+                  Active Tier: {currentPlan.name}
+                </div>
+                <div className="text-xs text-muted-foreground font-mono">
+                  ₹{currentPlan.price?.toLocaleString()} / {currentPlan.billingCycle?.toLowerCase()}
+                </div>
+              </div>
+            </div>
+            <Badge variant={isSubscriptionActive ? "active" : "warning"} className="text-xs px-3 py-1 self-start sm:self-auto">
+              {isSubscriptionActive ? "ACTIVE SUBSCRIPTION" : "PENDING VERIFICATION"}
+            </Badge>
+          </CardContent>
+        </Card>
       )}
 
+      {/* Store Info Card */}
+      <StoreInfoCard
+        storeData={storeData}
+        onEditClick={() => setEditDialogOpen(true)}
+      />
+
+      {/* Edit Store Dialog */}
       <EditStoreDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        initialValues={getInitialValues(storeData)}
+        storeData={storeData}
         onSubmit={handleEditStore}
-        isSubmitting={false}
       />
     </div>
   );

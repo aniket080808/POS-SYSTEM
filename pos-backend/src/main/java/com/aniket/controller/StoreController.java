@@ -37,6 +37,7 @@ public class StoreController {
 
     // 🔹 Create Store
     @PostMapping
+    @PreAuthorize("hasRole('STORE_ADMIN')")
     public ResponseEntity<StoreDTO> createStore(@Valid @RequestBody StoreDTO storeDto,
                                                 @RequestHeader("Authorization") String jwt) throws UserException {
         User user = userService.getUserFromJwtToken(jwt);
@@ -45,6 +46,7 @@ public class StoreController {
 
     // 🔹 Get Store by ID
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_ADMIN', 'BRANCH_MANAGER', 'BRANCH_CASHIER', 'ADMIN')")
     public ResponseEntity<StoreDTO> getStoreById(@PathVariable Long id) throws ResourceNotFoundException {
         return ResponseEntity.ok(storeService.getStoreById(id));
     }
@@ -53,6 +55,7 @@ public class StoreController {
 
     // 🔹 Update Store
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'ADMIN')")
     public ResponseEntity<StoreDTO> updateStore(
             @PathVariable Long id,
             @RequestBody StoreDTO storeDto)
@@ -72,11 +75,21 @@ public class StoreController {
         return ResponseEntity.ok(storeService.updateStoreAsSuperAdmin(id, storeDto));
     }
 
-    // 🔹 Delete Store
+    // 🔹 Delete Store (Self-scoped for Store Admin)
     @DeleteMapping()
+    @PreAuthorize("hasRole('STORE_ADMIN')")
     public ResponseEntity<ApiResponse> deleteStore()
             throws ResourceNotFoundException, UserException {
         storeService.deleteStore();
+        return ResponseEntity.ok(new ApiResponse("store deleted successfully"));
+    }
+
+    // 🔹 Delete Store by ID (Role-aware: Super Admin can delete any, Store Admin can only delete own store)
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'ADMIN')")
+    public ResponseEntity<ApiResponse> deleteStoreById(@PathVariable Long id)
+            throws ResourceNotFoundException, UserException {
+        storeService.deleteStore(id);
         return ResponseEntity.ok(new ApiResponse("store deleted successfully"));
     }
 
@@ -84,19 +97,21 @@ public class StoreController {
 
     // ✅ Get Stores by Admin User ID
     @GetMapping("/admin")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_MANAGER', 'BRANCH_ADMIN', 'BRANCH_CASHIER', 'ADMIN')")
     public ResponseEntity<StoreDTO> getStoresByAdminId() throws UserException {
         Store store=storeService.getStoreByAdminId();
         return ResponseEntity.ok(StoreMapper.toDto(store));
     }
 
     @GetMapping("/employee")
+    @PreAuthorize("hasAnyRole('STORE_MANAGER', 'BRANCH_MANAGER', 'BRANCH_ADMIN', 'BRANCH_CASHIER', 'ADMIN')")
     public ResponseEntity<StoreDTO> getStoresByEmployee() throws UserException {
         StoreDTO store=storeService.getStoreByEmployee();
         return ResponseEntity.ok(store);
     }
 
     @GetMapping("/{storeId}/employee/list")
-    @PreAuthorize("hasAnyAuthority('ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN')")
+    @PreAuthorize("hasAnyRole('STORE_MANAGER', 'STORE_ADMIN', 'ADMIN')")
     public ResponseEntity<List<UserDTO>> getStoreEmployeeList(
             @PathVariable Long storeId) throws UserException {
         List<UserDTO> users=storeService.getEmployeesByStore(storeId);
@@ -104,7 +119,7 @@ public class StoreController {
     }
 
     @PostMapping("/add/employee")
-    @PreAuthorize("hasAnyAuthority('STORE_MANAGER','STORE_ADMIN')")
+    @PreAuthorize("hasAnyRole('STORE_MANAGER', 'STORE_ADMIN', 'ADMIN')")
     public ResponseEntity<UserDTO> addEmployee(
             @RequestBody UserDTO userDTO) throws UserException {
         UserDTO user=storeService.addEmployee(null, userDTO);

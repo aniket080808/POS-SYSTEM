@@ -1,29 +1,27 @@
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { IndianRupee, BellOff, Loader2 } from "lucide-react";
+import { BellOff, Loader2 } from "lucide-react";
 import { dismissAlert } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
+import { useCurrencyFormatter } from "@/utils/currencyUtils";
+import { Badge } from "@/components/ui/badge";
 
 const RefundSpikeTable = () => {
   const dispatch = useDispatch();
+  const { format: formatCurrency } = useCurrencyFormatter();
   const { storeAlerts, loading } = useSelector((state) => state.storeAnalytics);
   const user = useSelector((state) => state.user.userProfile);
 
   const handleDismiss = (refundId) => {
     if (user?.id) {
-      dispatch(dismissAlert({
-        storeAdminId: user.id,
-        alertType: 'REFUND_SPIKE',
-        referenceId: refundId
-      }));
+      dispatch(
+        dismissAlert({
+          storeAdminId: user.id,
+          alertType: "REFUND_SPIKE",
+          referenceId: refundId,
+        })
+      );
     }
   };
 
@@ -33,53 +31,55 @@ const RefundSpikeTable = () => {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>Cashier Name</TableHead>
-          <TableHead>Amount</TableHead>
+          <TableHead>Cashier</TableHead>
+          <TableHead>Refund Amount</TableHead>
           <TableHead>Reason</TableHead>
-          <TableHead>Spike Reason</TableHead>
+          <TableHead>Anomaly Flag</TableHead>
           <TableHead className="text-right">Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {loading ? (
           <TableRow>
-            <TableCell colSpan={6} className="text-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin inline-block mr-2 text-emerald-600" />
-              Checking refund anomaly feeds...
+            <TableCell colSpan={5} className="text-center py-8 text-xs font-semibold text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin inline-block mr-2 text-[#B8860B]" />
+              Auditing refund activity streams...
             </TableCell>
           </TableRow>
         ) : refunds.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
-              No refund spikes or anomalous activities detected.
+            <TableCell colSpan={5} className="text-center py-8 text-xs font-semibold text-muted-foreground">
+              No anomalous refund spikes or till reversals recorded.
             </TableCell>
           </TableRow>
         ) : (
           refunds.map((refund) => (
             <TableRow key={refund.id}>
-              <TableCell className="font-mono text-xs">{refund.id}</TableCell>
               <TableCell>
-                <div className="font-medium text-sm">{refund.cashierName || 'Cashier'}</div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1 font-semibold text-emerald-700 text-sm">
-                  <IndianRupee className="h-3.5 w-3.5 text-gray-400" />
-                  {refund.amount ? refund.amount.toFixed(2) : '0.00'}
+                <div className="font-bold text-xs text-foreground">
+                  {refund.cashierName || "Staff"}
                 </div>
               </TableCell>
               <TableCell>
-                <p className="text-xs text-muted-foreground">{refund.reason || 'N/A'}</p>
+                <span className="font-mono text-xs font-bold text-destructive">
+                  {formatCurrency(refund.amount || 0)}
+                </span>
               </TableCell>
-              <TableCell className="text-red-600 font-medium text-xs">
-                {refund.spikeReason || '—'}
+              <TableCell>
+                <p className="text-xs text-muted-foreground">{refund.reason || "N/A"}</p>
+              </TableCell>
+              <TableCell>
+                <Badge variant="error" className="text-[10px] font-bold">
+                  {refund.spikeReason || "Volume Spike"}
+                </Badge>
               </TableCell>
               <TableCell className="text-right">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                  className="text-xs h-8 text-muted-foreground hover:text-foreground"
                   onClick={() => handleDismiss(refund.id)}
+                  title="Dismiss alert"
                 >
                   <BellOff className="h-3.5 w-3.5 mr-1" /> Dismiss
                 </Button>

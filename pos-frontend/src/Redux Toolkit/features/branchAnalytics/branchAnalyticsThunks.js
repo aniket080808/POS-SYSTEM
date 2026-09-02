@@ -73,7 +73,8 @@ export const getCategoryWiseSalesBreakdown = createAsyncThunk(
   async ({ branchId, date }, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/branch-analytics/category-sales?branchId=${branchId}&date=${date}`, { headers });
+      const dateParam = date ? `&date=${date}` : '';
+      const res = await api.get(`/api/branch-analytics/category-sales?branchId=${branchId}${dateParam}`, { headers });
       console.log('✅ Category-wise sales breakdown response:', res.data);
       return res.data;
     } catch (err) {
@@ -105,7 +106,8 @@ export const getPaymentBreakdown = createAsyncThunk(
   async ({ branchId, date }, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/branch-analytics/payment-breakdown?branchId=${branchId}&date=${date}`, { headers });
+      const dateParam = date ? `&date=${date}` : '';
+      const res = await api.get(`/api/branch-analytics/payment-breakdown?branchId=${branchId}${dateParam}`, { headers });
       console.log('✅ Payment breakdown response:', res.data);
       return res.data;
     } catch (err) {

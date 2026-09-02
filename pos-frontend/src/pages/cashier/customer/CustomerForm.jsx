@@ -1,4 +1,4 @@
-
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,21 +8,20 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useDispatch, useSelector } from "react-redux";
 import { createCustomer } from "@/Redux Toolkit/features/customer/customerThunks";
 import { toast } from "sonner";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
+import { UserPlus, Loader2 } from "lucide-react";
 
 const CustomerForm = ({
   showCustomerForm,
-  setShowCustomerForm
+  setShowCustomerForm,
 }) => {
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.customer);
 
-  // Validation schema using Yup
   const validationSchema = Yup.object({
     fullName: Yup.string()
       .required("Full name is required")
@@ -30,7 +29,7 @@ const CustomerForm = ({
       .max(50, "Full name must be less than 50 characters"),
     phone: Yup.string()
       .required("Phone number is required")
-      .matches(/^[+]?[1-9][\d]{0,15}$/, "Please enter a valid phone number"),
+      .matches(/^[\+]?[1-9][\d]{0,15}$/, "Please enter a valid phone number"),
     email: Yup.string().email("Please enter a valid email address").optional(),
   });
 
@@ -43,13 +42,9 @@ const CustomerForm = ({
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
       await dispatch(createCustomer(values)).unwrap();
-      toast.success("Customer created successfully!");
-
-      // Reset form and close dialog
+      toast.success("Customer registered successfully.");
       resetForm();
       setShowCustomerForm(false);
-
- 
     } catch (error) {
       toast.error(error || "Failed to create customer");
     } finally {
@@ -63,9 +58,12 @@ const CustomerForm = ({
 
   return (
     <Dialog open={showCustomerForm} onOpenChange={setShowCustomerForm}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add New Customer</DialogTitle>
+      <DialogContent className="sm:max-w-md bg-card border-border">
+        <DialogHeader className="pb-3 border-b border-border/60">
+          <DialogTitle className="text-base font-bold flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-[#B8860B]" />
+            Register Customer Profile
+          </DialogTitle>
         </DialogHeader>
 
         <Formik
@@ -74,68 +72,75 @@ const CustomerForm = ({
           onSubmit={handleSubmit}
         >
           {({ isSubmitting, errors, touched }) => (
-            <Form className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name *</Label>
+            <Form className="space-y-4 py-2">
+              <div>
+                <label htmlFor="fullName" className="text-sm font-semibold text-foreground mb-1.5 block">
+                  Customer Full Name <span className="text-destructive">*</span>
+                </label>
                 <Field
                   as={Input}
                   id="fullName"
                   name="fullName"
-                  placeholder="Enter customer full name"
-                  className={
-                    errors.fullName && touched.fullName ? "border-red-500" : ""
-                  }
+                  placeholder="e.g. Rahul Sharma"
+                  className={`text-xs h-10 ${
+                    errors.fullName && touched.fullName ? "border-destructive ring-1 ring-destructive" : ""
+                  }`}
                 />
                 <ErrorMessage
                   name="fullName"
                   component="p"
-                  className="text-sm text-red-500"
+                  className="text-xs text-destructive mt-1 font-medium"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number *</Label>
+              <div>
+                <label htmlFor="phone" className="text-sm font-semibold text-foreground mb-1.5 block">
+                  Contact Phone Number <span className="text-destructive">*</span>
+                </label>
                 <Field
                   as={Input}
                   id="phone"
                   name="phone"
-                  placeholder="Enter phone number"
-                  className={
-                    errors.phone && touched.phone ? "border-red-500" : ""
-                  }
+                  placeholder="e.g. +91 9876543210"
+                  className={`text-xs h-10 font-mono ${
+                    errors.phone && touched.phone ? "border-destructive ring-1 ring-destructive" : ""
+                  }`}
                 />
                 <ErrorMessage
                   name="phone"
                   component="p"
-                  className="text-sm text-red-500"
+                  className="text-xs text-destructive mt-1 font-medium"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              <div>
+                <label htmlFor="email" className="text-sm font-semibold text-foreground mb-1.5 block">
+                  Email Address (Optional)
+                </label>
                 <Field
                   as={Input}
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="Enter email address"
-                  className={
-                    errors.email && touched.email ? "border-red-500" : ""
-                  }
+                  placeholder="e.g. rahul@example.com"
+                  className={`text-xs h-10 ${
+                    errors.email && touched.email ? "border-destructive ring-1 ring-destructive" : ""
+                  }`}
                 />
                 <ErrorMessage
                   name="email"
                   component="p"
-                  className="text-sm text-red-500"
+                  className="text-xs text-destructive mt-1 font-medium"
                 />
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={handleCancel} type="button">
+              <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+                <Button variant="outline" size="sm" onClick={handleCancel} type="button" className="text-xs h-10">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting || loading}>
-                  {isSubmitting || loading ? "Creating..." : "Create Customer"}
+                <Button type="submit" size="sm" disabled={isSubmitting || loading} className="text-xs font-bold h-10 gap-1.5">
+                  {isSubmitting || loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  {isSubmitting || loading ? "Registering..." : "Save Customer"}
                 </Button>
               </DialogFooter>
             </Form>

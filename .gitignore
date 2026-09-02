@@ -73,7 +73,16 @@ ehthumbs.db
 *.~
 
 # =====================
-# MISC / CACHE
+# MISC / CACHE / BACKUPS / TEST SCRIPTS
 # =====================
 *.orig
 *.rej
+backups/
+pos-backend/backups/
+pos_backup_*.sql
+neon_pos_*.sql
+*.dump
+*.sql
+!pos-backend/src/main/resources/db/**/*.sql
+audit-scripts/
+

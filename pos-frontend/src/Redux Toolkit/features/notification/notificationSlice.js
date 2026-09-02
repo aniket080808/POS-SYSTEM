@@ -1,5 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchNotifications, fetchUnreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } from './notificationThunks';
+import { logout } from '../user/userThunks';
 
 const initialState = {
   notifications: [],
@@ -20,10 +21,13 @@ const notificationSlice = createSlice({
     },
     syncUnreadCount: (state, action) => {
         state.unreadCount = action.payload;
-    }
+    },
+    resetNotifications: () => initialState,
   },
   extraReducers: (builder) => {
     builder
+      .addCase(logout.fulfilled, () => initialState)
+      .addCase('auth/logout', () => initialState)
       .addCase(fetchNotifications.pending, (state) => {
         state.loading = true;
       })
@@ -42,7 +46,11 @@ const notificationSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(fetchUnreadCount.fulfilled, (state, action) => {
-        state.unreadCount = action.payload;
+        state.unreadCount = typeof action.payload === 'number' ? action.payload : 0;
+      })
+      .addCase(fetchUnreadCount.rejected, (state) => {
+        // If unread count fetch fails, don't keep dirty/stale state
+        state.unreadCount = 0;
       })
       .addCase(markAsRead.fulfilled, (state, action) => {
         const notif = state.notifications.find(n => n.id === action.payload);
@@ -69,5 +77,5 @@ const notificationSlice = createSlice({
   }
 });
 
-export const { addWebSocketNotification, syncUnreadCount } = notificationSlice.actions;
+export const { addWebSocketNotification, syncUnreadCount, resetNotifications } = notificationSlice.actions;
 export default notificationSlice.reducer;

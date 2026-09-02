@@ -4,26 +4,28 @@ import { Badge } from "@/components/ui/badge";
 
 const BasicInformation = ({ storeData }) => {
   return (
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-      <div className="space-y-4">
-        <div>
-          <Label className="text-sm text-muted-foreground">Store Name</Label>
-          <p className="text-base font-medium">{storeData.brand}</p>
+    <div className="space-y-4">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">General Information</h3>
+      <div className="space-y-3">
+        <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border/60">
+          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Brand / Store Name</Label>
+          <p className="text-sm font-bold text-foreground mt-0.5">{storeData?.brand || storeData?.name || "N/A"}</p>
         </div>
-        <div>
-          <Label className="text-sm text-muted-foreground">Store Type</Label>
-          <Badge variant="secondary" className="mt-1">
-            {storeData.storeType}
-          </Badge>
+        <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border/60">
+          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Business Vertical</Label>
+          <div className="mt-1">
+            <Badge variant="secondary" className="text-xs font-bold">
+              {storeData?.storeType || "Retail Store"}
+            </Badge>
+          </div>
         </div>
-        <div>
-          <Label className="text-sm text-muted-foreground">Description</Label>
-          <p className="text-base">{storeData.description || "No description provided"}</p>
+        <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border/60">
+          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Store Description</Label>
+          <p className="text-xs text-foreground/90 mt-0.5 leading-relaxed">{storeData?.description || "No description provided."}</p>
         </div>
       </div>
     </div>
   );
 };
 
-export default BasicInformation; 
+export default BasicInformation;

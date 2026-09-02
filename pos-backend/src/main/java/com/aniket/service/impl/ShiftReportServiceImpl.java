@@ -5,6 +5,8 @@ package com.aniket.service.impl;
 import com.aniket.domain.PaymentType;
 import com.aniket.exception.UserException;
 import com.aniket.modal.*;
+import com.aniket.payload.dto.ProductDTO;
+import com.aniket.mapper.ProductMapper;
 import com.aniket.repository.*;
 import com.aniket.service.ShiftReportService;
 import com.aniket.service.UserService;
@@ -27,8 +29,11 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     private final OrderRepository orderRepository;
     private final RefundRepository refundRepository;
     private final UserService userService;
+    private final com.aniket.util.SecurityUtil securityUtil;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Override
+    @Transactional
     public ShiftReport startShift(Long cashierId,
                                   Long branchId,
                                   LocalDateTime shiftStart
@@ -36,11 +41,10 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         User currentUser=userService.getCurrentUser();
         shiftStart=LocalDateTime.now();
 
-//        User cashier = userRepository.findById(cashierId).orElseThrow(() ->
-//                new RuntimeException("Cashier not found with ID: " + cashierId));
-
         Branch branch = branchRepository.findById(branchId).orElseThrow(() ->
                 new RuntimeException("Branch not found with ID: " + branchId));
+
+        securityUtil.checkAuthority(branch);
 
         // Prevent duplicate shifts on the same day
         LocalDateTime startOfDay = shiftStart.withHour(0).withMinute(0).withSecond(0);
@@ -58,7 +62,19 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         shift.setBranch(branch);
         shift.setShiftStart(shiftStart);
 
-        return shiftReportRepository.save(shift);
+        ShiftReport savedShift = shiftReportRepository.save(shift);
+
+        // 🔔 Publish ShiftStartedEvent
+        eventPublisher.publishEvent(com.aniket.event.ShiftStartedEvent.builder()
+                .shiftId(savedShift.getId())
+                .branchId(branch.getId())
+                .branchName(branch.getName())
+                .cashierId(currentUser.getId())
+                .cashierName(currentUser.getFullName())
+                .shiftStart(savedShift.getShiftStart())
+                .build());
+
+        return savedShift;
     }
 
     @Override
@@ -103,13 +119,36 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         shift.setPaymentSummaries(getPaymentSummaries(orders, totalSales));
         shift.setRefunds(refunds);
 
-        return shiftReportRepository.save(shift);
+        ShiftReport savedShift = shiftReportRepository.save(shift);
+
+        // 🔔 Publish ShiftEndedEvent
+        eventPublisher.publishEvent(com.aniket.event.ShiftEndedEvent.builder()
+                .shiftId(savedShift.getId())
+                .branchId(savedShift.getBranch() != null ? savedShift.getBranch().getId() : null)
+                .branchName(savedShift.getBranch() != null ? savedShift.getBranch().getName() : "")
+                .cashierId(currentUser.getId())
+                .cashierName(currentUser.getFullName())
+                .totalSales(savedShift.getTotalSales())
+                .totalOrders(savedShift.getTotalOrders())
+                .shiftStart(savedShift.getShiftStart())
+                .shiftEnd(savedShift.getShiftEnd())
+                .build());
+
+        return savedShift;
     }
 
     @Override
     public ShiftReport getShiftReportById(Long id) {
-        return shiftReportRepository.findById(id)
+        ShiftReport report = shiftReportRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Shift report not found"));
+        if (report.getBranch() != null) {
+            try {
+                securityUtil.checkAuthority(report.getBranch());
+            } catch (UserException e) {
+                throw new com.aniket.exception.AccessDeniedException("Access denied: " + e.getMessage());
+            }
+        }
+        return report;
     }
 
     @Override
@@ -121,6 +160,13 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     public List<ShiftReport> getShiftReportsByCashier(Long cashierId) {
         User cashier = userRepository.findById(cashierId)
                 .orElseThrow(() -> new RuntimeException("Cashier not found"));
+        if (cashier.getBranch() != null) {
+            try {
+                securityUtil.checkAuthority(cashier.getBranch());
+            } catch (UserException e) {
+                throw new com.aniket.exception.AccessDeniedException("Access denied: " + e.getMessage());
+            }
+        }
         return shiftReportRepository.findByCashier(cashier);
     }
 
@@ -128,6 +174,11 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     public List<ShiftReport> getShiftReportsByBranch(Long branchId) {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new RuntimeException("Branch not found"));
+        try {
+            securityUtil.checkAuthority(branch);
+        } catch (UserException e) {
+            throw new com.aniket.exception.AccessDeniedException("Access denied: " + e.getMessage());
+        }
         return shiftReportRepository.findByBranch(branch);
     }
 
@@ -177,6 +228,13 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     public ShiftReport getShiftReportByCashierAndDate(Long cashierId, LocalDateTime date) {
         User cashier = userRepository.findById(cashierId)
                 .orElseThrow(() -> new RuntimeException("Cashier not found"));
+        if (cashier.getBranch() != null) {
+            try {
+                securityUtil.checkAuthority(cashier.getBranch());
+            } catch (UserException e) {
+                throw new com.aniket.exception.AccessDeniedException("Access denied: " + e.getMessage());
+            }
+        }
 
         LocalDateTime start = date.withHour(0).withMinute(0).withSecond(0);
         LocalDateTime end = date.withHour(23).withMinute(59).withSecond(59);
@@ -187,10 +245,16 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
     @Override
     public void deleteShiftReport(Long id) {
-        if (!shiftReportRepository.existsById(id)) {
-            throw new RuntimeException("Shift report not found");
+        ShiftReport shiftReport = shiftReportRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Shift report not found"));
+        if (shiftReport.getBranch() != null) {
+            try {
+                securityUtil.checkAuthority(shiftReport.getBranch());
+            } catch (UserException e) {
+                throw new com.aniket.exception.AccessDeniedException("Access denied to delete shift report: " + e.getMessage());
+            }
         }
-        shiftReportRepository.deleteById(id);
+        shiftReportRepository.delete(shiftReport);
     }
 
     // ----------------- HELPER METHODS -----------------
@@ -202,34 +266,53 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 .collect(Collectors.toList());
     }
 
-    private List<Product> getTopSellingProducts(List<Order> orders) {
-        Map<Product, Integer> productSalesMap = new HashMap<>();
+    private List<ProductDTO> getTopSellingProducts(List<Order> orders) {
+        Map<Long, Product> productMap = new HashMap<>();
+        Map<Long, Integer> quantityMap = new HashMap<>();
+        Map<Long, Double> priceMap = new HashMap<>();
 
         for (Order order : orders) {
-            for (OrderItem item : order.getItems()) {
-                Product product = item.getProduct();
-                productSalesMap.put(product, productSalesMap.getOrDefault(product, 0) + item.getQuantity());
+            if (order.getItems() != null) {
+                for (OrderItem item : order.getItems()) {
+                    Product product = item.getProduct();
+                    if (product != null) {
+                        Long pid = product.getId();
+                        productMap.put(pid, product);
+                        quantityMap.put(pid, quantityMap.getOrDefault(pid, 0) + (item.getQuantity() != null ? item.getQuantity() : 1));
+                        if (item.getPrice() != null) {
+                            priceMap.put(pid, item.getPrice());
+                        }
+                    }
+                }
             }
         }
 
-        return productSalesMap.entrySet().stream()
+        return quantityMap.entrySet().stream()
                 .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
                 .limit(5)
-                .map(Map.Entry::getKey)
+                .map(entry -> {
+                    Long pid = entry.getKey();
+                    Product p = productMap.get(pid);
+                    ProductDTO dto = ProductMapper.toDto(p);
+                    dto.setQuantity(entry.getValue());
+                    Double itemTotalPrice = priceMap.get(pid);
+                    if (itemTotalPrice != null && dto.getQuantity() != null && dto.getQuantity() > 0) {
+                        dto.setSellingPrice(itemTotalPrice / dto.getQuantity());
+                    } else if (p != null && p.getMrp() != null) {
+                        dto.setSellingPrice(p.getMrp());
+                    }
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
     private List<PaymentSummary> getPaymentSummaries(List<Order> orders,
                                                      double totalSales) {
-//        Map<PaymentType, List<Order>> grouped = orders.stream()
-//                .collect(Collectors.groupingBy(Order::getPaymentType));
-
         Map<PaymentType, List<Order>> grouped = orders.stream()
                 .collect(Collectors.groupingBy(
                         order -> order.getPaymentType() != null ?
                                 order.getPaymentType() : PaymentType.CASH
                 ));
-
 
         List<PaymentSummary> summaries = new ArrayList<>();
 
@@ -239,7 +322,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                     .mapToDouble(Order::getTotalAmount)
                     .sum();
             int transactions = entry.getValue().size();
-            double percent = (amount / totalSales) * 100;
+            double percent = totalSales > 0 ? (amount / totalSales) * 100 : 0.0;
 
             PaymentSummary ps = new PaymentSummary();
             ps.setType(entry.getKey());

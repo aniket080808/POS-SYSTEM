@@ -128,10 +128,11 @@ export const getRefundsByBranch = createAsyncThunk(
   'refund/getByBranch',
   async (branchId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching refunds by branch...', { branchId });
+      const targetId = typeof branchId === 'object' ? (branchId?.branchId || branchId?.id) : branchId;
+      console.log('🔄 Fetching refunds by branch...', { targetId });
       
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/refunds/branch/${branchId}`, { headers });
+      const res = await api.get(`/api/refunds/branch/${targetId}`, { headers });
       
       console.log('✅ Refunds by branch fetched successfully:', {
         branchId,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
@@ -9,13 +9,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Users, Store as StoreIcon, MapPin } from "lucide-react";
+import { Plus, Users, Store as StoreIcon, MapPin, ShieldCheck, UserCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { EmployeeForm, EmployeeTable } from ".";
 import {
@@ -27,8 +28,8 @@ import {
 import { getAllBranchesByStore } from "@/Redux Toolkit/features/branch/branchThunks";
 import { getStoreOverview } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
 import { getStoreByAdmin } from "@/Redux Toolkit/features/store/storeThunks";
-import { storeAdminRole, STORE_LEVEL_ROLES, BRANCH_LEVEL_ROLES } from "../../../utils/userRole";
-import { toast } from "sonner";
+import { storeAdminRole, storeManagerRole, STORE_LEVEL_ROLES, BRANCH_LEVEL_ROLES } from "../../../utils/userRole";
+import { useToast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,367 +43,360 @@ import {
 
 export default function StoreEmployees() {
   const dispatch = useDispatch();
-  const { employees, error } = useSelector((state) => state.employee);
-  const { branches } = useSelector((state) => state.branch);
+  const { employees = [], loading, error } = useSelector((state) => state.employee);
+  const { branches = [] } = useSelector((state) => state.branch);
   const { store } = useSelector((state) => state.store);
   const { storeOverview } = useSelector((state) => state.storeAnalytics);
   const { statusResponse } = useSelector((state) => state.storeSubscription);
-  const { user } = useSelector((state) => state.user);
-  const { userProfile } = useSelector((state) => state.user);
+  const { userProfile, user } = useSelector((state) => state.user);
+  const { toast } = useToast();
 
   const activeStoreId = store?.id || userProfile?.store?.id;
 
-  // Fetch store if not already loaded
   useEffect(() => {
-    if (!store) {
+    if (!store?.id) {
       const jwt = localStorage.getItem("jwt");
-      if (jwt) {
-        dispatch(getStoreByAdmin(jwt));
-      }
+      if (jwt) dispatch(getStoreByAdmin(jwt));
     }
-  }, [dispatch, store]);
+  }, [dispatch, store?.id]);
 
-  // Fetch employees + branches when component mounts or store/user changes
   useEffect(() => {
     if (activeStoreId) {
-      const jwt = localStorage.getItem("jwt");
-      if (jwt) {
-        dispatch(findStoreEmployees({ storeId: activeStoreId, token: jwt }));
-        dispatch(getAllBranchesByStore({ storeId: activeStoreId, jwt }));
-      }
+      const token = localStorage.getItem("jwt");
+      dispatch(findStoreEmployees({ storeId: activeStoreId, token }));
+      dispatch(getAllBranchesByStore({ storeId: activeStoreId, jwt: token }));
     }
-  }, [dispatch, activeStoreId, user]);
+  }, [dispatch, activeStoreId]);
 
-  // Fetch store overview for usage-vs-limit badge if not already loaded
   useEffect(() => {
     if (userProfile?.id && !storeOverview) {
       dispatch(getStoreOverview(userProfile.id));
     }
-  }, [dispatch, userProfile, storeOverview]);
+  }, [dispatch, userProfile?.id, storeOverview]);
 
-  const maxEmployees = statusResponse?.currentPlan?.maxUsers;
-  const totalEmployees = storeOverview?.totalEmployees;
-  const showEmployeeLimit = storeOverview && maxEmployees != null && maxEmployees > 0;
+  const [isAddStoreEmployeeOpen, setIsAddStoreEmployeeOpen] = useState(false);
+  const [isAddBranchEmployeeOpen, setIsAddBranchEmployeeOpen] = useState(false);
+  const [selectedBranchId, setSelectedBranchId] = useState(null);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
+
   const currentUserRole = userProfile?.role || user?.role;
   const currentUserId = userProfile?.id || user?.id;
+  const canManageStore = currentUserRole === "ROLE_STORE_ADMIN" || currentUserRole === "ROLE_ADMIN";
+  const canAddStaff =
+    currentUserRole === "ROLE_STORE_ADMIN" ||
+    currentUserRole === "ROLE_STORE_MANAGER" ||
+    currentUserRole === "ROLE_ADMIN";
 
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [currentEmployee, setCurrentEmployee] = useState(null);
-  const [employeeToDelete, setEmployeeToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const selectableRoles =
+    currentUserRole === "ROLE_STORE_MANAGER" ? storeManagerRole : storeAdminRole;
 
-  // Helper to re-fetch the full employee list (avoids "disappears after refresh" bug)
-  const refreshEmployees = () => {
-    if (activeStoreId) {
-      const jwt = localStorage.getItem("jwt");
-      if (jwt) {
-        dispatch(findStoreEmployees({ storeId: activeStoreId, token: jwt }));
-      }
-    }
-  };
+  const maxUsers = statusResponse?.currentPlan?.maxUsers;
+  const totalEmployees = storeOverview?.totalEmployees || employees.length;
+  const showUserLimit = maxUsers != null && maxUsers > 0;
 
-  // Role priority weight for sorting (lower weight = higher priority / pinned to top)
-  const rolePriority = (role) => {
-    switch (role) {
-      case "ROLE_STORE_ADMIN":
-        return 0;
-      case "ROLE_STORE_MANAGER":
-        return 1;
-      case "ROLE_BRANCH_ADMIN":
-        return 2;
-      case "ROLE_BRANCH_MANAGER":
-        return 3;
-      case "ROLE_BRANCH_CASHIER":
-        return 4;
-      default:
-        return 99;
-    }
-  };
+  const storeLevelEmployees = useMemo(() => {
+    return employees.filter((emp) => STORE_LEVEL_ROLES.includes(emp.role));
+  }, [employees]);
 
-  // Sort employees by role priority
-  const sortByRolePriority = (list) => {
-    return [...list].sort((a, b) => {
-      const pA = rolePriority(a.role);
-      const pB = rolePriority(b.role);
-      if (pA !== pB) return pA - pB;
-      return (a.fullName || "").localeCompare(b.fullName || "");
+  const employeesByBranch = useMemo(() => {
+    const map = {};
+    branches.forEach((b) => {
+      map[b.id] = [];
     });
-  };
+    map["unassigned"] = [];
 
-  const handleAddEmployee = async (newEmployeeData) => {
-    const jwt = localStorage.getItem("jwt");
-    const targetStoreId = activeStoreId;
-    if (targetStoreId && jwt) {
-      try {
-        await dispatch(
-          createStoreEmployee({
-            employee: {
-              ...newEmployeeData,
-              storeId: targetStoreId,
-              username: newEmployeeData.email.split("@")[0],
-            },
-            storeId: targetStoreId,
-            token: jwt,
-          })
-        ).unwrap();
-        toast.success("Employee added successfully!");
-        setIsAddDialogOpen(false);
-        refreshEmployees();
-      } catch (err) {
-        toast.error(err || "Failed to add employee");
+    employees
+      .filter((emp) => BRANCH_LEVEL_ROLES.includes(emp.role))
+      .forEach((emp) => {
+        const bId = emp.branchId ?? emp.branch?.id;
+        if (bId && map[bId]) {
+          map[bId].push(emp);
+        } else {
+          map["unassigned"].push(emp);
+        }
+      });
+    return map;
+  }, [employees, branches]);
+
+  const handleCreateEmployee = async (values) => {
+    try {
+      const token = localStorage.getItem("jwt");
+      const targetStoreId = activeStoreId || store?.id || userProfile?.storeId;
+      await dispatch(
+        createStoreEmployee({
+          employee: values,
+          employeeData: values,
+          storeId: targetStoreId,
+          token,
+        })
+      ).unwrap();
+      toast({ title: "Staff Account Created", description: `Account for ${values.fullName} created successfully.` });
+      setIsAddStoreEmployeeOpen(false);
+      setIsAddBranchEmployeeOpen(false);
+      if (targetStoreId) {
+        dispatch(findStoreEmployees({ storeId: targetStoreId, token }));
+        if (userProfile?.id) {
+          dispatch(getStoreOverview(userProfile.id));
+        }
       }
+    } catch (err) {
+      toast({
+        title: "Creation Error",
+        description: err.message || err || "Failed to create staff member.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleEditEmployee = async (updatedEmployeeData) => {
-    const jwt = localStorage.getItem("jwt");
-    if (currentEmployee?.id && jwt) {
-      try {
-        await dispatch(
-          updateEmployee({
-            employeeId: currentEmployee.id,
-            employeeDetails: updatedEmployeeData,
-            token: jwt,
-          })
-        ).unwrap();
-        toast.success("Employee updated successfully!");
-        setIsEditDialogOpen(false);
-        refreshEmployees();
-        if (currentEmployee.role === "ROLE_STORE_ADMIN") {
-          dispatch(getStoreByAdmin(jwt));
-        }
-      } catch (err) {
-        toast.error(err || "Failed to update employee");
+  const handleUpdateEmployee = async (values) => {
+    try {
+      const token = localStorage.getItem("jwt");
+      await dispatch(
+        updateEmployee({
+          employeeId: editingEmployee.id,
+          id: editingEmployee.id,
+          employeeDetails: values,
+          employeeData: values,
+          token,
+        })
+      ).unwrap();
+      toast({ title: "Staff Updated", description: "Employee profile updated successfully." });
+      setIsEditDialogOpen(false);
+      setEditingEmployee(null);
+      if (activeStoreId) {
+        dispatch(findStoreEmployees({ storeId: activeStoreId, token }));
       }
+    } catch (err) {
+      toast({
+        title: "Update Error",
+        description: err.message || err || "Failed to update employee.",
+        variant: "destructive",
+      });
     }
   };
 
   const confirmDeleteEmployee = async () => {
     if (!employeeToDelete) return;
-    const jwt = localStorage.getItem("jwt");
-    if (jwt) {
-      setIsDeleting(true);
-      try {
-        await dispatch(deleteEmployee({ employeeId: employeeToDelete.id, token: jwt })).unwrap();
-        toast.success(`Employee "${employeeToDelete.fullName}" deleted successfully!`);
-        refreshEmployees();
-      } catch (err) {
-        toast.error(err?.message || err || "Failed to delete employee");
-      } finally {
-        setIsDeleting(false);
-        setEmployeeToDelete(null);
+    try {
+      const token = localStorage.getItem("jwt");
+      await dispatch(deleteEmployee({ employeeId: employeeToDelete.id, id: employeeToDelete.id, token })).unwrap();
+      toast({ title: "Staff Deleted", description: `Account for ${employeeToDelete.fullName} deleted.` });
+      setEmployeeToDelete(null);
+      if (activeStoreId) {
+        dispatch(findStoreEmployees({ storeId: activeStoreId, token }));
+        if (userProfile?.id) {
+          dispatch(getStoreOverview(userProfile.id));
+        }
       }
+    } catch (err) {
+      toast({
+        title: "Delete Failed",
+        description: err.message || err || "Failed to delete employee.",
+        variant: "destructive",
+      });
     }
   };
 
-  const openEditDialog = (employee) => {
-    const phone = employee.phone || (employee.role === "ROLE_STORE_ADMIN" ? store?.contact?.phone : "") || "";
-    setCurrentEmployee({
-      ...employee,
-      phone,
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  // Split employees into store-level and branch-level groups
-  const { storeLevelEmployees, branchLevelEmployees } = useMemo(() => {
-    const safeEmployees = Array.isArray(employees) ? employees : [];
-    const storeLevel = safeEmployees.filter((emp) =>
-      STORE_LEVEL_ROLES.includes(emp.role)
-    );
-    const branchLevel = safeEmployees.filter((emp) =>
-      BRANCH_LEVEL_ROLES.includes(emp.role)
-    );
-    return {
-      storeLevelEmployees: sortByRolePriority(storeLevel),
-      branchLevelEmployees: sortByRolePriority(branchLevel),
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employees]);
-
-  // Group branch-level employees by branchId (preserve sort order within each branch)
-  const employeesByBranch = useMemo(() => {
-    const map = {};
-    branchLevelEmployees.forEach((emp) => {
-      const branchId = emp.branchId || emp.branch?.id;
-      if (branchId) {
-        if (!map[branchId]) map[branchId] = [];
-        map[branchId].push(emp);
-      }
-    });
-    return map;
-  }, [branchLevelEmployees]);
-
   return (
     <div className="space-y-6">
-      {/* Header + Add Employee button */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Employee Management
-        </h1>
-        <div className="flex items-center gap-3">
-          {showEmployeeLimit && (
-            <Badge variant="outline" className="text-xs">
-              {totalEmployees}/{maxEmployees} employees
-            </Badge>
-          )}
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="mr-2 h-4 w-4" /> Add Employee
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add New Employee</DialogTitle>
-              </DialogHeader>
-              <EmployeeForm
-                onSubmit={handleAddEmployee}
-                roles={storeAdminRole}
-              />
-            </DialogContent>
-          </Dialog>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Staff & Cashier Account Governance
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Manage Store Administrators, Branch Managers, and authorized Cashier terminal logins
+          </p>
         </div>
 
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Employee</DialogTitle>
-            </DialogHeader>
-            <EmployeeForm
-              onSubmit={handleEditEmployee}
-              roles={storeAdminRole}
-              initialData={
-                currentEmployee
-                  ? {
-                      ...currentEmployee,
-                      branchId:
-                        currentEmployee.branchId ||
-                        currentEmployee.branch?.id ||
-                        "",
-                    }
-                  : null
-              }
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-3">
+          {showUserLimit && (
+            <Badge variant="outline" className="font-mono text-xs px-2.5 py-1">
+              Quota: {totalEmployees} / {maxUsers} staff
+            </Badge>
+          )}
+          {canAddStaff && (
+            <Dialog
+              open={isAddStoreEmployeeOpen}
+              onOpenChange={(open) => {
+                setIsAddStoreEmployeeOpen(open);
+                if (!open) setSelectedBranchId(null);
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button className="text-xs font-bold h-10 gap-1.5 cursor-pointer">
+                  <Plus className="w-4 h-4" /> Add Staff Member
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-bold">Add Staff Member</DialogTitle>
+                  <DialogDescription className="text-xs">
+                    Create a new role-based staff login for store backoffice or cashier terminal
+                  </DialogDescription>
+                </DialogHeader>
+                <EmployeeForm
+                  onSubmit={handleCreateEmployee}
+                  roles={selectableRoles}
+                  defaultBranchId={selectedBranchId}
+                  onCancel={() => {
+                    setIsAddStoreEmployeeOpen(false);
+                    setSelectedBranchId(null);
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
-      {error && (
-        <div className="text-red-500 text-sm">{error}</div>
-      )}
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Edit Staff Profile</DialogTitle>
+            <DialogDescription className="text-xs">
+              Update credentials, contact information, role, or workstation assignment
+            </DialogDescription>
+          </DialogHeader>
+          <EmployeeForm
+            initialData={editingEmployee}
+            onSubmit={handleUpdateEmployee}
+            roles={selectableRoles}
+            onCancel={() => setIsEditDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-      {/* Group A — Store-Level Staff (top section) */}
+      {/* Delete Confirmation */}
+      <AlertDialog open={Boolean(employeeToDelete)} onOpenChange={(open) => !open && setEmployeeToDelete(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold text-destructive">Delete Staff Member</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Are you sure you want to delete <strong>"{employeeToDelete?.fullName}"</strong>?
+              This will revoke login credentials immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs h-9">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteEmployee}
+              className="text-xs font-bold h-9 bg-destructive hover:bg-destructive/90 text-white"
+            >
+              Confirm Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Section 1: Store-Level Administrators */}
       <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <StoreIcon className="h-5 w-5 text-muted-foreground" />
-          <CardTitle className="text-lg">Store-Level Staff</CardTitle>
-          <Badge variant="secondary" className="ml-1">
-            {storeLevelEmployees.length}
-          </Badge>
-        </CardHeader>
-        <CardContent className="p-0">
-          {storeLevelEmployees.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No store-level staff found.
+        <CardHeader className="pb-3 border-b border-border/60">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#B8860B]" />
+              <CardTitle className="text-base">Store-Level Administrators</CardTitle>
             </div>
-          ) : (
-            <EmployeeTable
-              employees={storeLevelEmployees}
-              onEdit={openEditDialog}
-              onDelete={(emp) => setEmployeeToDelete(emp)}
-              currentUserRole={currentUserRole}
-              currentUserId={currentUserId}
-              showBranchColumn={false}
-              storePhone={store?.contact?.phone || ""}
-            />
-          )}
+            <Badge variant="secondary" className="text-xs font-mono">
+              {storeLevelEmployees.length} {storeLevelEmployees.length === 1 ? "Admin" : "Admins"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <EmployeeTable
+            employees={storeLevelEmployees}
+            onEdit={(emp) => {
+              setEditingEmployee(emp);
+              setIsEditDialogOpen(true);
+            }}
+            onDelete={setEmployeeToDelete}
+            currentUserRole={currentUserRole}
+            currentUserId={currentUserId}
+            storePhone={store?.contact?.phone || store?.phone || ""}
+          />
         </CardContent>
       </Card>
 
-      {/* Group B — Branch-Level Staff (accordion grouped by branch) */}
+      {/* Section 2: Branch-Level Staff & Cashiers */}
       <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <Users className="h-5 w-5 text-muted-foreground" />
-          <CardTitle className="text-lg">Branch-Level Staff</CardTitle>
-          <Badge variant="secondary" className="ml-1">
-            {branchLevelEmployees.length}
-          </Badge>
+        <CardHeader className="pb-3 border-b border-border/60">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-[#B8860B]" />
+              <CardTitle className="text-base">Branch Workstation Cashiers & Managers</CardTitle>
+            </div>
+            <Badge variant="outline" className="text-xs font-mono">
+              {branches.length} {branches.length === 1 ? "Branch" : "Branches"}
+            </Badge>
+          </div>
         </CardHeader>
-        <CardContent>
-          {branches && branches.length > 0 ? (
-            <Accordion type="multiple" className="w-full">
+        <CardContent className="pt-4 space-y-4">
+          {branches.length === 0 ? (
+            <div className="text-center py-8 text-xs text-muted-foreground font-semibold">
+              No branch workstations configured yet.
+            </div>
+          ) : (
+            <Accordion type="multiple" defaultValue={branches.map((b) => String(b.id))} className="space-y-3">
               {branches.map((branch) => {
-                const branchEmployees = employeesByBranch[branch.id] || [];
+                const branchStaff = employeesByBranch[branch.id] || [];
                 return (
-                  <AccordionItem key={branch.id} value={`branch-${branch.id}`}>
-                    <AccordionTrigger className="px-4 py-3 text-left hover:no-underline hover:bg-gray-50 text-gray-900 font-medium">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{branch.name}</span>
-                        <Badge variant="outline" className="ml-1">
-                          {branchEmployees.length}
+                  <AccordionItem
+                    key={branch.id}
+                    value={String(branch.id)}
+                    className="border border-border/70 rounded-2xl overflow-hidden bg-card"
+                  >
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline bg-secondary/30">
+                      <div className="flex items-center justify-between w-full pr-4 text-left">
+                        <div className="flex items-center gap-2">
+                          <StoreIcon className="w-4 h-4 text-[#B8860B]" />
+                          <span className="font-bold text-sm text-foreground">{branch.name}</span>
+                          <span className="text-xs text-muted-foreground font-mono">({branch.address})</span>
+                        </div>
+                        <Badge variant="secondary" className="text-xs font-mono">
+                          {branchStaff.length} Staff
                         </Badge>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4 pt-2">
-                      {branchEmployees.length === 0 ? (
-                        <div className="text-center py-6 text-gray-500">
-                          No staff assigned to this branch yet.
+                    <AccordionContent className="p-4 pt-3 space-y-3">
+                      {canAddStaff && (
+                        <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                          <span className="text-xs text-muted-foreground font-medium">
+                            Manage staff assigned to <strong>{branch.name}</strong>
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2.5 text-[11px] font-semibold gap-1 cursor-pointer hover:bg-primary/10"
+                            onClick={() => {
+                              setSelectedBranchId(branch.id);
+                              setIsAddStoreEmployeeOpen(true);
+                            }}
+                          >
+                            <Plus className="w-3 h-3" /> Add Staff to Branch
+                          </Button>
                         </div>
-                      ) : (
-                        <EmployeeTable
-                          employees={branchEmployees}
-                          onEdit={openEditDialog}
-                          onDelete={(emp) => setEmployeeToDelete(emp)}
-                          currentUserRole={currentUserRole}
-                          currentUserId={currentUserId}
-                          showBranchColumn={false}
-                          storePhone={store?.contact?.phone || ""}
-                        />
                       )}
+                      <EmployeeTable
+                        employees={branchStaff}
+                        onEdit={(emp) => {
+                          setEditingEmployee(emp);
+                          setIsEditDialogOpen(true);
+                        }}
+                        onDelete={setEmployeeToDelete}
+                        currentUserRole={currentUserRole}
+                        currentUserId={currentUserId}
+                      />
                     </AccordionContent>
                   </AccordionItem>
                 );
               })}
             </Accordion>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              No branches found. Create a branch first to assign branch-level staff.
-            </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Confirmation Dialog for Employee Deletion */}
-      <AlertDialog
-        open={Boolean(employeeToDelete)}
-        onOpenChange={(open) => !open && setEmployeeToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Employee</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-foreground">
-                "{employeeToDelete?.fullName}"
-              </span>
-              ? This action will permanently remove their access and profile.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteEmployee}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isDeleting ? "Deleting..." : "Delete Employee"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

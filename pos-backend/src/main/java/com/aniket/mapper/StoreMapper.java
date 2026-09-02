@@ -27,6 +27,11 @@ public class StoreMapper {
                     .dateFormat(store.getDateFormat())
                     .receiptFooter(store.getReceiptFooter())
                     .acceptedPaymentMethods(store.getAcceptedPaymentMethods())
+                    .upiId(store.getUpiId())
+                    .merchantName(store.getMerchantName())
+                    .customMaxBranches(store.getCustomMaxBranches())
+                    .customMaxUsers(store.getCustomMaxUsers())
+                    .customMaxProducts(store.getCustomMaxProducts())
                     .build();
         }
 
@@ -49,6 +54,11 @@ public class StoreMapper {
                     .dateFormat(dto.getDateFormat())
                     .receiptFooter(dto.getReceiptFooter())
                     .acceptedPaymentMethods(dto.getAcceptedPaymentMethods())
+                    .upiId(dto.getUpiId())
+                    .merchantName(dto.getMerchantName())
+                    .customMaxBranches(dto.getCustomMaxBranches())
+                    .customMaxUsers(dto.getCustomMaxUsers())
+                    .customMaxProducts(dto.getCustomMaxProducts())
                     .build();
         }
     }

@@ -15,8 +15,10 @@ import com.aniket.service.ActivityLogService;
 import com.aniket.service.AuthService;
 
 import com.aniket.service.EmailService;
+import com.aniket.service.EmailTemplateService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -34,6 +36,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -42,9 +45,10 @@ public class AuthServiceImpl implements AuthService {
     private final CustomUserImplementation customUserImplementation;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
     private final ActivityLogService activityLogService;
 
-    @Value("${app.frontend.reset-url}")
+    @Value("${app.frontend.reset-url:http://localhost:5173/auth/reset-password?token=}")
     private String frontendResetUrl;
 
 
@@ -57,10 +61,9 @@ public class AuthServiceImpl implements AuthService {
             throw new UserException("Email id already registered ");
         }
 
-        if(req.getRole().equals(UserRole.ROLE_ADMIN)){
-            throw new UserException("Role admin is not allowed");
+        if (req.getRole() != null && !req.getRole().equals(UserRole.ROLE_CUSTOMER)) {
+            throw new UserException("Public registration is only available for customer accounts. Store administrators must register via Onboarding, and staff accounts must be created by their administrator.");
         }
-
 
         User createdUser = new User();
         createdUser.setEmail(req.getEmail());
@@ -69,9 +72,7 @@ public class AuthServiceImpl implements AuthService {
         createdUser.setPhone(req.getPhone());
         createdUser.setFullName(req.getFullName());
         createdUser.setLastLogin(LocalDateTime.now());
-
-        createdUser.setRole(req.getRole());
-
+        createdUser.setRole(UserRole.ROLE_CUSTOMER);
 
         User savedUser = userRepository.save(createdUser);
 //        UserDTO userDTO=new UserDTO();
@@ -81,7 +82,10 @@ public class AuthServiceImpl implements AuthService {
 
 //        userEventProducer.userCreatedEvent(userDTO);
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(savedUser.getEmail(), savedUser.getPassword());
+        java.util.List<GrantedAuthority> authorities = java.util.Collections.singletonList(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority(savedUser.getRole().toString())
+        );
+        Authentication authentication = new UsernamePasswordAuthenticationToken(savedUser.getEmail(), savedUser.getPassword(), authorities);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtProvider.generateToken(authentication);
 
@@ -103,8 +107,10 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findByEmail(username);
 
-//        update last Login
-        user.setLastLogin(LocalDateTime.now());
+//        update last Login and last activity
+        LocalDateTime now = LocalDateTime.now();
+        user.setLastLogin(now);
+        user.setLastActivity(now);
         userRepository.save(user);
 
         // Log admin login activity
@@ -137,6 +143,9 @@ public class AuthServiceImpl implements AuthService {
         if(userDetails == null) {
             throw new UserException("email id doesn't exist "+ email);
         }
+        if(!userDetails.isEnabled()) {
+            throw new UserException("Your account has been deactivated. Please contact your administrator.");
+        }
         if(!passwordEncoder.matches(password, userDetails.getPassword())) {
             throw new UserException("Wrong Password ");
         }
@@ -145,15 +154,21 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     public void createPasswordResetToken(String email) throws UserException {
-        User user = userRepository.findByEmail(email);
-
-        // Always return/give same response to caller to avoid enumeration attacks.
-        if (user==null) {
-
-            throw new UserException("user not found with given email");
+        // Clean up globally expired tokens
+        try {
+            passwordResetTokenRepository.deleteAllByExpiryDateBefore(LocalDateTime.now());
+        } catch (Exception ignored) {
         }
 
+        User user = userRepository.findByEmail(email);
 
+        // Always return silently to caller to avoid account enumeration attacks.
+        if (user == null) {
+            return;
+        }
+
+        // Delete any existing tokens for this user so only one valid token exists at a time
+        passwordResetTokenRepository.deleteAllByUser(user);
 
         String token = UUID.randomUUID().toString();
         PasswordResetToken resetToken = PasswordResetToken.builder()
@@ -164,11 +179,20 @@ public class AuthServiceImpl implements AuthService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        String resetLink =  frontendResetUrl + token;
-        String subject = "Password Reset Request";
-        String body = "You requested to reset your password. Use this link (valid 5 minutes): " + resetLink;
+        String baseUrl = frontendResetUrl != null ? frontendResetUrl : "http://localhost:5173/auth/reset-password?token=";
+        if (!baseUrl.endsWith("=") && !baseUrl.contains("?token=")) {
+            baseUrl = baseUrl.endsWith("/") ? baseUrl + "reset-password?token=" : baseUrl + "?token=";
+        }
+        String resetLink = baseUrl + token;
+        String subject = "Reset Your NexPOS Password";
+        String body = emailTemplateService.buildPasswordResetEmail(user.getFullName(), resetLink, 5);
 
-        emailService.sendEmail(user.getEmail(), subject, body);
+        try {
+            emailService.sendEmail(user.getEmail(), subject, body);
+        } catch (Exception e) {
+            // Log error silently without failing or exposing account existence
+            log.warn("Failed to send password reset email to {}: {}", email, e.getMessage());
+        }
     }
 
 
@@ -189,6 +213,7 @@ public class AuthServiceImpl implements AuthService {
 
         User user = resetToken.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangedAt(LocalDateTime.now());
         userRepository.save(user);
 
         // delete token after successful reset

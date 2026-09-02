@@ -37,6 +37,7 @@ public class Store {
 
     private LocalDateTime updatedAt;
 
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private String storeType;
@@ -44,11 +45,13 @@ public class Store {
     @Enumerated(EnumType.STRING)
     private StoreStatus status;
 
+    @Column(columnDefinition = "TEXT")
     private String registrationRejectionReason;
 
     // Contact Information
+    @Builder.Default
     @Embedded
-    private StoreContact contact=new StoreContact();
+    private StoreContact contact = new StoreContact();
 
     // Business Documents
     private String gstNumber;
@@ -63,15 +66,27 @@ public class Store {
 
     private String dateFormat;
 
+    @Column(columnDefinition = "TEXT")
     private String receiptFooter;
 
     // Comma-separated list of accepted payment methods (e.g., "cash,upi,card")
     private String acceptedPaymentMethods;
 
+    // Payment Gateway Configuration
+    private String upiId;
+    private String merchantName;
+
+    // Custom Super Admin Quota Overrides (null means use subscription plan limits)
+    private Integer customMaxBranches;
+    private Integer customMaxUsers;
+    private Integer customMaxProducts;
+
     @PrePersist
     protected void onCreate() {
         createdAt = updatedAt = LocalDateTime.now();
-        status = StoreStatus.PENDING;
+        if (status == null) {
+            status = StoreStatus.PENDING;
+        }
         if (currency == null) currency = "INR";
         if (timezone == null) timezone = "Asia/Kolkata";
         if (dateFormat == null) dateFormat = "MM/DD/YYYY";

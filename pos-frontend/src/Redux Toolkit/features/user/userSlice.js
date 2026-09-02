@@ -15,6 +15,7 @@ const initialState = {
   cashiers: [],
   selectedUser: null,
   loading: false,
+  userProfileChecked: false,
   error: null,
 };
 
@@ -22,12 +23,18 @@ const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
+    setUserProfile: (state, action) => {
+      state.userProfile = action.payload;
+      state.loading = false;
+      state.userProfileChecked = true;
+    },
     clearUserState: (state) => {
       state.userProfile = null;
       state.selectedUser = null;
       state.users = [];
       state.customers = [];
       state.cashiers = [];
+      state.userProfileChecked = false;
       state.error = null;
     },
   },
@@ -36,10 +43,12 @@ const userSlice = createSlice({
       .addCase(getUserProfile.pending, (state) => { state.loading = true; })
       .addCase(getUserProfile.fulfilled, (state, action) => {
         state.loading = false;
+        state.userProfileChecked = true;
         state.userProfile = action.payload;
       })
       .addCase(getUserProfile.rejected, (state, action) => {
         state.loading = false;
+        state.userProfileChecked = true;
         state.error = action.payload;
       })
 
@@ -73,5 +82,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { clearUserState } = userSlice.actions;
+export const { setUserProfile, clearUserState } = userSlice.actions;
 export default userSlice.reducer;

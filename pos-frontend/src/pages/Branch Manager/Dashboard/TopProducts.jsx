@@ -1,12 +1,12 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { Package, Sparkles } from "lucide-react";
+import { Flame } from "lucide-react";
 import { getTopProductsByQuantity } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
+const CHART_PALETTE = ["#F5A623", "#F97316", "#E05D44", "#D97706", "#8C877D"];
 
 const TopProducts = () => {
   const dispatch = useDispatch();
@@ -19,34 +19,35 @@ const TopProducts = () => {
     }
   }, [branchId, dispatch]);
 
-  const data = topProducts?.map((item) => ({
-    name: item.productName,
-    value: item.quantitySold || 0,
-    percentage: item.percentage || 0,
-  })) || [];
+  const data =
+    topProducts?.map((item) => ({
+      name: item.productName,
+      value: item.quantitySold || 0,
+      percentage: item.percentage || 0,
+    })) || [];
 
   const totalSold = data.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <Card className="transition-all hover:shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card className="border-border shadow-2xs">
+      <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/60">
         <div>
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            Top Products
+          <CardTitle className="text-base flex items-center gap-2">
+            <Flame className="w-4 h-4 text-[#F5A623]" />
+            Best Selling Items
           </CardTitle>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {totalSold > 0 ? `${totalSold} total units sold across top items` : "Ranking by units sold"}
-          </p>
+          <CardDescription className="text-xs">
+            {totalSold > 0 ? `${totalSold} total items sold` : "Top selling products by volume"}
+          </CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         {loading && (!topProducts || topProducts.length === 0) ? (
-          <div className="h-[280px] flex items-center justify-center">
-            <Skeleton className="h-44 w-44 rounded-full" />
+          <div className="h-[240px] flex items-center justify-center">
+            <Skeleton className="h-40 w-40 rounded-full" />
           </div>
         ) : data.length > 0 && totalSold > 0 ? (
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-2">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="h-[220px] w-full md:w-1/2 flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -55,9 +56,11 @@ const TopProducts = () => {
                       if (active && payload && payload.length) {
                         const item = payload[0].payload;
                         return (
-                          <div className="bg-popover border border-border text-popover-foreground rounded-lg p-2.5 shadow-lg text-xs">
-                            <p className="font-semibold">{item.name}</p>
-                            <p className="text-primary font-bold mt-0.5">{item.value} units ({item.percentage}%)</p>
+                          <div className="bg-card border border-border rounded-xl p-2.5 shadow-lg text-xs">
+                            <p className="font-bold text-foreground">{item.name}</p>
+                            <p className="text-[#8C5800] font-mono mt-0.5 font-bold">
+                              {item.value} sold ({item.percentage}%)
+                            </p>
                           </div>
                         );
                       }
@@ -68,15 +71,15 @@ const TopProducts = () => {
                     data={data}
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={4}
+                    innerRadius={55}
+                    outerRadius={85}
+                    paddingAngle={3}
                     dataKey="value"
                   >
                     {data.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
+                        fill={CHART_PALETTE[index % CHART_PALETTE.length]}
                       />
                     ))}
                   </Pie>
@@ -85,30 +88,26 @@ const TopProducts = () => {
             </div>
 
             <div className="w-full md:w-1/2 space-y-2">
-              {data.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors">
-                  <div className="flex items-center gap-2 max-w-[65%] truncate">
+              {data.slice(0, 5).map((item, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-2 rounded-xl bg-secondary/30 text-xs border border-border/50"
+                >
+                  <div className="flex items-center gap-2 truncate pr-2">
                     <span
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length] }}
                     />
                     <span className="font-medium text-foreground truncate">{item.name}</span>
                   </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-foreground">{item.value} sold</span>
-                    <span className="text-muted-foreground ml-1.5">({item.percentage}%)</span>
-                  </div>
+                  <span className="font-mono font-bold text-foreground shrink-0">{item.value} sold</span>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div className="text-center py-12 text-muted-foreground text-sm flex flex-col items-center justify-center">
-            <Package className="w-10 h-10 mb-2 opacity-20" />
-            <p className="font-medium">No product sales recorded yet</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">
-              Top selling products will appear here once orders are placed.
-            </p>
+          <div className="h-[220px] flex items-center justify-center text-xs text-muted-foreground font-semibold">
+            No product sales recorded yet.
           </div>
         )}
       </CardContent>

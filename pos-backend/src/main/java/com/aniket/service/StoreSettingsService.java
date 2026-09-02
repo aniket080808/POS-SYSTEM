@@ -7,5 +7,6 @@ public interface StoreSettingsService {
     StoreSettingsDTO getSettingsByStoreId(Long storeId);
     StoreSettingsDTO getSettingsForCurrentStore();
     StoreSettingsDTO updateSettings(Long storeId, StoreSettingsDTO settingsDTO);
+    StoreSettingsDTO updateSettings(Long storeId, StoreSettingsDTO settingsDTO, com.aniket.modal.User user);
     StoreSettingsDTO createDefaultSettings(Store store);
 }

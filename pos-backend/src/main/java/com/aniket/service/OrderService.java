@@ -22,4 +22,18 @@ public interface OrderService {
     List<OrderDTO> getTodayOrdersByBranch(Long branchId);
     List<OrderDTO> getOrdersByCustomerId(Long customerId);
     List<OrderDTO> getTop5RecentOrdersByBranchId(Long branchId);
+    org.springframework.data.domain.Page<OrderDTO> getOrdersPaginated(
+            Long storeAdminId,
+            Long branchId,
+            Long customerId,
+            Long cashierId,
+            PaymentType paymentType,
+            OrderStatus status,
+            java.time.LocalDateTime startDate,
+            java.time.LocalDateTime endDate,
+            org.springframework.data.domain.Pageable pageable
+    );
+
+    List<OrderDTO> bulkSyncOfflineOrders(List<OrderDTO> dtos) throws UserException;
 }
+

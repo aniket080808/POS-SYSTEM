@@ -47,6 +47,8 @@ import java.util.List;
         // ⚠️ Alerts for low stock, no sales, refund spikes, and inactive employees
         StoreAlertDTO getStoreAlerts(Long storeAdminId);
 
+        com.aniket.payload.dto.AlertDismissalDTO dismissAlert(Long storeAdminId, com.aniket.payload.dto.AlertDismissalDTO dto);
+
         // 🛡️ Super Admin: Get store plan usage for a specific store by storeId
         StoreUsageDTO getStoreUsageForAdmin(Long storeId);
     }

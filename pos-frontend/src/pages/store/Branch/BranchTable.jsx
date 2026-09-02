@@ -15,8 +15,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
-const BranchTable = ({ branches, loading, onEdit, canManageBranch = false }) => {
+const BranchTable = ({ branches = [], loading, onEdit, canManageBranch = false }) => {
   const dispatch = useDispatch();
   const { store } = useSelector((state) => state.store);
   const [branchToDelete, setBranchToDelete] = useState(null);
@@ -39,18 +40,17 @@ const BranchTable = ({ branches, loading, onEdit, canManageBranch = false }) => 
       await dispatch(deleteBranch({ id: branchToDelete.id, jwt })).unwrap();
 
       toast({
-        title: "Success",
-        description: `Branch "${branchToDelete.name}" deleted successfully`,
+        title: "Branch Deleted",
+        description: `Branch "${branchToDelete.name}" deleted successfully.`,
       });
 
-      // Refresh branches list
       if (store?.id) {
         dispatch(getAllBranchesByStore({ storeId: store.id, jwt }));
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: error.message || error || "Failed to delete branch",
+        title: "Delete Error",
+        description: error.message || error || "Failed to delete branch.",
         variant: "destructive",
       });
     } finally {
@@ -61,107 +61,108 @@ const BranchTable = ({ branches, loading, onEdit, canManageBranch = false }) => 
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Branch Name</TableHead>
-            <TableHead>Address</TableHead>
-            <TableHead>Manager</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {loading ? (
+      <div className="border border-border rounded-2xl bg-card overflow-hidden">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin inline-block mr-2" />
-                Loading branches...
-              </TableCell>
+              <TableHead>Branch Name</TableHead>
+              <TableHead>Physical Address</TableHead>
+              <TableHead>Assigned Manager</TableHead>
+              <TableHead>Contact Phone</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          ) : branches.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                No branches found.
-              </TableCell>
-            </TableRow>
-          ) : (
-            branches.map((branch) => (
-              <TableRow key={branch.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2 font-medium">
-                    {branch.name}
-                  </div>
-                </TableCell>
-                <TableCell className="max-w-xs md:max-w-md">
-                  <div className="flex items-center gap-2" title={branch.address}>
-                    <MapPin className="h-4 w-4 text-gray-500 shrink-0" />
-                    <span className="truncate">{branch.address}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-gray-500" />
-                    {branch.manager || "Not Assigned"}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-500" />
-                    {branch.phone}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  {canManageBranch ? (
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEdit(branch)}
-                        title="Edit Branch"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
-                        onClick={() => setBranchToDelete(branch)}
-                        disabled={loading || isDeleting}
-                        title="Delete Branch"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic pr-2">View Only</span>
-                  )}
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-10 text-xs font-semibold text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin inline-block mr-2 text-[#B8860B]" />
+                  Loading branch locations...
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : branches.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-10 text-xs font-semibold text-muted-foreground">
+                  No branch workstations registered for this store.
+                </TableCell>
+              </TableRow>
+            ) : (
+              branches.map((branch) => (
+                <TableRow key={branch.id}>
+                  <TableCell className="font-bold text-foreground">
+                    {branch.name}
+                  </TableCell>
+                  <TableCell className="max-w-xs md:max-w-md">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground" title={branch.address}>
+                      <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{branch.address}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                      <Users className="h-3.5 w-3.5 text-[#B8860B]" />
+                      <span>{branch.manager || <span className="text-muted-foreground italic">Unassigned</span>}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5" />
+                      <span>{branch.phone || "—"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {canManageBranch ? (
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg"
+                          onClick={() => onEdit(branch)}
+                          title="Edit Branch"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10"
+                          onClick={() => setBranchToDelete(branch)}
+                          disabled={loading || isDeleting}
+                          title="Delete Branch"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground font-mono">View Only</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-      {/* Confirmation Dialog for Branch Deletion */}
+      {/* Confirmation Dialog */}
       <AlertDialog open={Boolean(branchToDelete)} onOpenChange={(open) => !open && setBranchToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Branch</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-lg font-bold text-destructive">Delete Branch Location</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
               Are you sure you want to delete branch{" "}
-              <span className="font-semibold text-foreground">"{branchToDelete?.name}"</span>?
-              This action cannot be undone and will remove associated data.
+              <strong>"{branchToDelete?.name}"</strong>?
+              This will unassign terminals and staff associated with this location.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting} className="text-xs h-9">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteBranch}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="text-xs font-bold h-9 bg-destructive hover:bg-destructive/90 text-white"
             >
-              {isDeleting ? "Deleting..." : "Delete Branch"}
+              {isDeleting ? "Deleting..." : "Confirm Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

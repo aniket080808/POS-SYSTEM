@@ -27,7 +27,16 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import com.aniket.modal.StoreSettings;
+import com.aniket.repository.StoreSettingsRepository;
+import com.aniket.modal.AlertDismissal;
+import com.aniket.payload.dto.AlertDismissalDTO;
+
+import java.util.Collections;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -41,11 +50,13 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
     private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
     private final StoreRepository storeRepository;
+    private final StoreSettingsRepository storeSettingsRepository;
     private final StoreSubscriptionRepository storeSubscriptionRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final StoreSubscriptionService storeSubscriptionService;
     private final UserService userService;
+    private final AlertDismissalRepository alertDismissalRepository;
 
     @org.springframework.beans.factory.annotation.Value("${app.alerts.inactive-cashier-days:7}")
     private int inactiveCashierDays;
@@ -70,8 +81,8 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
 
     @Override
     public StoreOverviewDTO getStoreOverview(Long storeAdminId) {
-        // Use Asia/Kolkata timezone for all date boundaries (same as Alerts page)
-        java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Kolkata");
+        // Use store's configured timezone for all date boundaries
+        java.time.ZoneId zoneId = getStoreZoneId(storeAdminId);
         LocalDateTime nowInIst = LocalDateTime.now(zoneId);
         LocalDateTime startOfToday = nowInIst.toLocalDate().atStartOfDay();
         LocalDateTime startOfYesterday = startOfToday.minusDays(1);
@@ -92,6 +103,8 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
         roles.add(UserRole.ROLE_BRANCH_CASHIER);
 
         // Sales Management fields (COMPLETED orders only)
+        double todaySales = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
+        double yesterdaySales = orderRepository.sumCompletedSalesByStoreAdminAndDateRange(storeAdminId, startOfYesterday, endOfYesterday);
         int todayOrders = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOfToday, nowInIst);
         int yesterdayOrders = orderRepository.countCompletedOrdersByStoreAdminAndDateRange(storeAdminId, startOfYesterday, endOfYesterday);
 
@@ -114,10 +127,12 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
         // Active cashiers: logged in today (Asia/Kolkata boundaries)
         int activeCashiers = userRepository.countActiveCashiersByStoreAdmin(storeAdminId, startOfToday);
         int yesterdayActiveCashiers = userRepository.countActiveCashiersBetweenByStoreAdmin(storeAdminId, startOfYesterday, endOfYesterday);
+        int totalBranches = branchRepository.countByStoreAdminId(storeAdminId);
 
         return StoreOverviewDTO.builder()
                 // Dashboard fields
-                .totalBranches(branchRepository.countByStoreAdminId(storeAdminId))
+                .totalBranches(totalBranches)
+                .activeBranches(totalBranches)
                 .totalSales(orderRepository.sumTotalSalesByStoreAdmin(storeAdminId).orElse(Double.valueOf(0)))
                 .totalOrders(orderRepository.countByStoreAdminId(storeAdminId))
                 .totalEmployees(userRepository.countByStoreAdminIdAndRoles(storeAdminId, roles))
@@ -126,6 +141,8 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                 .totalProducts((int) branchInventoryRepository.countByStoreAdminId(storeAdminId))
 //                .topBranchName(branchRepository.findTopBranchBySales(storeAdminId))
                 // Sales Management fields
+                .todaySales(todaySales)
+                .yesterdaySales(yesterdaySales)
                 .todayOrders(todayOrders)
                 .yesterdayOrders(yesterdayOrders)
                 .activeCashiers(activeCashiers)
@@ -138,7 +155,7 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
 
     @Override
     public TimeSeriesDataDTO getSalesTrends(Long storeAdminId, String period) {
-        java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.ZoneId zoneId = getStoreZoneId(storeAdminId);
         LocalDateTime nowInIst = LocalDateTime.now(zoneId);
         int days = "weekly".equalsIgnoreCase(period) ? 7 : 30;
         LocalDateTime start = nowInIst.minusDays(days - 1).toLocalDate().atStartOfDay();
@@ -169,9 +186,13 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
     private void checkAdvancedReportsEnabled() {
         try {
             User user = userService.getCurrentUser();
-            Store store = user.getStore() != null
-                    ? user.getStore()
-                    : storeRepository.findByStoreAdminId(user.getId());
+            Store store = user.getStore();
+            if (store == null && user.getBranch() != null) {
+                store = user.getBranch().getStore();
+            }
+            if (store == null) {
+                store = storeRepository.findByStoreAdminId(user.getId());
+            }
             if (store == null) return;
 
             StoreSubscription storeSub = storeSubscriptionService.getOrCreateForStore(store);
@@ -188,7 +209,7 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
     @Override
     public List<TimeSeriesPointDTO> getMonthlySalesGraph(Long storeAdminId) {
         checkAdvancedReportsEnabled();
-        java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.ZoneId zoneId = getStoreZoneId(storeAdminId);
         YearMonth currentMonth = YearMonth.now(zoneId);
         YearMonth startMonth = currentMonth.minusMonths(11); // 12-month rolling window
 
@@ -218,8 +239,7 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
 
     @Override
     public List<TimeSeriesPointDTO> getDailySalesGraph(Long storeAdminId) {
-        // Use Asia/Kolkata timezone for consistency with Alerts page
-        java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.ZoneId zoneId = getStoreZoneId(storeAdminId);
         LocalDateTime nowInIst = LocalDateTime.now(zoneId);
         LocalDateTime start = nowInIst.minusDays(6).toLocalDate().atStartOfDay();
         LocalDateTime end = nowInIst;
@@ -281,7 +301,7 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
     @Override
     public StoreAlertDTO getStoreAlerts(Long storeAdminId) {
         // 1. Inactive Cashiers (configurable threshold, default 7 days)
-        java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.ZoneId zoneId = getStoreZoneId(storeAdminId);
         LocalDateTime cutoffDate = LocalDateTime.now(zoneId).minusDays(inactiveCashierDays);
         List<com.aniket.payload.dto.UserDTO> inactiveCashiers =
                 userRepository.findInactiveCashiers(storeAdminId, cutoffDate);
@@ -300,11 +320,139 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
         List<com.aniket.payload.dto.RefundDTO> refundSpikeAlerts =
                 detectRefundSpikes(storeAdminId, startOfToday);
 
+        // 🛡️ Resolve store ID to query database dismissals
+        Long storeId = null;
+        User adminUser = userRepository.findById(storeAdminId).orElse(null);
+        if (adminUser != null && adminUser.getStore() != null) {
+            storeId = adminUser.getStore().getId();
+        } else {
+            Store st = storeRepository.findByStoreAdminId(storeAdminId);
+            if (st != null) storeId = st.getId();
+        }
+
+        if (storeId != null) {
+            // Check StoreSettings configuration
+            Optional<StoreSettings> storeSettingsOpt = storeSettingsRepository.findByStoreId(storeId);
+            if (storeSettingsOpt.isPresent()) {
+                StoreSettings settings = storeSettingsOpt.get();
+                if (!settings.isLowStockAlerts()) {
+                    // Store Admin disabled Low Stock Alerts in Store Settings -> suppress alert feed
+                    lowStockAlerts = Collections.emptyList();
+                }
+                // TODO: StoreSettings.salesReports - Connected to future automated daily/weekly email sales report background dispatcher.
+                // TODO: StoreSettings.employeeActivity - Connected to future real-time employee action audit trail listener.
+            }
+
+            List<AlertDismissal> dismissals = alertDismissalRepository.findByStoreId(storeId);
+            if (!dismissals.isEmpty()) {
+                // Auto-cleanup stale low stock dismissals where product stock has been replenished above threshold
+                List<AlertDismissal> staleLowStockDismissals = dismissals.stream()
+                        .filter(d -> "LOW_STOCK".equalsIgnoreCase(d.getAlertType()))
+                        .filter(d -> {
+                            try {
+                                Long prodId = Long.parseLong(d.getReferenceId());
+                                List<com.aniket.modal.BranchInventory> invList = branchInventoryRepository.findByProductId(prodId);
+                                return invList.stream().anyMatch(bi -> bi.getStock() != null && bi.getStock() > lowStockThreshold);
+                            } catch (Exception e) { return false; }
+                        }).collect(Collectors.toList());
+                if (!staleLowStockDismissals.isEmpty()) {
+                    alertDismissalRepository.deleteAll(staleLowStockDismissals);
+                    dismissals.removeAll(staleLowStockDismissals);
+                }
+
+                Set<String> lowStockDismissedIds = dismissals.stream()
+                        .filter(d -> "LOW_STOCK".equalsIgnoreCase(d.getAlertType()))
+                        .map(AlertDismissal::getReferenceId)
+                        .collect(Collectors.toSet());
+
+                // Low stock filtering: suppress dismissed low stock alerts during ongoing low-stock episode.
+                // Alerts re-trigger ONLY after replenishment (> threshold) purges the stale dismissal record above.
+                lowStockAlerts = lowStockAlerts.stream()
+                        .filter(p -> !lowStockDismissedIds.contains(String.valueOf(p.getId())))
+                        .collect(Collectors.toList());
+
+                // Inactive cashiers filtering
+                Set<String> inactiveDismissed = dismissals.stream()
+                        .filter(d -> "INACTIVE_CASHIER".equalsIgnoreCase(d.getAlertType()))
+                        .map(AlertDismissal::getReferenceId)
+                        .collect(Collectors.toSet());
+                inactiveCashiers = inactiveCashiers.stream()
+                        .filter(c -> !inactiveDismissed.contains(String.valueOf(c.getId())))
+                        .collect(Collectors.toList());
+
+                // No sale today filtering
+                Set<String> noSaleDismissed = dismissals.stream()
+                        .filter(d -> "NO_SALE_TODAY".equalsIgnoreCase(d.getAlertType()))
+                        .map(AlertDismissal::getReferenceId)
+                        .collect(Collectors.toSet());
+                noSalesToday = noSalesToday.stream()
+                        .filter(b -> !noSaleDismissed.contains(String.valueOf(b.getId())))
+                        .collect(Collectors.toList());
+
+                // Refund spike filtering
+                Set<String> refundDismissed = dismissals.stream()
+                        .filter(d -> "REFUND_SPIKE".equalsIgnoreCase(d.getAlertType()))
+                        .map(AlertDismissal::getReferenceId)
+                        .collect(Collectors.toSet());
+                refundSpikeAlerts = refundSpikeAlerts.stream()
+                        .filter(r -> !refundDismissed.contains(String.valueOf(r.getId())))
+                        .collect(Collectors.toList());
+            }
+        }
+
         return StoreAlertDTO.builder()
                 .inactiveCashiers(inactiveCashiers)
                 .lowStockAlerts(lowStockAlerts)
                 .noSalesToday(noSalesToday)
                 .refundSpikeAlerts(refundSpikeAlerts)
+                .build();
+    }
+
+    @Override
+    public AlertDismissalDTO dismissAlert(Long storeAdminId, AlertDismissalDTO dto) {
+        Long storeId = null;
+        User adminUser = userRepository.findById(storeAdminId).orElse(null);
+        if (adminUser != null && adminUser.getStore() != null) {
+            storeId = adminUser.getStore().getId();
+        } else {
+            Store st = storeRepository.findByStoreAdminId(storeAdminId);
+            if (st != null) storeId = st.getId();
+        }
+
+        if (storeId == null) {
+            storeId = dto.getStoreId();
+        }
+
+        User currentUser = null;
+        try {
+            currentUser = userService.getCurrentUser();
+        } catch (Exception ignored) {}
+
+        List<AlertDismissal> existing = alertDismissalRepository.findByStoreIdAndAlertTypeAndReferenceId(
+                storeId, dto.getAlertType(), dto.getReferenceId()
+        );
+        if (!existing.isEmpty()) {
+            alertDismissalRepository.deleteAll(existing);
+        }
+
+        AlertDismissal dismissal = AlertDismissal.builder()
+                .storeId(storeId)
+                .alertType(dto.getAlertType())
+                .referenceId(dto.getReferenceId())
+                .dismissedById(currentUser != null ? currentUser.getId() : storeAdminId)
+                .dismissedAt(LocalDateTime.now())
+                .snapshotValue(dto.getSnapshotValue())
+                .build();
+
+        AlertDismissal saved = alertDismissalRepository.save(dismissal);
+        return AlertDismissalDTO.builder()
+                .id(saved.getId())
+                .storeId(saved.getStoreId())
+                .alertType(saved.getAlertType())
+                .referenceId(saved.getReferenceId())
+                .dismissedById(saved.getDismissedById())
+                .dismissedAt(saved.getDismissedAt())
+                .snapshotValue(saved.getSnapshotValue())
                 .build();
     }
 
@@ -325,9 +473,10 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("Store not found with ID: " + storeId));
 
-        // Read-only lookup: do NOT use getOrCreateForStore (it writes). Use getByStoreId.
         StoreSubscription storeSub = storeSubscriptionService.getByStoreId(storeId);
         SubscriptionPlan currentPlan = (storeSub != null) ? storeSub.getCurrentPlan() : null;
+        SubscriptionPlan requestedPlan = (storeSub != null) ? storeSub.getRequestedPlan() : null;
+        boolean isPending = (storeSub != null && storeSub.getStatus() == com.aniket.domain.StoreSubscriptionStatus.PENDING) || requestedPlan != null;
 
         // Reuse existing aggregation logic, scoped via the store's storeAdmin
         Long storeAdminId = store.getStoreAdmin().getId();
@@ -348,32 +497,82 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                 .totalProductsUsed(totalProducts)
                 .totalEmployeesUsed(totalEmployees);
 
-        if (currentPlan != null) {
-            builder.planId(currentPlan.getId())
-                    .planName(currentPlan.getName())
-                    .planPrice(currentPlan.getPrice())
-                    .billingCycle(currentPlan.getBillingCycle())
-                    .maxProducts(currentPlan.getMaxProducts())
-                    .maxBranches(currentPlan.getMaxBranches())
-                    .maxUsers(currentPlan.getMaxUsers());
-        }
+        if (isPending) {
+            builder.subscriptionStatus(com.aniket.domain.StoreSubscriptionStatus.PENDING);
+            builder.status(com.aniket.domain.SubscriptionStatus.TRIAL);
+            if (currentPlan != null) {
+                builder.planId(currentPlan.getId())
+                        .planName(currentPlan.getName())
+                        .planPrice(currentPlan.getPrice())
+                        .billingCycle(currentPlan.getBillingCycle())
+                        .maxProducts(currentPlan.getMaxProducts())
+                        .maxBranches(currentPlan.getMaxBranches())
+                        .maxUsers(currentPlan.getMaxUsers());
+            } else if (requestedPlan != null) {
+                builder.planId(requestedPlan.getId())
+                        .planName(requestedPlan.getName())
+                        .planPrice(requestedPlan.getPrice())
+                        .billingCycle(requestedPlan.getBillingCycle())
+                        .maxProducts(0)
+                        .maxBranches(0)
+                        .maxUsers(0);
+            }
+        } else {
+            // Find latest ACTIVE/TRIAL subscription for start/end dates and plan
+            List<Subscription> subs = subscriptionRepository.findByStore(store);
+            Subscription latestActiveSub = subs.stream()
+                    .filter(s -> s.getStatus() == com.aniket.domain.SubscriptionStatus.ACTIVE
+                            || s.getStatus() == com.aniket.domain.SubscriptionStatus.TRIAL)
+                    .max(java.util.Comparator.comparing(Subscription::getStartDate))
+                    .orElse(null);
 
-        if (storeSub != null) {
-            builder.subscriptionStatus(storeSub.getStatus());
-        }
+            if (currentPlan == null && latestActiveSub != null && latestActiveSub.getPlan() != null) {
+                currentPlan = latestActiveSub.getPlan();
+            }
 
-        // Find latest ACTIVE/TRIAL subscription for start/end dates
-        List<Subscription> subs = subscriptionRepository.findByStore(store);
-        Subscription latestActiveSub = subs.stream()
-                .filter(s -> s.getStatus() == com.aniket.domain.SubscriptionStatus.ACTIVE
-                        || s.getStatus() == com.aniket.domain.SubscriptionStatus.TRIAL)
-                .max(java.util.Comparator.comparing(Subscription::getStartDate))
-                .orElse(null);
+            if (currentPlan != null) {
+                builder.planId(currentPlan.getId())
+                        .planName(currentPlan.getName())
+                        .planPrice(currentPlan.getPrice())
+                        .billingCycle(currentPlan.getBillingCycle())
+                        .maxProducts(currentPlan.getMaxProducts())
+                        .maxBranches(currentPlan.getMaxBranches())
+                        .maxUsers(currentPlan.getMaxUsers());
+            }
 
-        if (latestActiveSub != null) {
-            builder.status(latestActiveSub.getStatus())
-                    .startDate(latestActiveSub.getStartDate())
-                    .endDate(latestActiveSub.getEndDate());
+            // Apply custom super admin quota overrides if configured
+            if (store.getCustomMaxBranches() != null) {
+                builder.maxBranches(store.getCustomMaxBranches());
+            }
+            if (store.getCustomMaxUsers() != null) {
+                builder.maxUsers(store.getCustomMaxUsers());
+            }
+            if (store.getCustomMaxProducts() != null) {
+                builder.maxProducts(store.getCustomMaxProducts());
+            }
+
+            if (storeSub != null) {
+                builder.subscriptionStatus(storeSub.getStatus());
+            }
+
+            if (store.getStatus() == com.aniket.domain.StoreStatus.BLOCKED || (storeSub != null && storeSub.getStatus() == com.aniket.domain.StoreSubscriptionStatus.INACTIVE)) {
+                builder.status(com.aniket.domain.SubscriptionStatus.CANCELLED);
+            } else if (storeSub != null && storeSub.getStatus() == com.aniket.domain.StoreSubscriptionStatus.ACTIVE) {
+                builder.status(com.aniket.domain.SubscriptionStatus.ACTIVE);
+            } else if (latestActiveSub != null) {
+                builder.status(latestActiveSub.getStatus());
+            } else {
+                builder.status(com.aniket.domain.SubscriptionStatus.ACTIVE);
+            }
+
+            if (latestActiveSub != null) {
+                builder.startDate(latestActiveSub.getStartDate())
+                        .endDate(latestActiveSub.getEndDate());
+            } else {
+                java.time.LocalDate start = store.getCreatedAt() != null ? store.getCreatedAt().toLocalDate() : java.time.LocalDate.now();
+                builder.startDate(start)
+                        .endDate(start.plusMonths(1));
+            }
         }
 
         return builder.build();
@@ -434,7 +633,7 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                     refundRepository.findRefundsBetween(storeAdminId, baselineStart, baselineEnd);
 
             java.util.Map<Integer, Double> dailyTotals = new java.util.HashMap<>();
-            java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Kolkata");
+            java.time.ZoneId zoneId = getStoreZoneId(storeAdminId);
             for (com.aniket.payload.dto.RefundDTO r : baselineRefunds) {
                 if (r.getCreatedAt() == null) continue;
                 int dayOfYear = r.getCreatedAt().atZone(zoneId).getDayOfYear();
@@ -465,5 +664,31 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
         }
 
         return flagged;
+    }
+
+    private java.time.ZoneId getStoreZoneId(Store store) {
+        if (store != null && store.getTimezone() != null && !store.getTimezone().isBlank()) {
+            try {
+                return java.time.ZoneId.of(store.getTimezone());
+            } catch (Exception ignored) {
+            }
+        }
+        return java.time.ZoneId.of("Asia/Kolkata");
+    }
+
+    private java.time.ZoneId getStoreZoneId(Long storeAdminId) {
+        if (storeAdminId != null) {
+            Store store = storeRepository.findByStoreAdminId(storeAdminId);
+            if (store == null) {
+                User u = userRepository.findById(storeAdminId).orElse(null);
+                if (u != null && u.getStore() != null) {
+                    store = u.getStore();
+                } else if (u != null && u.getBranch() != null) {
+                    store = u.getBranch().getStore();
+                }
+            }
+            return getStoreZoneId(store);
+        }
+        return java.time.ZoneId.of("Asia/Kolkata");
     }
 }

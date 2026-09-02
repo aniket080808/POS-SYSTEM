@@ -19,8 +19,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Plus, RefreshCw, AlertCircle, Trash2 } from "lucide-react";
+import { Search, Plus, RefreshCw, AlertCircle, Trash2, Users } from "lucide-react";
 import { branchAdminRole } from "../../../utils/userRole";
+import { Badge } from "@/components/ui/badge";
 
 import EmployeeStats from "./EmployeeStats";
 import EmployeeTable from "./EmployeeTable";
@@ -46,404 +47,287 @@ const BranchEmployees = () => {
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] =
-    useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [isPerformanceDialogOpen, setIsPerformanceDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-  // Confirmation dialog state for toggle access and deletion
   const [confirmDialog, setConfirmDialog] = useState({
     open: false,
-    type: null, // "toggle" | "delete"
+    type: null,
     employee: null,
   });
 
   const dispatch = useDispatch();
-  const { branch } = useSelector((state) => state.branch);
-  const { employees, loading, error } = useSelector((state) => state.employee);
-  const { userProfile } = useSelector((state) => state.user);
+  const branch = useSelector((state) => state.branch.branch);
+  const { employees = [], loading } = useSelector((state) => state.employee);
+  const currentUser = useSelector((state) => state.user.userProfile);
 
-  const activeBranchId =
-    branch?.id || userProfile?.branchId || userProfile?.branch?.id;
-
-  // Filter roles based on caller's permission
-  const allowedRoles = useMemo(() => {
-    if (userProfile?.role === "ROLE_BRANCH_MANAGER") {
-      return ["ROLE_BRANCH_CASHIER"];
-    }
-    if (userProfile?.role === "ROLE_BRANCH_ADMIN") {
-      return ["ROLE_BRANCH_MANAGER", "ROLE_BRANCH_CASHIER"];
-    }
-    return branchAdminRole;
-  }, [userProfile?.role]);
-
-  const fetchEmployees = React.useCallback(() => {
-    if (activeBranchId) {
-      dispatch(
-        findBranchEmployees({
-          branchId: activeBranchId,
-        })
-      );
-    }
-  }, [dispatch, activeBranchId]);
+  const branchId = branch?.id || currentUser?.branchId || currentUser?.branch?.id;
 
   useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
-
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleAddEmployee = async (newEmployeeData) => {
-    const token = localStorage.getItem("jwt");
-    if (activeBranchId && token) {
-      try {
-        await dispatch(
-          createBranchEmployee({
-            employee: {
-              ...newEmployeeData,
-              username: newEmployeeData.email.split("@")[0],
-            },
-            branchId: activeBranchId,
-            token,
-          })
-        ).unwrap();
-        toast.success("Employee added successfully!");
-        setIsAddDialogOpen(false);
-        fetchEmployees();
-      } catch (err) {
-        toast.error(err || "Failed to add employee");
-      }
+    if (branchId) {
+      dispatch(findBranchEmployees({ branchId }));
     }
-  };
-
-  const handleEditEmployee = async (updatedEmployeeData) => {
-    const token = localStorage.getItem("jwt");
-    if (selectedEmployee?.id && token) {
-      try {
-        await dispatch(
-          updateEmployee({
-            employeeId: selectedEmployee.id,
-            employeeDetails: updatedEmployeeData,
-            token,
-          })
-        ).unwrap();
-        toast.success("Employee updated successfully!");
-        setIsEditDialogOpen(false);
-        fetchEmployees();
-      } catch (err) {
-        toast.error(err || "Failed to update employee");
-      }
-    }
-  };
-
-  const executeToggleAccess = async (employee) => {
-    const token = localStorage.getItem("jwt");
-    if (employee?.id && token) {
-      try {
-        const res = await dispatch(
-          toggleEmployeeAccess({
-            employeeId: employee.id,
-            token,
-          })
-        ).unwrap();
-        const status = res.enabled !== false ? "enabled" : "disabled";
-        toast.success(`Access ${status} for ${employee.fullName}`);
-        fetchEmployees();
-      } catch (err) {
-        toast.error(err || "Failed to toggle employee access");
-      }
-    }
-  };
-
-  const handleToggleAccessPrompt = (employee) => {
-    const isCurrentlyEnabled = employee.enabled !== false;
-    if (isCurrentlyEnabled) {
-      // Prompt confirmation before disabling
-      setConfirmDialog({
-        open: true,
-        type: "toggle",
-        employee,
-      });
-    } else {
-      // Re-enabling can happen immediately
-      executeToggleAccess(employee);
-    }
-  };
-
-  const handleDeletePrompt = (employee) => {
-    setConfirmDialog({
-      open: true,
-      type: "delete",
-      employee,
-    });
-  };
-
-  const executeDeleteEmployee = async (employee) => {
-    const token = localStorage.getItem("jwt");
-    if (employee?.id && token) {
-      try {
-        await dispatch(
-          deleteEmployee({
-            employeeId: employee.id,
-            token,
-          })
-        ).unwrap();
-        toast.success(`Employee ${employee.fullName} deleted successfully`);
-        fetchEmployees();
-      } catch (err) {
-        toast.error(err || "Failed to delete employee");
-      }
-    }
-  };
-
-  const handleConfirmAction = () => {
-    if (!confirmDialog.employee) return;
-    if (confirmDialog.type === "toggle") {
-      executeToggleAccess(confirmDialog.employee);
-    } else if (confirmDialog.type === "delete") {
-      executeDeleteEmployee(confirmDialog.employee);
-    }
-    setConfirmDialog({ open: false, type: null, employee: null });
-  };
-
-  const handleResetPassword = async (newPassword) => {
-    const token = localStorage.getItem("jwt");
-    if (selectedEmployee?.id && token) {
-      try {
-        await dispatch(
-          resetEmployeePassword({
-            employeeId: selectedEmployee.id,
-            newPassword,
-            token,
-          })
-        ).unwrap();
-        toast.success(
-          `Password reset successfully for ${selectedEmployee.fullName}!`
-        );
-        setIsResetPasswordDialogOpen(false);
-      } catch (err) {
-        toast.error(err || "Failed to reset employee password");
-      }
-    }
-  };
-
-  const openEditDialog = (employee) => {
-    setSelectedEmployee(employee);
-    setIsEditDialogOpen(true);
-  };
-
-  const openResetPasswordDialog = (employee) => {
-    setSelectedEmployee(employee);
-    setIsResetPasswordDialogOpen(true);
-  };
-
-  const openPerformanceDialog = (employee) => {
-    setSelectedEmployee(employee);
-    setIsPerformanceDialogOpen(true);
-  };
+  }, [branchId, dispatch]);
 
   const filteredEmployees = useMemo(() => {
-    return (
-      employees?.filter((emp) => {
-        // Search term filter
-        if (searchTerm) {
-          const term = searchTerm.toLowerCase();
-          const matches =
-            emp.fullName?.toLowerCase().includes(term) ||
-            emp.email?.toLowerCase().includes(term) ||
-            emp.phone?.includes(term) ||
-            emp.role?.toLowerCase().includes(term);
-          if (!matches) return false;
-        }
+    return employees.filter((employee) => {
+      const matchesSearch =
+        employee.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.phone?.includes(searchTerm);
 
-        // Role dropdown filter
-        if (roleFilter !== "ALL") {
-          if (emp.role !== roleFilter) return false;
-        }
+      const matchesRole =
+        roleFilter === "ALL" || employee.role === roleFilter;
 
-        return true;
-      }) || []
-    );
+      return matchesSearch && matchesRole;
+    });
   }, [employees, searchTerm, roleFilter]);
 
+  const handleAddEmployee = async (formData) => {
+    try {
+      const payload = {
+        ...formData,
+        branchId: branchId,
+      };
+      await dispatch(createBranchEmployee(payload)).unwrap();
+      toast.success("Branch staff member created successfully.");
+      setIsAddDialogOpen(false);
+      if (branchId) dispatch(findBranchEmployees({ branchId }));
+    } catch (err) {
+      toast.error(err || "Failed to create staff account.");
+    }
+  };
+
+  const handleEditEmployee = async (formData) => {
+    if (!selectedEmployee) return;
+    try {
+      await dispatch(
+        updateEmployee({
+          id: selectedEmployee.id,
+          employee: formData,
+        })
+      ).unwrap();
+      toast.success("Staff profile updated successfully.");
+      setIsEditDialogOpen(false);
+      setSelectedEmployee(null);
+      if (branchId) dispatch(findBranchEmployees({ branchId }));
+    } catch (err) {
+      toast.error(err || "Failed to update staff account.");
+    }
+  };
+
+  const handleToggleAccessConfirmed = async () => {
+    const emp = confirmDialog.employee;
+    if (!emp) return;
+    try {
+      await dispatch(toggleEmployeeAccess(emp.id)).unwrap();
+      toast.success(
+        `Staff access ${emp.enabled !== false ? "revoked" : "granted"} for ${emp.fullName}.`
+      );
+      setConfirmDialog({ open: false, type: null, employee: null });
+      if (branchId) dispatch(findBranchEmployees({ branchId }));
+    } catch (err) {
+      toast.error(err || "Failed to modify staff access.");
+    }
+  };
+
+  const handleDeleteConfirmed = async () => {
+    const emp = confirmDialog.employee;
+    if (!emp) return;
+    try {
+      await dispatch(deleteEmployee(emp.id)).unwrap();
+      toast.success(`Staff account for ${emp.fullName} permanently deleted.`);
+      setConfirmDialog({ open: false, type: null, employee: null });
+      if (branchId) dispatch(findBranchEmployees({ branchId }));
+    } catch (err) {
+      toast.error(err || "Failed to delete employee.");
+    }
+  };
+
+  const handleResetPassword = async ({ employeeId, newPassword }) => {
+    try {
+      await dispatch(
+        resetEmployeePassword({
+          employeeId,
+          newPassword,
+        })
+      ).unwrap();
+      toast.success("Password reset successfully.");
+      setIsResetPasswordDialogOpen(false);
+    } catch (err) {
+      toast.error(err || "Failed to reset password.");
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Employee Management
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Branch Cashiers & Staff
+            </h1>
+            <Badge variant="secondary" className="px-2.5 py-0.5 text-xs font-mono font-bold">
+              {employees.length} {employees.length === 1 ? "Member" : "Members"}
+            </Badge>
+          </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Manage branch staff, roles, and access credentials
+            Manage cashier terminal logins, shift authorizations, and operational security
           </p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
-            onClick={fetchEmployees}
+            className="text-xs h-10 gap-1.5"
+            onClick={() => branchId && dispatch(findBranchEmployees({ branchId }))}
             disabled={loading}
-            className="text-xs h-9 rounded-xl"
-            title="Refresh employees list"
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Sync Staff
           </Button>
 
-          <AddEmployeeDialog
-            isAddDialogOpen={isAddDialogOpen}
-            setIsAddDialogOpen={setIsAddDialogOpen}
-            handleAddEmployee={handleAddEmployee}
-            roles={allowedRoles}
-            defaultBranchId={activeBranchId}
-          />
+          <Button
+            onClick={() => setIsAddDialogOpen(true)}
+            className="text-xs font-bold h-10 gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Staff Member
+          </Button>
         </div>
       </div>
 
-      <EmployeeStats employees={employees || []} />
+      <EmployeeStats employees={employees} />
 
-      {/* Error Notice */}
-      {error && (
-        <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchEmployees}
-            className="text-xs border-destructive/30 hover:bg-destructive/10"
-          >
-            Try Again
-          </Button>
-        </div>
-      )}
-
-      <Card>
-        <CardContent className="p-4 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by name, email, phone..."
-                value={searchTerm}
-                onChange={handleSearch}
-                className="pl-9"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-[170px] text-xs h-9">
-                  <SelectValue placeholder="Filter by Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Roles</SelectItem>
-                  <SelectItem value="ROLE_BRANCH_ADMIN">Branch Admin</SelectItem>
-                  <SelectItem value="ROLE_BRANCH_MANAGER">Branch Manager</SelectItem>
-                  <SelectItem value="ROLE_BRANCH_CASHIER">Cashier</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {(searchTerm || roleFilter !== "ALL") && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setRoleFilter("ALL");
-                  }}
-                  className="text-xs text-muted-foreground h-9"
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-md border overflow-hidden">
-            <EmployeeTable
-              employees={filteredEmployees}
-              loading={loading}
-              currentUserRole={userProfile?.role}
-              currentUserId={userProfile?.id}
-              handleToggleAccess={handleToggleAccessPrompt}
-              handleDelete={handleDeletePrompt}
-              openEditDialog={openEditDialog}
-              openResetPasswordDialog={openResetPasswordDialog}
-              openPerformanceDialog={openPerformanceDialog}
+      {/* Filter Bar */}
+      <div className="space-y-3 bg-card p-4 rounded-2xl border border-border shadow-2xs">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search by Name, Email, or Phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 text-xs h-10"
             />
           </div>
-        </CardContent>
-      </Card>
+
+          <div>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="text-xs h-10">
+                <SelectValue placeholder="All Staff Roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Roles</SelectItem>
+                <SelectItem value="ROLE_BRANCH_CASHIER">Cashier (Terminal Operator)</SelectItem>
+                <SelectItem value="ROLE_BRANCH_MANAGER">Branch Manager</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <EmployeeTable
+        employees={filteredEmployees}
+        loading={loading}
+        currentUserRole={currentUser?.role}
+        currentUserId={currentUser?.id}
+        handleToggleAccess={(emp) =>
+          setConfirmDialog({ open: true, type: "toggle", employee: emp })
+        }
+        handleDelete={(emp) =>
+          setConfirmDialog({ open: true, type: "delete", employee: emp })
+        }
+        openResetPasswordDialog={(emp) => {
+          setSelectedEmployee(emp);
+          setIsResetPasswordDialogOpen(true);
+        }}
+        openPerformanceDialog={(emp) => {
+          setSelectedEmployee(emp);
+          setIsPerformanceDialogOpen(true);
+        }}
+        openEditDialog={(emp) => {
+          setSelectedEmployee(emp);
+          setIsEditDialogOpen(true);
+        }}
+      />
+
+      {/* Dialogs */}
+      <AddEmployeeDialog
+        isAddDialogOpen={isAddDialogOpen}
+        setIsAddDialogOpen={setIsAddDialogOpen}
+        handleAddEmployee={handleAddEmployee}
+        roles={branchAdminRole}
+        defaultBranchId={branchId}
+      />
 
       <EditEmployeeDialog
         isEditDialogOpen={isEditDialogOpen}
         setIsEditDialogOpen={setIsEditDialogOpen}
-        selectedEmployee={selectedEmployee}
         handleEditEmployee={handleEditEmployee}
-        roles={allowedRoles}
-        defaultBranchId={activeBranchId}
+        selectedEmployee={selectedEmployee}
+        roles={branchAdminRole}
       />
 
       <ResetPasswordDialog
-        isResetPasswordDialogOpen={isResetPasswordDialogOpen}
-        setIsResetPasswordDialogOpen={setIsResetPasswordDialogOpen}
-        selectedEmployee={selectedEmployee}
-        handleResetPassword={handleResetPassword}
+        isOpen={isResetPasswordDialogOpen}
+        onClose={() => {
+          setIsResetPasswordDialogOpen(false);
+          setSelectedEmployee(null);
+        }}
+        onResetPassword={handleResetPassword}
+        employee={selectedEmployee}
       />
 
       <PerformanceDialog
-        isPerformanceDialogOpen={isPerformanceDialogOpen}
-        setIsPerformanceDialogOpen={setIsPerformanceDialogOpen}
-        selectedEmployee={selectedEmployee}
+        isOpen={isPerformanceDialogOpen}
+        onClose={() => {
+          setIsPerformanceDialogOpen(false);
+          setSelectedEmployee(null);
+        }}
+        employee={selectedEmployee}
       />
 
-      {/* Confirmation Dialog for Toggle Access & Delete */}
+      {/* Confirmation Dialog */}
       <AlertDialog
         open={confirmDialog.open}
         onOpenChange={(open) => {
           if (!open) setConfirmDialog({ open: false, type: null, employee: null });
         }}
       >
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>
+            <AlertDialogTitle className="text-base font-bold">
               {confirmDialog.type === "delete"
-                ? "Delete Employee Account?"
-                : "Disable Employee Access?"}
+                ? "Confirm Staff Deletion"
+                : confirmDialog.employee?.enabled !== false
+                ? "Revoke Terminal Login Access"
+                : "Grant Terminal Login Access"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDialog.type === "delete" ? (
-                <>
-                  Are you sure you want to permanently delete{" "}
-                  <strong>{confirmDialog.employee?.fullName}</strong>? This action
-                  cannot be undone.
-                </>
-              ) : (
-                <>
-                  Disabling access for{" "}
-                  <strong>{confirmDialog.employee?.fullName}</strong> will
-                  immediately prevent them from logging into the POS terminal.
-                </>
-              )}
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              {confirmDialog.type === "delete"
+                ? `Are you sure you want to permanently delete the staff profile for ${confirmDialog.employee?.fullName}? This action cannot be undone.`
+                : confirmDialog.employee?.enabled !== false
+                ? `Revoking access will immediately disconnect ${confirmDialog.employee?.fullName} from logging into branch checkout stations.`
+                : `Granting access will allow ${confirmDialog.employee?.fullName} to log in and process orders.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="text-xs h-9">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmAction}
-              className={`rounded-xl text-white ${
+              onClick={
                 confirmDialog.type === "delete"
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-amber-600 hover:bg-amber-700"
+                  ? handleDeleteConfirmed
+                  : handleToggleAccessConfirmed
+              }
+              className={`text-xs font-bold h-9 ${
+                confirmDialog.type === "delete" || confirmDialog.employee?.enabled !== false
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : ""
               }`}
             >
-              {confirmDialog.type === "delete" ? "Delete Employee" : "Disable Access"}
+              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -20,6 +20,9 @@ public class StoreOverviewDTO {
     private String topBranchName;
 
     // Sales Management page specific fields
+    private Double todaySales;
+    private Double yesterdaySales;
+    private Integer activeBranches;
     private Integer todayOrders;
     private Integer yesterdayOrders;
     private Integer activeCashiers;

@@ -14,4 +14,7 @@ public interface EmployeeService {
     UserDTO findEmployeeById(Long employeeId) throws Exception;
     List<UserDTO> findStoreEmployees(Long storeId, UserRole role) throws Exception;
     List<UserDTO> findBranchEmployees(Long branchId, UserRole role) throws Exception;
+    UserDTO toggleEmployeeAccess(Long employeeId) throws Exception;
+    UserDTO resetEmployeePassword(Long employeeId, String newPassword) throws Exception;
+    com.aniket.payload.dto.EmployeePerformanceDTO getEmployeePerformance(Long employeeId) throws Exception;
 }

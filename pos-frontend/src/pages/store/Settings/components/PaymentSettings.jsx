@@ -1,114 +1,88 @@
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CreditCard, Save, Loader2, QrCode } from "lucide-react";
 
-const PaymentSettingsForm = ({ settings, onChange, onSave, isSubmitting, isSubscriptionActive }) => {
+const PaymentSettingsForm = ({ data, onChange, onSave, isSaving }) => {
   const paymentMethods = [
-    { id: "cash", label: "Cash", description: "Accept cash payments at the counter" },
-    { id: "upi", label: "UPI", description: "Accept UPI payments (Google Pay, PhonePe, Paytm, etc.)" },
-    { id: "card", label: "Card", description: "Accept credit and debit card payments" },
+    { id: "cash", label: "Cash on Counter", description: "Accept physical cash currency with automated change calculation" },
+    { id: "upi", label: "Dynamic UPI QR Code", description: "Generate dynamic UPI QR codes on checkout for instant mobile payment" },
+    { id: "card", label: "Card Swiping Terminal", description: "Accept Visa, Mastercard, and RuPay card payments" },
   ];
 
-  const disabled = !isSubscriptionActive;
+  const accepted = data?.acceptedPaymentMethods || ["cash", "upi", "card"];
 
-  const isChecked = (methodId) => {
-    return (settings.acceptedPaymentMethods || []).includes(methodId);
-  };
-
-  const handleToggle = (methodId, checked) => {
-    const currentMethods = settings.acceptedPaymentMethods || [];
-    let updatedMethods;
+  const handleToggle = (id, checked) => {
+    let updated;
     if (checked) {
-      updatedMethods = [...currentMethods, methodId];
+      updated = [...accepted, id];
     } else {
-      updatedMethods = currentMethods.filter((method) => method !== methodId);
+      updated = accepted.filter((m) => m !== id);
     }
-    onChange("acceptedPaymentMethods", updatedMethods);
+    onChange({ ...data, acceptedPaymentMethods: updated });
   };
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5" />
-            Accepted Payment Methods
-          </CardTitle>
-          <CardDescription>
-            Choose which payment methods your store accepts
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {paymentMethods.map((method, index) => (
-            <React.Fragment key={method.id}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">{method.label}</h4>
-                  <p className="text-sm text-muted-foreground">{method.description}</p>
-                </div>
-                <Switch
-                  id={method.id}
-                  checked={isChecked(method.id)}
-                  onCheckedChange={(checked) => handleToggle(method.id, checked)}
-                  disabled={disabled}
-                />
-              </div>
-              {index < paymentMethods.length - 1 && <Separator />}
-            </React.Fragment>
-          ))}
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Accepted Payment Methods
+        </h4>
+        {paymentMethods.map((method) => (
+          <div key={method.id} className="flex items-center justify-between gap-4 p-3.5 rounded-2xl bg-secondary/30 border border-border/60">
+            <div>
+              <h4 className="text-xs font-bold text-foreground">{method.label}</h4>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{method.description}</p>
+            </div>
+            <Switch
+              id={method.id}
+              checked={accepted.includes(method.id)}
+              onCheckedChange={(checked) => handleToggle(method.id, checked)}
+            />
+          </div>
+        ))}
+      </div>
 
-      {/* Payment Gateway Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" />
-            UPI & Payment Gateway Credentials
-          </CardTitle>
-          <CardDescription>
-            Configure your store's UPI VPA and Merchant Name for QR generation
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="upiId">UPI VPA ID</Label>
+      <div className="space-y-3 pt-2 border-t border-border/60">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Merchant UPI Configuration
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="upiId" className="text-sm font-semibold text-foreground">
+              Merchant UPI VPA ID
+            </Label>
             <Input
               id="upiId"
-              placeholder="e.g. storename@upi or 9876543210@paytm"
-              value={settings.upiId || ""}
-              onChange={(e) => onChange("upiId", e.target.value)}
-              disabled={disabled}
+              value={data?.upiId || ""}
+              onChange={(e) => onChange({ ...data, upiId: e.target.value })}
+              placeholder="storename@okaxis"
+              className="text-xs h-10 font-mono"
             />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="merchantName">Merchant Display Name</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="merchantName" className="text-sm font-semibold text-foreground">
+              Merchant Payee Display Name
+            </Label>
             <Input
               id="merchantName"
-              placeholder="e.g. My Retail Store"
-              value={settings.merchantName || ""}
-              onChange={(e) => onChange("merchantName", e.target.value)}
-              disabled={disabled}
+              value={data?.merchantName || ""}
+              onChange={(e) => onChange({ ...data, merchantName: e.target.value })}
+              placeholder="e.g. Apex Hypermarket Retail"
+              className="text-xs h-10"
             />
           </div>
+        </div>
+      </div>
 
-          <div className="pt-2">
-            <Button onClick={onSave} disabled={isSubmitting || disabled} className="flex items-center gap-2">
-              {isSubmitting ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
-              ) : (
-                <><Save className="w-4 h-4" /> Save Payment Settings</>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="pt-2">
+        <Button onClick={onSave} disabled={isSaving} className="text-xs font-bold h-10 gap-1.5">
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Save Payment Preferences
+        </Button>
+      </div>
     </div>
   );
 };

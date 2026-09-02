@@ -1,12 +1,12 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Settings } from "lucide-react";
+import { Settings as SettingsIcon } from "lucide-react";
 
 const SystemSettingItem = ({ id, title, description, checked, onToggle }) => (
-  <div className="flex items-center justify-between py-3">
+  <div className="flex items-center justify-between gap-4 p-3.5 rounded-2xl bg-secondary/30 border border-border/60">
     <div>
-      <h4 className="text-xs font-semibold text-foreground">{title}</h4>
+      <h4 className="text-xs font-bold text-foreground">{title}</h4>
       <p className="text-[11px] text-muted-foreground mt-0.5">{description}</p>
     </div>
     <Switch id={id} checked={checked} onCheckedChange={onToggle} />
@@ -17,38 +17,37 @@ const SystemSettingsForm = ({ systemSettings, onToggle }) => {
   const systemSettingItems = [
     {
       id: "autoApproveStores",
-      title: "Automatic Store Approvals",
-      description: "Automatically grant active status to new store registrations without manual review",
+      title: "Automatic Store Onboarding Approval",
+      description: "Instantly activate new store registrations without manual Super Admin review queue",
     },
     {
       id: "requireDocumentVerification",
-      title: "Mandatory Tax Document Verification",
-      description: "Require verified GST and PAN numbers prior to enabling terminal transactions",
+      title: "Mandatory Business Document Verification",
+      description: "Require PAN / GST compliance documents before a store can process live cashier sales",
     },
     {
       id: "commissionAutoCalculation",
-      title: "Automated Platform Fee Settlements",
-      description: "Calculate and lock platform commissions automatically on monthly billing cycles",
+      title: "Automated Platform Fee Invoicing",
+      description: "Automatically compute and log monthly commission splits on billing renewal",
     },
     {
       id: "maintenanceMode",
       title: "Platform Maintenance Mode",
-      description: "Temporarily pause merchant cashier access for major platform database updates",
+      description: "Temporarily restrict POS workstation access for scheduled database and API upgrades",
     },
   ];
 
   return (
-    <Card className="rounded-2xl border-border/80 shadow-2xs">
-      <CardHeader className="pb-4 border-b border-border/60">
-        <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-          <Settings className="w-4 h-4 text-primary" />
-          <span>System Operation Flags</span>
+    <Card>
+      <CardHeader className="pb-3 border-b border-border/60">
+        <CardTitle className="text-base flex items-center gap-2">
+          <SettingsIcon className="w-4 h-4 text-[#B8860B]" /> Platform Engine & Policy Governance
         </CardTitle>
-        <CardDescription className="text-xs text-muted-foreground">
-          Platform-wide automated moderation policies and maintenance controls.
+        <CardDescription className="text-xs">
+          Automated compliance controls and tenant validation rules
         </CardDescription>
       </CardHeader>
-      <CardContent className="divide-y divide-border/60 p-4 sm:p-6">
+      <CardContent className="pt-4 space-y-3">
         {systemSettingItems.map((item) => (
           <SystemSettingItem
             key={item.id}
@@ -65,4 +64,3 @@ const SystemSettingsForm = ({ systemSettings, onToggle }) => {
 };
 
 export default SystemSettingsForm;
- 

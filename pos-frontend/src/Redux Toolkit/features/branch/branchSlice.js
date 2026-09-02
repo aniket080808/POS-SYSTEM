@@ -61,6 +61,12 @@ const branchSlice = createSlice({
 
       .addCase(updateBranch.fulfilled, (state, action) => {
         state.branch = action.payload;
+        if (action.payload && action.payload.id) {
+          const index = state.branches.findIndex((b) => b.id === action.payload.id);
+          if (index !== -1) {
+            state.branches[index] = action.payload;
+          }
+        }
       })
 
       .addCase(deleteBranch.fulfilled, (state, action) => {

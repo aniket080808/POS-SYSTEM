@@ -1,143 +1,177 @@
-import React from 'react';
-import { CheckCircle, X, HelpCircle } from 'lucide-react';
+import React, { useMemo } from "react";
+import { CheckCircle, X, Loader2, Clock } from "lucide-react";
+import { useSelector } from "react-redux";
 
 const FeatureComparisonTable = () => {
-  // Feature categories and their features
-  const featureCategories = [
-    {
-      name: 'Core POS Features',
-      features: [
-        { name: 'Barcode Scanning', basic: true, pro: true, enterprise: true },
-        { name: 'Receipt Printing', basic: true, pro: true, enterprise: true },
-        { name: 'Product Management', basic: true, pro: true, enterprise: true },
-        { name: 'Customer Database', basic: true, pro: true, enterprise: true },
-        { name: 'Offline Mode', basic: true, pro: true, enterprise: true },
-      ]
-    },
-    {
-      name: 'Advanced Features',
-      features: [
-        { name: 'Multi-store Management', basic: false, pro: true, enterprise: true },
-        { name: 'Advanced Reporting', basic: false, pro: true, enterprise: true },
-        { name: 'Inventory Forecasting', basic: false, pro: true, enterprise: true },
-        { name: 'Staff Management', basic: false, pro: true, enterprise: true },
-        { name: 'API Access', basic: false, pro: true, enterprise: true },
-      ]
-    },
-    {
-      name: 'Enterprise Features',
-      features: [
-        { name: 'White Labeling', basic: false, pro: false, enterprise: true },
-        { name: 'Custom Development', basic: false, pro: false, enterprise: true },
-        { name: 'On-premise Deployment', basic: false, pro: false, enterprise: true },
-        { name: 'SLA Guarantee', basic: false, pro: false, enterprise: true },
-        { name: 'Dedicated Account Manager', basic: false, pro: false, enterprise: true },
-      ]
-    },
-  ];
+  const { plans, loading, hasFetched } = useSelector((state) => state.subscriptionPlan);
 
-  // Helper function to render feature availability indicator
-  const renderAvailability = (available) => {
-    if (available === true) {
-      return <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />;
-    } else if (available === false) {
-      return <X className="w-5 h-5 text-gray-300 mx-auto" />;
-    } else {
-      return <HelpCircle className="w-5 h-5 text-gray-400 mx-auto" />;
+  // Build rows dynamically from whatever feature/limit keys exist across all plans
+  const { rows, planNames } = useMemo(() => {
+    if (!plans || plans.length === 0) return { rows: [], planNames: [] };
+
+    const names = plans.map((p) => ({
+      name: p.name,
+      price: p.price,
+      billingCycle: p.billingCycle,
+    }));
+
+    // Define known feature keys with human-readable labels and categories
+    const featureMap = [
+      { category: "Limits", key: "maxBranches", label: "Branch Store Locations", format: (v) => `Up to ${v}` },
+      { category: "Limits", key: "maxUsers", label: "Staff User Accounts", format: (v) => `Up to ${v}` },
+      { category: "Limits", key: "maxProducts", label: "Products in Catalog", format: (v) => `Up to ${v?.toLocaleString()}` },
+      { category: "Features", key: "enableInventory", label: "Stock & Inventory Tracking" },
+      { category: "Features", key: "enableAdvancedReports", label: "Sales & Shift Reports" },
+      { category: "Features", key: "enableMultiLocation", label: "Multi-Store Branch Control" },
+      { category: "Features", key: "enableIntegrations", label: "Third-Party Integrations" },
+      { category: "Features", key: "enableEcommerce", label: "Online Store Connection" },
+      { category: "Features", key: "enableInvoiceBranding", label: "Custom Invoice Branding" },
+      { category: "Features", key: "prioritySupport", label: "Priority Support" },
+    ];
+
+    const resultRows = [];
+
+    featureMap.forEach(({ category, key, label, format }) => {
+      // Only include row if at least one plan has this field defined
+      const hasAny = plans.some((p) => p[key] != null && p[key] !== false && p[key] !== 0);
+      if (!hasAny) return;
+
+      const values = plans.map((p) => {
+        const val = p[key];
+        if (val == null) return false;
+        if (typeof val === "boolean") return val;
+        if (typeof val === "number" && format) return format(val);
+        return val;
+      });
+
+      resultRows.push({ category, label, values });
+    });
+
+    // Also render extraFeatures if any plan has them
+    const allExtras = new Set();
+    plans.forEach((p) => {
+      if (p.extraFeatures && Array.isArray(p.extraFeatures)) {
+        p.extraFeatures.forEach((f) => {
+          if (f) allExtras.add(f);
+        });
+      }
+    });
+
+    allExtras.forEach((extraLabel) => {
+      const values = plans.map((p) => {
+        return (p.extraFeatures || []).includes(extraLabel);
+      });
+      resultRows.push({ category: "Extras", label: extraLabel, values });
+    });
+
+    return { rows: resultRows, planNames: names };
+  }, [plans]);
+
+  const renderValue = (value) => {
+    if (value === true) {
+      return <CheckCircle className="w-4 h-4 text-emerald-600 mx-auto" />;
     }
+    if (value === false) {
+      return <X className="w-4 h-4 text-muted-foreground/40 mx-auto" />;
+    }
+    return <span className="text-xs font-bold text-foreground font-mono">{value}</span>;
   };
+
+  // Loading state
+  if (loading && !hasFetched) {
+    return (
+      <div className="flex justify-center items-center py-16">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <span className="ml-3 text-sm text-muted-foreground font-medium">Loading comparison...</span>
+      </div>
+    );
+  }
+
+  // Empty state — no plans available
+  if (hasFetched && (!plans || plans.length === 0)) {
+    return (
+      <div className="p-12 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <Clock className="w-7 h-7 text-muted-foreground" />
+          <h3 className="text-base font-bold text-foreground">Comparison available after plans are added</h3>
+          <p className="text-sm text-muted-foreground max-w-md">
+            The feature comparison table will appear once the administrator adds subscription plans.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Group rows by category
+  const categories = [];
+  const seen = new Set();
+  rows.forEach((row) => {
+    if (!seen.has(row.category)) {
+      seen.add(row.category);
+      categories.push(row.category);
+    }
+  });
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="bg-gray-50">
-            <th className="py-4 px-6 text-left text-gray-600 font-medium">Features</th>
-            <th className="py-4 px-6 text-center text-gray-600 font-medium w-1/5">
-              <div className="text-lg font-bold text-gray-900">Basic</div>
-              <div className="text-sm font-normal">₹999/month</div>
+          <tr className="bg-secondary/60">
+            <th className="py-4 px-6 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Feature
             </th>
-            <th className="py-4 px-6 text-center text-gray-600 font-medium w-1/5 bg-primary/5">
-              <div className="text-lg font-bold text-primary">Pro</div>
-              <div className="text-sm font-normal">₹1,999/month</div>
-            </th>
-            <th className="py-4 px-6 text-center text-gray-600 font-medium w-1/5">
-              <div className="text-lg font-bold text-gray-900">Enterprise</div>
-              <div className="text-sm font-normal">Custom Pricing</div>
-            </th>
+            {planNames.map((pn, i) => (
+              <th
+                key={i}
+                className={`py-4 px-6 text-center text-xs font-bold text-foreground ${
+                  planNames.length >= 3 && i === 1 ? "bg-[#FDF6E2] dark:bg-[#3A3530]" : ""
+                }`}
+                style={{ width: `${Math.floor(75 / planNames.length)}%` }}
+              >
+                <div className="text-sm font-black">{pn.name}</div>
+                <div className="text-xs text-muted-foreground font-mono font-normal">
+                  ₹{pn.price?.toLocaleString()}/{pn.billingCycle?.toLowerCase() || "mo"}
+                </div>
+              </th>
+            ))}
           </tr>
         </thead>
-        <tbody>
-          {featureCategories.map((category, categoryIndex) => (
-            <React.Fragment key={categoryIndex}>
-              {/* Category Header */}
-              <tr className="bg-gray-50">
-                <td 
-                  colSpan="4" 
-                  className="py-3 px-6 text-left font-semibold text-gray-800 border-t border-b border-gray-200"
+        <tbody className="divide-y divide-border/60 text-xs">
+          {categories.map((cat, catIndex) => (
+            <React.Fragment key={catIndex}>
+              <tr className="bg-secondary/30">
+                <td
+                  colSpan={1 + planNames.length}
+                  className="py-3 px-6 text-left font-bold text-xs uppercase tracking-wider text-foreground"
                 >
-                  {category.name}
+                  {cat}
                 </td>
               </tr>
-              
-              {/* Features */}
-              {category.features.map((feature, featureIndex) => (
-                <tr 
-                  key={featureIndex} 
-                  className={`hover:bg-gray-50 ${featureIndex === category.features.length - 1 ? 'border-b border-gray-200' : ''}`}
-                >
-                  <td className="py-4 px-6 text-left text-gray-700 border-b border-gray-100">
-                    {feature.name}
-                  </td>
-                  <td className="py-4 px-6 text-center border-b border-gray-100">
-                    {renderAvailability(feature.basic)}
-                  </td>
-                  <td className="py-4 px-6 text-center border-b border-gray-100 bg-primary/5">
-                    {renderAvailability(feature.pro)}
-                  </td>
-                  <td className="py-4 px-6 text-center border-b border-gray-100">
-                    {renderAvailability(feature.enterprise)}
-                  </td>
-                </tr>
-              ))}
+              {rows
+                .filter((r) => r.category === cat)
+                .map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-secondary/20 transition-colors">
+                    <td className="py-3.5 px-6 text-left font-medium text-foreground">
+                      {row.label}
+                    </td>
+                    {row.values.map((val, vi) => (
+                      <td
+                        key={vi}
+                        className={`py-3.5 px-6 text-center ${
+                          planNames.length >= 3 && vi === 1
+                            ? "bg-[#FDF6E2]/40 dark:bg-[#3A3530]/40"
+                            : ""
+                        }`}
+                      >
+                        {renderValue(val)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
             </React.Fragment>
           ))}
-          
-          {/* Support Section */}
-          <tr className="bg-gray-50">
-            <td 
-              colSpan="4" 
-              className="py-3 px-6 text-left font-semibold text-gray-800 border-t border-b border-gray-200"
-            >
-              Support
-            </td>
-          </tr>
-          <tr className="hover:bg-gray-50">
-            <td className="py-4 px-6 text-left text-gray-700 border-b border-gray-100">Email Support</td>
-            <td className="py-4 px-6 text-center border-b border-gray-100">Business Hours</td>
-            <td className="py-4 px-6 text-center border-b border-gray-100 bg-primary/5">24/7</td>
-            <td className="py-4 px-6 text-center border-b border-gray-100">24/7 Priority</td>
-          </tr>
-          <tr className="hover:bg-gray-50">
-            <td className="py-4 px-6 text-left text-gray-700 border-b border-gray-100">Phone Support</td>
-            <td className="py-4 px-6 text-center border-b border-gray-100">
-              <X className="w-5 h-5 text-gray-300 mx-auto" />
-            </td>
-            <td className="py-4 px-6 text-center border-b border-gray-100 bg-primary/5">Business Hours</td>
-            <td className="py-4 px-6 text-center border-b border-gray-100">24/7</td>
-          </tr>
-          <tr className="hover:bg-gray-50">
-            <td className="py-4 px-6 text-left text-gray-700 border-b border-gray-100">Response Time</td>
-            <td className="py-4 px-6 text-center border-b border-gray-100">48 hours</td>
-            <td className="py-4 px-6 text-center border-b border-gray-100 bg-primary/5">24 hours</td>
-            <td className="py-4 px-6 text-center border-b border-gray-100">4 hours</td>
-          </tr>
         </tbody>
       </table>
-      
-      <div className="mt-6 text-center text-sm text-gray-500">
-        For a complete list of features, please contact our sales team.
-      </div>
     </div>
   );
 };

@@ -9,7 +9,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "branches")
+@Table(name = "branches", indexes = {
+    @Index(name = "idx_branch_store_id", columnList = "store_id"),
+    @Index(name = "idx_branch_is_active", columnList = "isActive")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,6 +26,7 @@ public class Branch {
 
     private String name;
 
+    @Column(columnDefinition = "TEXT")
     private String address;
 
 
@@ -33,7 +37,7 @@ public class Branch {
     /**
      * Example: ["MONDAY", "TUESDAY", "WEDNESDAY"]
      */
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     private List<String> workingDays;
 
     private LocalTime openTime;
@@ -52,16 +56,23 @@ public class Branch {
     @JsonIgnore
     private User manager;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean isActive = true;
 
     @PrePersist
     protected void onCreate() {
         createdAt = updatedAt = LocalDateTime.now();
+        if (isActive == null) {
+            isActive = true;
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        if (isActive == null) {
+            isActive = true;
+        }
     }
 }

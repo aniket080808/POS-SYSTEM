@@ -4,12 +4,15 @@ import {
   updateCustomer,
   deleteCustomer,
   getCustomerById,
-  getAllCustomers
+  getAllCustomers,
+  addLoyaltyPoints,
+  getCustomerOverview,
 } from './customerThunks';
 
 const initialState = {
   customers: [],
   selectedCustomer: null,
+  customerOverview: null,
   loading: false,
   error: null,
 };
@@ -101,6 +104,22 @@ const customerSlice = createSlice({
       .addCase(getAllCustomers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // Add Loyalty Points
+      .addCase(addLoyaltyPoints.fulfilled, (state, action) => {
+        const index = state.customers.findIndex(c => c.id === action.payload.id);
+        if (index !== -1) {
+          state.customers[index] = action.payload;
+        }
+        if (state.selectedCustomer && state.selectedCustomer.id === action.payload.id) {
+          state.selectedCustomer = { ...state.selectedCustomer, ...action.payload };
+        }
+      })
+
+      // Get Customer Overview
+      .addCase(getCustomerOverview.fulfilled, (state, action) => {
+        state.customerOverview = action.payload;
       })
 
       // Generic error handling for all customer actions

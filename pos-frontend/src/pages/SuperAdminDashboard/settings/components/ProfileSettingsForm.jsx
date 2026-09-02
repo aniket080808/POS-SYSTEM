@@ -3,22 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Save, Loader2 } from "lucide-react";
+import { User, Save, Loader2, Check } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const ProfileInput = ({ id, label, value, onChange, disabled, readOnly }) => (
   <div className="space-y-1.5">
-    <Label htmlFor={id} className="text-xs font-semibold text-foreground">{label}</Label>
+    <Label htmlFor={id} className="text-sm font-semibold text-foreground">{label}</Label>
     {disabled ? (
-      <Skeleton className="h-9 w-full rounded-xl" />
+      <Skeleton className="h-10 w-full rounded-xl" />
     ) : (
       <Input
         id={id}
-        value={value}
+        value={value || ""}
         onChange={onChange}
         disabled={disabled}
         readOnly={readOnly}
-        className={`h-9 rounded-xl text-xs ${readOnly ? "bg-muted/40 text-muted-foreground font-mono" : ""}`}
+        className={`text-xs h-10 ${readOnly ? "bg-secondary/60 text-muted-foreground" : "bg-card"}`}
       />
     )}
   </div>
@@ -31,18 +31,17 @@ const ProfileSettingsForm = ({
   loading,
 }) => {
   return (
-    <Card className="rounded-2xl border-border/80 shadow-2xs">
-      <CardHeader className="pb-4 border-b border-border/60">
-        <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-          <User className="w-4 h-4 text-primary" />
-          <span>Profile Information</span>
+    <Card>
+      <CardHeader className="pb-3 border-b border-border/60">
+        <CardTitle className="text-base flex items-center gap-2">
+          <User className="w-4 h-4 text-[#B8860B]" /> Super Admin Profile Details
         </CardTitle>
-        <CardDescription className="text-xs text-muted-foreground">
-          Update your platform administrator account credentials and contact details.
+        <CardDescription className="text-xs">
+          Personal identification and contact details associated with the primary root administrator
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5 pt-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <CardContent className="pt-4 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ProfileInput
             id="fullName"
             label="Full Name"
@@ -52,41 +51,32 @@ const ProfileSettingsForm = ({
           />
           <ProfileInput
             id="email"
-            label="Email Address (Permanent ID)"
+            label="Root Email Address (Immutable)"
             value={profileData.email}
             readOnly
             disabled={false}
           />
           <ProfileInput
             id="phone"
-            label="Contact Phone"
+            label="Contact Phone Number"
             value={profileData.phone}
             onChange={(e) => onFieldChange("phone", e.target.value)}
             disabled={loading}
           />
         </div>
-        <Button
-          onClick={onUpdate}
-          size="sm"
-          className="flex items-center gap-1.5 rounded-xl text-xs font-semibold h-9"
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>Saving...</span>
-            </>
-          ) : (
-            <>
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Profile Changes</span>
-            </>
-          )}
-        </Button>
+        <div className="pt-2">
+          <Button
+            onClick={onUpdate}
+            className="text-xs font-bold h-10 gap-1.5"
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save Profile Changes
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
 };
 
 export default ProfileSettingsForm;
- 

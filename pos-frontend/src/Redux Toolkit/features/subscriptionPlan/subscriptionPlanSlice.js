@@ -7,12 +7,14 @@ import {
   getAllSubscriptionPlans,
   getSubscriptionPlanById,
   deleteSubscriptionPlan,
-} from "./subscriptionPlanThunks.js"; // Update path as needed
+} from "./subscriptionPlanThunks.js";
+import { fetchPublicPlans } from "./publicPlanThunks.js";
 
 const initialState = {
   plans: [],
   selectedPlan: null,
   loading: false,
+  hasFetched: false, // true after first successful fetch (even if empty)
   error: null,
 };
 
@@ -59,17 +61,35 @@ const subscriptionPlanSlice = createSlice({
         state.error = action.payload;
       })
 
-      // 📦 Get All
+      // 📦 Get All (authenticated — used from admin panels)
       .addCase(getAllSubscriptionPlans.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllSubscriptionPlans.fulfilled, (state, action) => {
         state.loading = false;
+        state.hasFetched = true;
         state.plans = action.payload;
       })
       .addCase(getAllSubscriptionPlans.rejected, (state, action) => {
         state.loading = false;
+        state.hasFetched = true;
+        state.error = action.payload;
+      })
+
+      // 🌐 Fetch Public Plans (landing page — handles auth failure gracefully)
+      .addCase(fetchPublicPlans.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPublicPlans.fulfilled, (state, action) => {
+        state.loading = false;
+        state.hasFetched = true;
+        state.plans = action.payload;
+      })
+      .addCase(fetchPublicPlans.rejected, (state, action) => {
+        state.loading = false;
+        state.hasFetched = true;
         state.error = action.payload;
       })
 

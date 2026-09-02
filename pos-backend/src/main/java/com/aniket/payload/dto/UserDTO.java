@@ -20,6 +20,11 @@ public class UserDTO {
     private Long branchId;
     private BranchDTO branch;
     private String branchName;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private Boolean enabled;
+    private Boolean verified;
+    private LocalDateTime passwordChangedAt;
     private LocalDateTime lastLogin;
 
 

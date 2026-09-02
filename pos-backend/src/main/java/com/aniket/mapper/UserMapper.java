@@ -22,7 +22,17 @@ public class UserMapper {
         userDTO.setBranch(user.getBranch()==null?null: BranchMapper.toDto(user.getBranch()));
         userDTO.setRole(user.getRole());
         userDTO.setStoreId(user.getStore()==null?null:user.getStore().getId());
-        userDTO.setPhone(user.getPhone());
+        String phone = user.getPhone();
+        if ((phone == null || phone.trim().isEmpty()) && user.getRole() == com.aniket.domain.UserRole.ROLE_STORE_ADMIN && user.getStore() != null && user.getStore().getContact() != null) {
+            phone = user.getStore().getContact().getPhone();
+        }
+        userDTO.setPhone(phone);
+        userDTO.setCreatedAt(user.getCreatedAt());
+        userDTO.setUpdatedAt(user.getUpdatedAt());
+        userDTO.setEnabled(user.getEnabled() != null ? user.getEnabled() : true);
+        userDTO.setVerified(user.getVerified() != null ? user.getVerified() : false);
+        userDTO.setPasswordChangedAt(user.getPasswordChangedAt());
+        userDTO.setLastLogin(user.getLastLogin());
 
         return userDTO;
     }

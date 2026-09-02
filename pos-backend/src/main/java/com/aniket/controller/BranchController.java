@@ -29,6 +29,7 @@ public class BranchController {
 
     // 🔹 Create Branch
     @PostMapping
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'ADMIN')")
     public ResponseEntity<BranchDTO> createBranch(
             @Valid @RequestBody BranchDTO dto,
 
@@ -39,12 +40,14 @@ public class BranchController {
 
     // 🔹 Get Branch by ID
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_ADMIN', 'BRANCH_MANAGER', 'BRANCH_CASHIER', 'ADMIN')")
     public ResponseEntity<BranchDTO> getBranch(@PathVariable Long id) {
         return ResponseEntity.ok(branchService.getBranchById(id));
     }
 
     // 🔹 Get All Branches (No Pagination)
     @GetMapping("/store/{storeId}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_ADMIN', 'BRANCH_MANAGER', 'BRANCH_CASHIER', 'ADMIN')")
     public ResponseEntity<List<BranchDTO>> getAllBranches(
             @RequestHeader("Authorization") String jwt,
             @PathVariable Long storeId
@@ -55,6 +58,7 @@ public class BranchController {
 
     // 🔹 Update Branch
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'BRANCH_ADMIN', 'BRANCH_MANAGER', 'ADMIN')")
     public ResponseEntity<BranchDTO> updateBranch(
             @PathVariable Long id,
             @RequestBody BranchDTO dto,
@@ -65,6 +69,7 @@ public class BranchController {
 
     // 🔹 Delete Branch
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'ADMIN')")
     public ResponseEntity<Void> deleteBranch(@PathVariable Long id) {
         branchService.deleteBranch(id);
         return ResponseEntity.noContent().build();

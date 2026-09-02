@@ -3,7 +3,7 @@ import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { Button } from "../../components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, User, Mail, Lock } from "lucide-react";
+import { ArrowRight, User, Mail, Lock, AlertCircle } from "lucide-react";
 
 const validationSchema = Yup.object({
   fullName: Yup.string()
@@ -30,129 +30,142 @@ const OwnerDetailsForm = ({ initialValues, onSubmit }) => {
         setSubmitting(false);
       }}
     >
-      {({ isSubmitting, isValid }) => (
+      {({ isSubmitting, isValid, touched, errors }) => (
         <Form className="space-y-4">
+          <div>
+            <h2 className="text-base font-bold text-foreground mb-1">
+              Store Owner Credentials
+            </h2>
+            <p className="text-xs text-muted-foreground mb-4">
+              This account will serve as the Primary Store Administrator
+            </p>
+          </div>
+
           {/* Full Name */}
           <div>
-            <label
-              htmlFor="fullName"
-              className="block text-xs font-bold text-foreground mb-1"
-            >
-              Administrator Full Name <span className="text-red-500">*</span>
+            <label htmlFor="fullName" className="block text-sm font-semibold text-foreground mb-1.5">
+              Full Name
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                <User className="h-4 w-4 text-muted-foreground" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                <User className="w-4 h-4" />
               </div>
               <Field
                 as={Input}
                 type="text"
                 id="fullName"
                 name="fullName"
-                className="pl-9 h-10 text-sm"
-                placeholder="e.g. Rajesh Kumar"
+                className={`pl-10 text-xs h-11 ${
+                  touched.fullName && errors.fullName
+                    ? "border-destructive ring-1 ring-destructive"
+                    : ""
+                }`}
+                placeholder="Enter full name"
               />
             </div>
             <ErrorMessage
               name="fullName"
               component="div"
-              className="text-red-500 text-xs mt-1"
+              className="text-xs text-destructive mt-1 flex items-center gap-1 font-semibold"
             />
           </div>
 
           {/* Email Address */}
           <div>
-            <label
-              htmlFor="email"
-              className="block text-xs font-bold text-foreground mb-1"
-            >
-              Administrator Email <span className="text-red-500">*</span>
+            <label htmlFor="email" className="block text-sm font-semibold text-foreground mb-1.5">
+              Business Email Address
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                <Mail className="h-4 w-4 text-muted-foreground" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                <Mail className="w-4 h-4" />
               </div>
               <Field
                 as={Input}
                 type="email"
                 id="email"
                 name="email"
-                className="pl-9 h-10 text-sm"
-                placeholder="admin@store.com"
+                className={`pl-10 text-xs h-11 ${
+                  touched.email && errors.email
+                    ? "border-destructive ring-1 ring-destructive"
+                    : ""
+                }`}
+                placeholder="owner@store.com"
               />
             </div>
             <ErrorMessage
               name="email"
               component="div"
-              className="text-red-500 text-xs mt-1"
+              className="text-xs text-destructive mt-1 flex items-center gap-1 font-semibold"
             />
           </div>
 
           {/* Password */}
           <div>
-            <label
-              htmlFor="password"
-              className="block text-xs font-bold text-foreground mb-1"
-            >
-              Create Password <span className="text-red-500">*</span>
+            <label htmlFor="password" className="block text-sm font-semibold text-foreground mb-1.5">
+              Password
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                <Lock className="h-4 w-4 text-muted-foreground" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                <Lock className="w-4 h-4" />
               </div>
               <Field
                 as={Input}
                 type="password"
                 id="password"
                 name="password"
-                className="pl-9 h-10 text-sm"
-                placeholder="Minimum 6 characters"
+                className={`pl-10 text-xs h-11 ${
+                  touched.password && errors.password
+                    ? "border-destructive ring-1 ring-destructive"
+                    : ""
+                }`}
+                placeholder="At least 6 characters"
               />
             </div>
             <ErrorMessage
               name="password"
               component="div"
-              className="text-red-500 text-xs mt-1"
+              className="text-xs text-destructive mt-1 flex items-center gap-1 font-semibold"
             />
           </div>
 
           {/* Confirm Password */}
           <div>
-            <label
-              htmlFor="confirmPassword"
-              className="block text-xs font-bold text-foreground mb-1"
-            >
-              Confirm Password <span className="text-red-500">*</span>
+            <label htmlFor="confirmPassword" className="block text-sm font-semibold text-foreground mb-1.5">
+              Confirm Password
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                <Lock className="h-4 w-4 text-muted-foreground" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                <Lock className="w-4 h-4" />
               </div>
               <Field
                 as={Input}
                 type="password"
                 id="confirmPassword"
                 name="confirmPassword"
-                className="pl-9 h-10 text-sm"
-                placeholder="Re-enter password"
+                className={`pl-10 text-xs h-11 ${
+                  touched.confirmPassword && errors.confirmPassword
+                    ? "border-destructive ring-1 ring-destructive"
+                    : ""
+                }`}
+                placeholder="Repeat password"
               />
             </div>
             <ErrorMessage
               name="confirmPassword"
               component="div"
-              className="text-red-500 text-xs mt-1"
+              className="text-xs text-destructive mt-1 flex items-center gap-1 font-semibold"
             />
           </div>
 
           {/* Submit Button */}
-          <div className="pt-2">
+          <div className="pt-3">
             <Button
               type="submit"
               disabled={isSubmitting || !isValid}
-              className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-sm cursor-pointer shadow-xs"
+              className="w-full h-11 text-xs font-bold gap-2"
             >
-              <span>Continue to Store Profile</span>
-              <ArrowRight className="w-4 h-4 ml-1.5" />
+              Continue to Store Details
+              <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
         </Form>

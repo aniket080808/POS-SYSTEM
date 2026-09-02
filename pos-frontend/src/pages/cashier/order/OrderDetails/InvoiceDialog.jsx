@@ -4,7 +4,6 @@ import { useToast } from "../../../../components/ui/use-toast";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -31,26 +30,25 @@ const InvoiceDialog = ({ showInvoiceDialog, setShowInvoiceDialog }) => {
 
   const finishOrder = () => {
     setShowInvoiceDialog(false);
-    // Reset the order
     dispatch(resetOrder());
 
     toast({
-      title: "Order Completed",
-      description: "Order saved successfully. Terminal ready for next sale.",
+      title: "Invoice Finalized",
+      description: "Order saved. Terminal ready for next sale.",
     });
   };
 
   return (
     <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
       {selectedOrder && (
-        <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl">
+        <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl bg-card border-border">
           {/* Header */}
-          <div className="px-6 py-4 border-b bg-background shrink-0 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-border/80 bg-card shrink-0 flex items-center justify-between">
             <DialogHeader className="space-y-1">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                <DialogTitle className="text-xl font-bold">
-                  Order #{selectedOrder.id} Invoice
+                <CheckCircle2 className="w-5 h-5 text-[#B8860B]" />
+                <DialogTitle className="text-lg font-bold tracking-tight">
+                  Settled Invoice #{selectedOrder.id}
                 </DialogTitle>
               </div>
             </DialogHeader>
@@ -62,25 +60,25 @@ const InvoiceDialog = ({ showInvoiceDialog, setShowInvoiceDialog }) => {
           </div>
 
           {/* Sticky Footer */}
-          <div className="px-6 py-4 border-t bg-muted/30 shrink-0 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <div className="px-6 py-4 border-t border-border/80 bg-card shrink-0 flex flex-col sm:flex-row justify-between items-center gap-3">
             <div className="flex gap-2 w-full sm:w-auto">
-              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="flex-1 sm:flex-none">
-                <Download className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="text-xs h-9">
+                <Download className="h-3.5 w-3.5 mr-1.5" />
                 Download PDF
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePrintInvoice}
-                className="flex-1 sm:flex-none"
+                className="text-xs h-9"
               >
-                <PrinterIcon className="h-4 w-4 mr-2" />
-                Print Invoice
+                <PrinterIcon className="h-3.5 w-3.5 mr-1.5" />
+                Print Receipt
               </Button>
             </div>
 
-            <Button onClick={finishOrder} size="sm" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white">
-              <PlusCircle className="h-4 w-4 mr-2" />
+            <Button onClick={finishOrder} size="sm" className="w-full sm:w-auto text-xs font-bold h-9 gap-1.5">
+              <PlusCircle className="h-3.5 w-3.5" />
               Start New Order
             </Button>
           </div>

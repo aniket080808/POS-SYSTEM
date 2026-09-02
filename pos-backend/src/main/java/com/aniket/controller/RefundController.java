@@ -9,6 +9,7 @@ import com.aniket.service.RefundService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/refunds")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('BRANCH_CASHIER', 'BRANCH_MANAGER', 'BRANCH_ADMIN', 'STORE_ADMIN', 'STORE_MANAGER', 'ADMIN')")
 public class RefundController {
 
     private final RefundService refundService;
@@ -32,6 +34,7 @@ public class RefundController {
 
     // ✅ 2. Get all refunds (admin)
     @GetMapping
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'ADMIN')")
     public ResponseEntity<List<RefundDTO>> getAllRefunds() {
         List<RefundDTO> refunds = refundService.getAllRefunds().stream()
                 .map(RefundMapper::toDTO)
@@ -90,6 +93,7 @@ public class RefundController {
 
     // ✅ 8. Delete refund
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'ADMIN')")
     public ResponseEntity<?> deleteRefund(@PathVariable Long id) throws ResourceNotFoundException {
         refundService.deleteRefund(id);
         return ResponseEntity.ok("Refund deleted successfully.");

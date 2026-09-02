@@ -5,31 +5,28 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2, Save } from "lucide-react";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  StoreSettingsValidationSchema, 
-  CURRENCY_OPTIONS, 
-  TIMEZONE_OPTIONS, 
-  DATE_FORMAT_OPTIONS 
+import {
+  StoreSettingsValidationSchema,
+  CURRENCY_OPTIONS,
+  TIMEZONE_OPTIONS,
+  DATE_FORMAT_OPTIONS,
 } from "./validation";
 import { transformSettingsToApiFormat } from "./formUtils";
 
 const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting }) => {
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
-      // Transform settings data to API format
       const apiData = transformSettingsToApiFormat(values);
-      
-      // Call the onSubmit function with the transformed data
       await onSubmit(apiData, { setSubmitting, resetForm });
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error("Error submitting form:", error);
       setSubmitting(false);
     }
   };
@@ -41,207 +38,145 @@ const StoreSettingsForm = ({ initialValues, onSubmit, isSubmitting }) => {
       onSubmit={handleSubmit}
       enableReinitialize
     >
-      {({ isSubmitting: formikSubmitting, errors, touched }) => (
-        <Form className="space-y-6">
+      {({ isSubmitting: formikSubmitting, errors, touched, values, setFieldValue }) => (
+        <Form className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="storeName">Store Name *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="storeName" className="text-sm font-semibold text-foreground">
+                Store / Brand Name *
+              </Label>
               <Field
                 as={Input}
                 id="storeName"
                 name="storeName"
                 placeholder="Enter store name"
-                className={errors.storeName && touched.storeName ? "border-red-500" : ""}
+                className={`text-xs h-10 ${errors.storeName && touched.storeName ? "border-destructive" : ""}`}
               />
-              <ErrorMessage name="storeName" component="div" className="text-red-500 text-sm mt-1" />
+              <ErrorMessage name="storeName" component="div" className="text-destructive text-xs font-semibold mt-1" />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="storeEmail">Store Email *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="storeEmail" className="text-sm font-semibold text-foreground">
+                Store Email Address *
+              </Label>
               <Field
                 as={Input}
                 id="storeEmail"
                 name="storeEmail"
                 type="email"
-                placeholder="Enter store email"
-                className={errors.storeEmail && touched.storeEmail ? "border-red-500" : ""}
+                placeholder="contact@store.com"
+                className={`text-xs h-10 ${errors.storeEmail && touched.storeEmail ? "border-destructive" : ""}`}
               />
-              <ErrorMessage name="storeEmail" component="div" className="text-red-500 text-sm mt-1" />
+              <ErrorMessage name="storeEmail" component="div" className="text-destructive text-xs font-semibold mt-1" />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="storePhone">Store Phone *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="storePhone" className="text-sm font-semibold text-foreground">
+                Primary Contact Phone *
+              </Label>
               <Field
                 as={Input}
                 id="storePhone"
                 name="storePhone"
-                placeholder="Enter store phone"
-                className={errors.storePhone && touched.storePhone ? "border-red-500" : ""}
+                placeholder="+91 9876543210"
+                className={`text-xs h-10 ${errors.storePhone && touched.storePhone ? "border-destructive" : ""}`}
               />
-              <ErrorMessage name="storePhone" component="div" className="text-red-500 text-sm mt-1" />
+              <ErrorMessage name="storePhone" component="div" className="text-destructive text-xs font-semibold mt-1" />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency *</Label>
-              <Field name="currency">
-                {({ field, form }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => form.setFieldValue(field.name, value)}
-                  >
-                    <SelectTrigger 
-                      className={`w-full ${
-                        errors.currency && touched.currency ? "border-red-500" : ""
-                      }`}
-                    >
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCY_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </Field>
-              <ErrorMessage name="currency" component="div" className="text-red-500 text-sm mt-1" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="taxRate">Tax Rate (%) *</Label>
-              <Field
-                as={Input}
-                id="taxRate"
-                name="taxRate"
-                type="number"
-                step="0.01"
-                placeholder="Enter tax rate"
-                className={errors.taxRate && touched.taxRate ? "border-red-500" : ""}
-              />
-              <ErrorMessage name="taxRate" component="div" className="text-red-500 text-sm mt-1" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="timezone">Timezone *</Label>
-              <Field name="timezone">
-                {({ field, form }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => form.setFieldValue(field.name, value)}
-                  >
-                    <SelectTrigger 
-                      className={`w-full ${
-                        errors.timezone && touched.timezone ? "border-red-500" : ""
-                      }`}
-                    >
-                      <SelectValue placeholder="Select timezone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIMEZONE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </Field>
-              <ErrorMessage name="timezone" component="div" className="text-red-500 text-sm mt-1" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dateFormat">Date Format</Label>
-              <Field name="dateFormat">
-                {({ field, form }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => form.setFieldValue(field.name, value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select date format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DATE_FORMAT_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </Field>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="gstNumber">GST Number</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="gstNumber" className="text-sm font-semibold text-foreground">
+                GST / Tax Registration Number
+              </Label>
               <Field
                 as={Input}
                 id="gstNumber"
                 name="gstNumber"
                 placeholder="27AAAAA0000A1Z5"
-                className={errors.gstNumber && touched.gstNumber ? "border-red-500" : ""}
+                className="text-xs h-10 font-mono"
               />
-              <ErrorMessage name="gstNumber" component="div" className="text-red-500 text-sm mt-1" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="panNumber">PAN Number</Label>
-              <Field
-                as={Input}
-                id="panNumber"
-                name="panNumber"
-                placeholder="ABCDE1234F"
-                className={errors.panNumber && touched.panNumber ? "border-red-500" : ""}
-              />
-              <ErrorMessage name="panNumber" component="div" className="text-red-500 text-sm mt-1" />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="storeAddress">Store Address *</Label>
-              <Field
-                as={Input}
-                id="storeAddress"
-                name="storeAddress"
-                placeholder="Enter store address"
-                className={errors.storeAddress && touched.storeAddress ? "border-red-500" : ""}
-              />
-              <ErrorMessage name="storeAddress" component="div" className="text-red-500 text-sm mt-1" />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="storeDescription">Store Description</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="storeAddress" className="text-sm font-semibold text-foreground">
+              Primary Store Address
+            </Label>
             <Field
               as={Textarea}
-              id="storeDescription"
-              name="storeDescription"
-              placeholder="Enter store description"
-              rows={3}
-              className={errors.storeDescription && touched.storeDescription ? "border-red-500" : ""}
-            />
-            <ErrorMessage name="storeDescription" component="div" className="text-red-500 text-sm mt-1" />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="receiptFooter">Receipt Footer</Label>
-            <Field
-              as={Textarea}
-              id="receiptFooter"
-              name="receiptFooter"
-              placeholder="Thank you for shopping with us!"
+              id="storeAddress"
+              name="storeAddress"
+              placeholder="Full retail premises address..."
               rows={2}
+              className="text-xs bg-card resize-none"
             />
           </div>
 
-          <div className="flex justify-end">
-            <Button type="submit" disabled={formikSubmitting || isSubmitting} className="flex items-center gap-2">
-              {formikSubmitting || isSubmitting ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="currency" className="text-sm font-semibold text-foreground">Currency</Label>
+              <Select
+                value={values.currency}
+                onValueChange={(val) => setFieldValue("currency", val)}
+              >
+                <SelectTrigger id="currency" className="text-xs h-10">
+                  <SelectValue placeholder="Select Currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_OPTIONS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="timezone" className="text-sm font-semibold text-foreground">Timezone</Label>
+              <Select
+                value={values.timezone}
+                onValueChange={(val) => setFieldValue("timezone", val)}
+              >
+                <SelectTrigger id="timezone" className="text-xs h-10">
+                  <SelectValue placeholder="Select Timezone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="dateFormat" className="text-sm font-semibold text-foreground">Date Format</Label>
+              <Select
+                value={values.dateFormat}
+                onValueChange={(val) => setFieldValue("dateFormat", val)}
+              >
+                <SelectTrigger id="dateFormat" className="text-xs h-10">
+                  <SelectValue placeholder="Select Date Format" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DATE_FORMAT_OPTIONS.map((df) => (
+                    <SelectItem key={df.value} value={df.value}>{df.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="pt-3">
+            <Button
+              type="submit"
+              disabled={isSubmitting || formikSubmitting}
+              className="text-xs font-bold h-10 gap-1.5"
+            >
+              {isSubmitting || formikSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <><Save className="w-4 h-4" /> Update Store Settings</>
+                <Save className="w-4 h-4" />
               )}
+              Save Store Profile
             </Button>
           </div>
         </Form>

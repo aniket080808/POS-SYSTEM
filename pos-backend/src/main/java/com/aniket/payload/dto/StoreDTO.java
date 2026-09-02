@@ -32,4 +32,11 @@ public class StoreDTO {
     private String dateFormat;
     private String receiptFooter;
     private String acceptedPaymentMethods;
+    private String upiId;
+    private String merchantName;
+
+    // Custom Super Admin Quota Overrides
+    private Integer customMaxBranches;
+    private Integer customMaxUsers;
+    private Integer customMaxProducts;
 }

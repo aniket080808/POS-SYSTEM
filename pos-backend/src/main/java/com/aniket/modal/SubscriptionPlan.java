@@ -49,8 +49,9 @@ public class SubscriptionPlan {
     private Boolean enableInvoiceBranding;   // Customize invoice template
     private Boolean prioritySupport;         // Priority support access
 
+    @Builder.Default
     @ElementCollection
-    private List<String> extraFeatures=new ArrayList<>();
+    private List<String> extraFeatures = new ArrayList<>();
 
     // Optional extra
     private Boolean enableMultiLocation;     // Existing field

@@ -35,7 +35,8 @@ public interface BranchRepository extends JpaRepository<Branch, Long> {
         JOIN Order o ON o.branch.id = b.id
         WHERE b.store.storeAdmin.id = :storeAdminId
         AND b.isActive = true
-        GROUP BY b.id
+        AND o.status = com.aniket.domain.OrderStatus.COMPLETED
+        GROUP BY b.id, b.name
         ORDER BY SUM(o.totalAmount) DESC
     """)
     List<String> findTopBranchBySales(@Param("storeAdminId") Long storeAdminId);

@@ -25,17 +25,18 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     @NotBlank(message = "fullName is mandatory")
     private String fullName;
 
-    @JsonIgnore
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     @Column(nullable = false, unique = true)
@@ -75,13 +76,27 @@ public class User {
     @Column(nullable = false)
     private Boolean verified = false;
 
+    @Column(columnDefinition = "boolean default true")
+    private Boolean enabled = true;
+
+    private LocalDateTime passwordChangedAt;
+
     private LocalDateTime lastLogin;
 
     private LocalDateTime lastActivity;
 
     @JsonIgnore
     public Store getStore() {
-        return this.ownedStore != null ? this.ownedStore : this.store;
+        if (this.ownedStore != null) {
+            return this.ownedStore;
+        }
+        if (this.store != null) {
+            return this.store;
+        }
+        if (this.branch != null && this.branch.getStore() != null) {
+            return this.branch.getStore();
+        }
+        return null;
     }
 }
 

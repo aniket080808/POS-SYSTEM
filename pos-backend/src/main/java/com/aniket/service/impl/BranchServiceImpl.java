@@ -42,9 +42,22 @@ public class BranchServiceImpl implements BranchService {
 
     @Override
     public BranchDTO createBranch(BranchDTO branchDto, User user) throws Exception {
-        Store store = storeRepository.findByStoreAdminId(user.getId());
+        Store store = user.getStore() != null ? user.getStore() : storeRepository.findByStoreAdminId(user.getId());
+        if (store == null && user.getBranch() != null) {
+            store = user.getBranch().getStore();
+        }
+        if (store == null && user.getRole() == com.aniket.domain.UserRole.ROLE_ADMIN && branchDto.getStoreId() != null) {
+            store = storeRepository.findById(branchDto.getStoreId()).orElse(null);
+        }
+        if (store == null) {
+            throw new ResourceNotFoundException("Store not found for current user");
+        }
+        if (user.getRole() != com.aniket.domain.UserRole.ROLE_ADMIN && branchDto.getStoreId() != null && !store.getId().equals(branchDto.getStoreId())) {
+            throw new com.aniket.exception.AccessDeniedException("You are not authorized to create a branch for another store.");
+        }
 
-        enforcePlanLimit(store, "maxBranches", store.getStoreAdmin().getId(), "branches");
+        Long adminId = store.getStoreAdmin() != null ? store.getStoreAdmin().getId() : user.getId();
+        enforcePlanLimit(store, "maxBranches", adminId, "branches");
 
         User manager = null;
         if (branchDto.getManager() != null && !branchDto.getManager().isBlank()) {
@@ -56,6 +69,9 @@ public class BranchServiceImpl implements BranchService {
 
         Branch branch = BranchMapper.toEntity(branchDto, store);
         branch.setManager(manager);
+        if (branch.getIsActive() == null) {
+            branch.setIsActive(true);
+        }
         return BranchMapper.toDto(branchRepository.save(branch));
     }
 
@@ -92,6 +108,25 @@ public class BranchServiceImpl implements BranchService {
     public BranchDTO getBranchById(Long id) {
         Branch branch = branchRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Branch not found"));
+        User currentUser;
+        try {
+            currentUser = userService.getCurrentUser();
+        } catch (UserException e) {
+            throw new AccessDeniedException("You are not authorized to view this branch.", e);
+        }
+
+        if (currentUser.getRole() != UserRole.ROLE_ADMIN) {
+            Store userStore = currentUser.getStore();
+            if (userStore == null) {
+                userStore = storeRepository.findByStoreAdminId(currentUser.getId());
+            }
+            if (userStore == null && currentUser.getBranch() != null) {
+                userStore = currentUser.getBranch().getStore();
+            }
+            if (userStore == null || !userStore.getId().equals(branch.getStore().getId())) {
+                throw new AccessDeniedException("You are not authorized to access this branch.");
+            }
+        }
         return BranchMapper.toDto(branch);
     }
 
@@ -103,15 +138,20 @@ public class BranchServiceImpl implements BranchService {
         );
 
         // Check if current user is allowed
-        boolean isStoreManager = currentUser.getRole() == UserRole.ROLE_STORE_MANAGER &&
-                currentUser.getStore() != null &&
-                currentUser.getStore().getId().equals(storeId);
+        if (currentUser.getRole() == UserRole.ROLE_ADMIN) {
+            return branchRepository.findByStoreIdAndIsActiveTrue(store.getId()).stream()
+                    .map(BranchMapper::toDto)
+                    .collect(Collectors.toList());
+        }
 
-        boolean isStoreAdmin = currentUser.getRole() == UserRole.ROLE_STORE_ADMIN &&
-                store.getStoreAdmin() != null &&
-                store.getStoreAdmin().getId().equals(currentUser.getId());
+        Long userStoreId = currentUser.getStore() != null ? currentUser.getStore().getId()
+                : (currentUser.getBranch() != null && currentUser.getBranch().getStore() != null ? currentUser.getBranch().getStore().getId() : null);
 
-        if (!isStoreManager && !isStoreAdmin) {
+        if (userStoreId == null && store.getStoreAdmin() != null && store.getStoreAdmin().getId().equals(currentUser.getId())) {
+            userStoreId = store.getId();
+        }
+
+        if (userStoreId == null || !userStoreId.equals(storeId)) {
             throw new UserException("You are not authorized to access this store's branches");
         }
 
@@ -123,7 +163,10 @@ public class BranchServiceImpl implements BranchService {
     @Override
     public BranchDTO updateBranch(Long id, BranchDTO branchDto, User user) throws Exception {
 
-        Store store = storeRepository.findByStoreAdminId(user.getId());
+        Store store = user.getStore();
+        if (store == null) {
+            store = storeRepository.findByStoreAdminId(user.getId());
+        }
 
         Branch existing = branchRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Branch not found"));
@@ -132,22 +175,22 @@ public class BranchServiceImpl implements BranchService {
             throw new AccessDeniedException("You are not authorized to manage this branch.");
         }
 
-        existing.setName(branchDto.getName());
-        existing.setAddress(branchDto.getAddress());
-        existing.setEmail(branchDto.getEmail());
-        existing.setPhone(branchDto.getPhone());
-        existing.setCloseTime(branchDto.getCloseTime());
-        existing.setOpenTime(branchDto.getOpenTime());
-        existing.setWorkingDays(branchDto.getWorkingDays());
+        // Patch-style: only update fields that were actually sent (non-null)
+        if (branchDto.getName() != null) existing.setName(branchDto.getName());
+        if (branchDto.getAddress() != null) existing.setAddress(branchDto.getAddress());
+        if (branchDto.getEmail() != null) existing.setEmail(branchDto.getEmail());
+        if (branchDto.getPhone() != null) existing.setPhone(branchDto.getPhone());
+        if (branchDto.getCloseTime() != null) existing.setCloseTime(branchDto.getCloseTime());
+        if (branchDto.getOpenTime() != null) existing.setOpenTime(branchDto.getOpenTime());
+        if (branchDto.getWorkingDays() != null) existing.setWorkingDays(branchDto.getWorkingDays());
 
+        // Only update manager if explicitly provided; never silently null it out
         if (branchDto.getManager() != null && !branchDto.getManager().isBlank()) {
             User manager = userRepository.findByFullNameOrEmail(branchDto.getManager());
             if (manager == null) {
                 throw new ResourceNotFoundException("Manager not found with name: " + branchDto.getManager());
             }
             existing.setManager(manager);
-        } else {
-            existing.setManager(null);
         }
 
         return BranchMapper.toDto(branchRepository.save(existing));
@@ -164,7 +207,10 @@ public class BranchServiceImpl implements BranchService {
         } catch (UserException e) {
             throw new AccessDeniedException("You are not authorized to manage this branch.", e);
         }
-        Store store = storeRepository.findByStoreAdminId(currentUser.getId());
+        Store store = currentUser.getStore();
+        if (store == null) {
+            store = storeRepository.findByStoreAdminId(currentUser.getId());
+        }
 
         if (store == null || !store.getId().equals(existing.getStore().getId())) {
             throw new AccessDeniedException("You are not authorized to manage this branch.");

@@ -4,6 +4,7 @@ import {
   getProductById,
   updateProduct,
   deleteProduct,
+  deleteAllProducts,
   getProductsByStore,
   searchProducts
 } from './productThunks';
@@ -55,8 +56,21 @@ const productSlice = createSlice({
         }
       })
 
+      .addCase(deleteProduct.pending, (state, action) => {
+        const prodId = typeof action.meta.arg === "object" ? (action.meta.arg.id || action.meta.arg.productId) : action.meta.arg;
+        if (prodId) {
+          state.products = state.products.filter((p) => p.id !== prodId);
+          state.searchResults = state.searchResults.filter((p) => p.id !== prodId);
+        }
+      })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.products = state.products.filter((p) => p.id !== action.payload);
+        state.searchResults = state.searchResults.filter((p) => p.id !== action.payload);
+      })
+
+      .addCase(deleteAllProducts.fulfilled, (state) => {
+        state.products = [];
+        state.searchResults = [];
       })
 
       .addCase(getProductsByStore.fulfilled, (state, action) => {

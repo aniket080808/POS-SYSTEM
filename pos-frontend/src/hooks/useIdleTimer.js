@@ -20,16 +20,22 @@ export const useIdleTimer = (timeoutMinutes = 30, options = { enabled: true }) =
 
   // Keep refs so we never create stale closures inside the reset handler
   const timeoutRef = useRef(null);
+  const warningTimeoutRef = useRef(null);
   const lastActivityRef = useRef(Date.now());
+  const warningShownRef = useRef(false);
 
   // -------------------------------------------------------------------------
   // The action fired when the idle threshold is reached
   // -------------------------------------------------------------------------
   const handleLogout = useCallback(() => {
-    // Clear any pending timer
+    // Clear any pending timers
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
+    }
+    if (warningTimeoutRef.current) {
+      clearTimeout(warningTimeoutRef.current);
+      warningTimeoutRef.current = null;
     }
 
     dispatch(logout());
@@ -40,7 +46,7 @@ export const useIdleTimer = (timeoutMinutes = 30, options = { enabled: true }) =
       description: "Your session timed out after " + timeoutMinutes + " minutes of inactivity.",
       duration: 5000,
     });
-    navigate("/login");
+    navigate("/auth/login");
   }, [dispatch, navigate, timeoutMinutes]);
 
   // -------------------------------------------------------------------------
@@ -54,8 +60,27 @@ export const useIdleTimer = (timeoutMinutes = 30, options = { enabled: true }) =
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
+    if (warningTimeoutRef.current) {
+      clearTimeout(warningTimeoutRef.current);
+    }
+
+    warningShownRef.current = false;
 
     const remainingMs = timeoutMinutes * 60 * 1000;
+    const warningMs = Math.max(10000, remainingMs - 2 * 60 * 1000); // 2 minutes before timeout
+
+    // Schedule pre-timeout warning
+    warningTimeoutRef.current = setTimeout(() => {
+      if (!warningShownRef.current) {
+        warningShownRef.current = true;
+        toast({
+          title: "Session Expiring Soon",
+          description: "You will be logged out in 2 minutes due to inactivity. Move your mouse or press any key to stay logged in.",
+          duration: 6000,
+        });
+      }
+    }, warningMs);
+
     timeoutRef.current = setTimeout(() => {
       // Verify inactivity again at fire-time (extra guard against
       // edge cases where a late event sneaks in)
@@ -98,6 +123,10 @@ export const useIdleTimer = (timeoutMinutes = 30, options = { enabled: true }) =
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
+      }
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+        warningTimeoutRef.current = null;
       }
       events.forEach((ev) => window.removeEventListener(ev, activityHandler));
     };

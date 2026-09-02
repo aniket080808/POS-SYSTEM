@@ -19,6 +19,15 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
 
     Page<ActivityLog> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
+    @Query("SELECT a FROM ActivityLog a WHERE " +
+           "(:action IS NULL OR :action = '' OR LOWER(a.action) = LOWER(:action)) AND " +
+           "(:search IS NULL OR :search = '' OR LOWER(a.description) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(a.performedBy) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY a.createdAt DESC")
+    Page<ActivityLog> searchActivityLogs(@Param("action") String action, @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT DISTINCT a.action FROM ActivityLog a ORDER BY a.action ASC")
+    List<String> findDistinctActions();
+
     @Modifying
     @Query("DELETE FROM ActivityLog a WHERE a.createdAt < :cutoffDate")
     int deleteOlderThan(@Param("cutoffDate") LocalDateTime cutoffDate);

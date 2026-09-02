@@ -130,7 +130,7 @@ public class RazorpayService {
     public JSONObject fetchPaymentDetails(String paymentId) throws PaymentException {
         validateConfiguration();
 
-        System.out.println("RAZORYPAY PAYMENT_ID: ------- " + paymentId);
+        log.debug("Fetching Razorpay payment details for paymentId: {}", paymentId);
 
         try {
             RazorpayClient razorpay = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
@@ -155,7 +155,7 @@ public class RazorpayService {
 
             JSONObject notes = paymentDetails.getJSONObject("notes");
 
-            System.out.println("payment details ------ "+ paymentDetails);
+            log.debug("Razorpay payment verification status: {}, amount (INR): {}", status, amountInRupees);
 
             // 1️⃣ Check status
             if (!"captured".equalsIgnoreCase(status)) {

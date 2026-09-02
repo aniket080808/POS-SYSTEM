@@ -7,131 +7,148 @@ import {
   Store,
   FileText,
   Clock,
-  IndianRupee,
-  Download,
   Settings,
+  Percent,
+  Download,
   LogOut,
-  ShoppingCart,
   ShieldAlert,
+  MessageSquare,
+  Activity,
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
+import NexPOSLogo from "@/components/common/NexPOSLogo";
 
 const navLinks = [
   {
-    name: "Dashboard",
+    name: "Platform Overview",
     path: "/super-admin/dashboard",
-    matchPaths: ["/super-admin", "/super-admin/dashboard"],
-    icon: <LayoutDashboard className="w-4 h-4" />,
+    icon: <LayoutDashboard className="w-5 h-5" />,
   },
   {
-    name: "Stores Directory",
+    name: "Registered Stores",
     path: "/super-admin/stores",
-    matchPaths: ["/super-admin/stores"],
-    icon: <Store className="w-4 h-4" />,
+    icon: <Store className="w-5 h-5" />,
   },
   {
-    name: "Pending Requests",
+    name: "Store Requests",
     path: "/super-admin/requests",
-    matchPaths: ["/super-admin/requests"],
-    icon: <Clock className="w-4 h-4" />,
+    icon: <Clock className="w-5 h-5" />,
   },
   {
     name: "Subscription Plans",
     path: "/super-admin/subscriptions",
-    matchPaths: ["/super-admin/subscriptions"],
-    icon: <FileText className="w-4 h-4" />,
+    icon: <FileText className="w-5 h-5" />,
+  },
+  {
+    name: "Customer Inquiries",
+    path: "/super-admin/inquiries",
+    icon: <MessageSquare className="w-5 h-5" />,
   },
   {
     name: "Commissions",
     path: "/super-admin/commissions",
-    matchPaths: ["/super-admin/commissions"],
-    icon: <IndianRupee className="w-4 h-4" />,
+    icon: <Percent className="w-5 h-5" />,
+  },
+  {
+    name: "Audit Trail",
+    path: "/super-admin/audit-logs",
+    icon: <Activity className="w-5 h-5" />,
   },
   {
     name: "Data Exports",
     path: "/super-admin/exports",
-    matchPaths: ["/super-admin/exports"],
-    icon: <Download className="w-4 h-4" />,
+    icon: <Download className="w-5 h-5" />,
   },
   {
-    name: "System Settings",
+    name: "Platform Settings",
     path: "/super-admin/settings",
-    matchPaths: ["/super-admin/settings"],
-    icon: <Settings className="w-4 h-4" />,
+    icon: <Settings className="w-5 h-5" />,
   },
 ];
 
-export default function SuperAdminSidebar() {
+import api from "@/utils/api";
+
+export default function SuperAdminSidebar({ onNavigate }) {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [pendingInquiriesCount, setPendingInquiriesCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const fetchCount = () => {
+      api.get("/api/super-admin/contact-inquiries/pending-count")
+        .then((res) => {
+          const count = res.data?.data ?? res.data ?? 0;
+          setPendingInquiriesCount(Number(count));
+        })
+        .catch(() => {});
+    };
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 20000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     dispatch(logout());
     navigate("/auth/login");
-  };
-
-  const isLinkActive = (link) => {
-    if (link.path === "/super-admin/dashboard") {
-      return location.pathname === "/super-admin" || location.pathname === "/super-admin/dashboard";
-    }
-    return location.pathname.startsWith(link.path);
+    onNavigate?.();
   };
 
   return (
-    <aside className="h-full w-64 shrink-0 bg-[#18181b] border-r border-zinc-800 flex flex-col py-5 px-3 shadow-xl z-20 text-zinc-100">
+    <aside className="h-full w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col py-6 px-3 shadow-xs">
       {/* Brand Header */}
       <div className="px-3 mb-6">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-accent text-accent-foreground rounded-xl flex items-center justify-center font-bold shadow-xs">
-            <ShoppingCart className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-base font-extrabold tracking-tight text-white">NexPOS</span>
-              <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30">
-                ADMIN
-              </span>
-            </div>
-            <p className="text-[11px] text-zinc-400">Platform Governance</p>
-          </div>
-        </div>
+        <NexPOSLogo size="md" subtitle="Super Administrator" onClick={() => { navigate("/super-admin/dashboard"); onNavigate?.(); }} />
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-1 space-y-1">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1.5">
-          Core Management
-        </div>
+      <nav className="flex-1 overflow-y-auto space-y-1 pr-1">
         {navLinks.map((link) => {
-          const active = isLinkActive(link);
+          const isActivePath = location.pathname.startsWith(link.path);
+
           return (
             <Link
               key={link.name}
               to={link.path}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-xs font-semibold group ${
-                active
-                  ? "bg-accent text-accent-foreground shadow-xs font-bold"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-800/80"
+              onClick={() => onNavigate?.()}
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                isActivePath
+                  ? "bg-[#F3E6C4] text-foreground shadow-2xs font-bold"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
             >
-              <span className={active ? "text-accent-foreground" : "text-zinc-400 group-hover:text-zinc-200"}>
-                {link.icon}
-              </span>
-              <span>{link.name}</span>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`transition-colors ${
+                    isActivePath
+                      ? "text-[#B8860B]"
+                      : "text-muted-foreground group-hover:text-foreground"
+                  }`}
+                >
+                  {link.icon}
+                </span>
+                <span>{link.name}</span>
+              </div>
+
+              {link.name === "Customer Inquiries" && pendingInquiriesCount > 0 && (
+                <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-[#B8860B] text-white shadow-xs animate-pulse">
+                  {pendingInquiriesCount}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer / Logout */}
-      <div className="pt-3 mt-auto border-t border-zinc-800 px-1">
+      {/* Sign Out */}
+      <div className="pt-4 mt-auto border-t border-border/80 px-2">
         <Button
           onClick={handleLogout}
-          variant="ghost"
-          className="w-full justify-start text-xs font-semibold text-zinc-400 hover:text-red-400 hover:bg-red-950/30 rounded-xl h-10 px-3 cursor-pointer"
+          variant="outline"
+          className="w-full justify-start text-xs font-semibold h-10 rounded-xl gap-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
         >
-          <LogOut className="w-4 h-4 mr-2 text-zinc-400" />
+          <LogOut className="w-4 h-4" />
           Sign Out
         </Button>
       </div>

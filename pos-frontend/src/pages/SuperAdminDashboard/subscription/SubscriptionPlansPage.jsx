@@ -2,14 +2,12 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   getAllSubscriptionPlans,
   deleteSubscriptionPlan,
   updateSubscriptionPlan,
 } from "@/Redux Toolkit/features/subscriptionPlan/subscriptionPlanThunks";
-
-import { useToast } from "../../../components/ui/use-toast";
+import { toast } from "../../../components/ui/use-toast";
 import { Button } from "../../../components/ui/button";
 import {
   Table,
@@ -19,9 +17,10 @@ import {
   TableHead,
   TableCell,
 } from "../../../components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import AddPlanDialog from "./AddPlanDialog";
-import { Switch } from "../../../components/ui/switch";
 import EditPlanDialog from "./EditPlanDialog";
+import { Switch } from "../../../components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,51 +31,41 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Edit2, Trash2, Shield, CheckCircle2, Package, Layers, Sparkles, AlertTriangle } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Check, Layers, Store, Users, ShoppingCart } from "lucide-react";
 
 const FEATURE_FLAGS = [
   { key: "enableAdvancedReports", legacyKey: "advancedReports", label: "Advanced Reports" },
-  { key: "enableInventory", legacyKey: "inventory", label: "Inventory Engine" },
-  { key: "enableIntegrations", legacyKey: "integrations", label: "API Integrations" },
-  { key: "enableEcommerce", legacyKey: "ecommerce", label: "Online Store" },
-  { key: "enableInvoiceBranding", legacyKey: "invoiceBranding", label: "Custom Invoices" },
-  { key: "prioritySupport", legacyKey: "prioritySupport", label: "Priority SLA" },
-  { key: "enableMultiLocation", legacyKey: "multiLocation", label: "Multi-Branch" },
+  { key: "enableInventory", legacyKey: "inventory", label: "Inventory System" },
+  { key: "enableIntegrations", legacyKey: "integrations", label: "Integrations" },
+  { key: "enableEcommerce", legacyKey: "ecommerce", label: "eCommerce" },
+  { key: "enableInvoiceBranding", legacyKey: "invoiceBranding", label: "Invoice Branding" },
+  { key: "prioritySupport", legacyKey: "prioritySupport", label: "Priority Support" },
+  { key: "enableMultiLocation", legacyKey: "multiLocation", label: "Multi-location" },
 ];
 
 function getFeatureBadges(plan) {
-  const activeFlags = FEATURE_FLAGS.filter((f) => plan[f.key] || plan[f.legacyKey]);
-  if (activeFlags.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+  const activeFeatures = FEATURE_FLAGS.filter((f) => plan[f.key] || plan[f.legacyKey]);
   return (
     <div className="flex flex-wrap gap-1">
-      {activeFlags.map((f) => (
-        <Badge key={f.key} variant="secondary" className="text-[10px] font-medium px-2 py-0.5 rounded-md">
+      {activeFeatures.map((f) => (
+        <span
+          key={f.key}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold bg-secondary text-foreground px-2 py-0.5 rounded-lg border border-border"
+        >
+          <Check className="w-2.5 h-2.5 text-[#B8860B] stroke-[3]" />
           {f.label}
-        </Badge>
+        </span>
       ))}
+      {activeFeatures.length === 0 && (
+        <span className="text-xs text-muted-foreground">Standard Base Features</span>
+      )}
     </div>
   );
 }
 
-const columns = [
-  { key: "name", label: "Plan Name" },
-  { key: "price", label: "Pricing" },
-  { key: "billingCycle", label: "Billing Cycle" },
-  { key: "maxBranches", label: "Max Branches" },
-  { key: "maxUsers", label: "Max Staff" },
-  { key: "maxProducts", label: "Max SKUs" },
-  { key: "status", label: "Status" },
-  { key: "features", label: "Feature Capabilities" },
-  { key: "actions", label: "Actions" },
-];
-
-const SubscriptionPlansPage = () => {
+export default function SubscriptionPlansPage() {
   const dispatch = useDispatch();
-  const { toast } = useToast();
-  
-  const { plans, error, loading } = useSelector(
-    (state) => state.subscriptionPlan
-  );
+  const { plans = [], error } = useSelector((state) => state.subscriptionPlan);
 
   const [search, setSearch] = useState("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -90,7 +79,7 @@ const SubscriptionPlansPage = () => {
   }, [dispatch]);
 
   const filteredPlans = useMemo(() => {
-    let filtered = plans || [];
+    let filtered = plans;
     if (search) {
       filtered = filtered.filter((plan) =>
         plan.name.toLowerCase().includes(search.toLowerCase())
@@ -105,13 +94,13 @@ const SubscriptionPlansPage = () => {
     if (res.meta.requestStatus === "fulfilled") {
       toast({
         title: "Plan Deleted",
-        description: `Subscription plan "${planToDelete.name}" was successfully removed.`,
+        description: `Subscription plan "${planToDelete.name}" deleted successfully.`,
       });
       dispatch(getAllSubscriptionPlans());
     } else {
       toast({
-        title: "Deletion Prevented",
-        description: res.payload || "Failed to delete plan. Active stores may still be subscribed.",
+        title: "Deletion Blocked",
+        description: res.payload || "Failed to delete plan. Stores may still be assigned to it.",
         variant: "destructive",
       });
     }
@@ -125,27 +114,40 @@ const SubscriptionPlansPage = () => {
     delete updated.updatedAt;
     const res = await dispatch(updateSubscriptionPlan({ id: plan.id, plan: updated }));
     setStatusLoadingId(null);
-    if (res.meta.requestStatus === 'fulfilled') {
-      toast({ title: 'Status Updated', description: `Plan status set to ${updated.active ? 'Active' : 'Inactive'}` });
+    if (res.meta.requestStatus === "fulfilled") {
+      toast({
+        title: "Status Updated",
+        description: `Plan is now ${updated.active ? "Active" : "Inactive"}`,
+      });
       dispatch(getAllSubscriptionPlans());
     } else {
-      toast({ title: 'Error', description: res.payload || 'Failed to update status', variant: 'destructive' });
+      toast({
+        title: "Update Error",
+        description: res.payload || "Failed to update status",
+        variant: "destructive",
+      });
     }
   };
 
   return (
     <div className="space-y-6">
       <AlertDialog open={!!planToDelete} onOpenChange={() => setPlanToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl bg-card border-border sm:max-w-md">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-bold text-foreground">Delete Subscription Plan?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground">
-              This action cannot be undone. This will permanently remove the <strong>{planToDelete?.name}</strong> plan catalog entry.
+            <AlertDialogTitle className="text-lg font-bold text-destructive">
+              Delete Subscription Tier
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              This action cannot be undone. This will permanently delete the subscription plan{" "}
+              <strong>{planToDelete?.name}</strong>. Active stores on this plan must be migrated first.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-xl text-xs">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeletePlan} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl text-xs font-semibold">
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs h-9">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeletePlan}
+              className="text-xs h-9 bg-destructive hover:bg-destructive/90 text-white font-bold"
+            >
               Confirm Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -168,118 +170,128 @@ const SubscriptionPlansPage = () => {
         }}
       />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Subscription Tier Plans</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Configure merchant billing plans, branch and product quotas, and feature flags.
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Subscription Plans & Quota Tiers
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Configure merchant packaging, feature access flags, and billing cycle pricing
           </p>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)} className="rounded-xl text-xs font-semibold gap-1.5 h-10 shadow-xs">
-          <Plus className="w-4 h-4" />
-          <span>Add New Plan</span>
+        <Button onClick={() => setAddDialogOpen(true)} className="gap-2 text-xs font-bold h-10">
+          <Plus className="w-4 h-4" /> Create New Tier
         </Button>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center gap-3">
-        <div className="relative max-w-sm flex-1">
-          <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 transform -translate-y-1/2" />
-          <Input
-            placeholder="Search plans by name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-10 rounded-xl text-xs"
-          />
-        </div>
-      </div>
-
-      {/* Table */}
-      <Card className="rounded-2xl border-border/80 shadow-2xs overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table className="text-xs">
-              <TableHeader className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+      <Card>
+        <CardHeader className="pb-3 border-b border-border/60">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <CardTitle className="text-base">Configured Subscription Tiers</CardTitle>
+              <CardDescription className="text-xs">
+                Pricing, feature entitlement flags, and resource limits per merchant
+              </CardDescription>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+              <Input
+                placeholder="Search plans..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 text-xs"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="border border-border rounded-2xl bg-card overflow-hidden">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  {columns.map((col) => (
-                    <TableHead key={col.key} className={`py-3 ${col.key === 'actions' ? 'text-right' : ''}`}>
-                      {col.label}
-                    </TableHead>
-                  ))}
+                  <TableHead>Tier Name</TableHead>
+                  <TableHead>Pricing</TableHead>
+                  <TableHead>Billing Cycle</TableHead>
+                  <TableHead>Branches</TableHead>
+                  <TableHead>Users</TableHead>
+                  <TableHead>Products</TableHead>
+                  <TableHead>Public Status</TableHead>
+                  <TableHead>Feature Entitlements</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-border/60">
-                {filteredPlans.length === 0 ? (
+              <TableBody>
+                {filteredPlans.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="text-center py-16 text-xs text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground text-xs font-semibold">
                       No subscription plans found.
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filteredPlans.map((plan) => (
-                    <TableRow key={plan.id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-semibold text-foreground py-3.5">
-                        {plan.name}
-                      </TableCell>
-                      <TableCell className="font-mono font-bold text-foreground">
-                        ₹{plan.price}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground font-mono text-[11px] uppercase">
-                        {plan.billingCycle}
-                      </TableCell>
-                      <TableCell className="font-mono text-muted-foreground">
-                        {plan.maxBranches ?? "Unlimited"}
-                      </TableCell>
-                      <TableCell className="font-mono text-muted-foreground">
-                        {plan.maxUsers ?? "Unlimited"}
-                      </TableCell>
-                      <TableCell className="font-mono text-muted-foreground">
-                        {plan.maxProducts ?? "Unlimited"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={!!plan.active}
-                            onCheckedChange={() => handleStatusToggle(plan)}
-                            disabled={statusLoadingId === plan.id}
-                          />
-                          <span className={`text-[11px] font-semibold ${plan.active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
-                            {plan.active ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        {getFeatureBadges(plan)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedPlan(plan);
-                              setEditDialogOpen(true);
-                            }}
-                            className="h-8 w-8 rounded-lg hover:bg-muted"
-                            title="Edit Plan"
-                          >
-                            <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => setPlanToDelete(plan)}
-                            className="h-8 w-8 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                            title="Delete Plan"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
                 )}
+                {filteredPlans.map((plan) => (
+                  <TableRow key={plan.id}>
+                    <TableCell className="font-bold text-foreground">
+                      {plan.name}
+                    </TableCell>
+                    <TableCell className="font-black font-mono text-sm text-foreground">
+                      ₹{plan.price?.toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs uppercase font-mono">
+                        {plan.billingCycle}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {plan.maxBranches ?? "Unlimited"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {plan.maxUsers ?? "Unlimited"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {plan.maxProducts ? plan.maxProducts.toLocaleString() : "Unlimited"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={!!plan.active}
+                          onCheckedChange={() => handleStatusToggle(plan)}
+                          disabled={statusLoadingId === plan.id}
+                        />
+                        <Badge variant={plan.active ? "active" : "secondary"}>
+                          {plan.active ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      {getFeatureBadges(plan)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-lg"
+                          onClick={() => {
+                            setSelectedPlan(plan);
+                            setEditDialogOpen(true);
+                          }}
+                          title="Edit plan"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10"
+                          onClick={() => setPlanToDelete(plan)}
+                          title="Delete plan"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
@@ -288,7 +300,4 @@ const SubscriptionPlansPage = () => {
       {error && <div className="text-destructive text-xs font-semibold">{error}</div>}
     </div>
   );
-};
-
-export default SubscriptionPlansPage;
-
+}

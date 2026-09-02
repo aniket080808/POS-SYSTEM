@@ -1,13 +1,12 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Bell } from "lucide-react";
 
 const NotificationItem = ({ id, title, description, checked, onToggle }) => (
-  <div className="flex items-center justify-between py-3">
+  <div className="flex items-center justify-between gap-4 p-3.5 rounded-2xl bg-secondary/30 border border-border/60">
     <div>
-      <h4 className="text-xs font-semibold text-foreground">{title}</h4>
+      <h4 className="text-xs font-bold text-foreground">{title}</h4>
       <p className="text-[11px] text-muted-foreground mt-0.5">{description}</p>
     </div>
     <Switch id={id} checked={checked} onCheckedChange={onToggle} />
@@ -18,43 +17,42 @@ const NotificationSettingsForm = ({ notifications, onToggle }) => {
   const notificationItems = [
     {
       id: "newStoreRequests",
-      title: "New Store Registrations",
-      description: "Get immediate alerts when new merchants submit store applications",
+      title: "Store Registration Alerts",
+      description: "Notify immediately whenever a new merchant applies for platform onboarding",
     },
     {
       id: "storeApprovals",
-      title: "Store Approval Actions",
-      description: "Notifications when approval requests are resolved or escalated",
+      title: "Moderation Status Notifications",
+      description: "Receive confirmations whenever a store request is approved or rejected",
     },
     {
       id: "commissionUpdates",
-      title: "Commission & Fee Updates",
-      description: "Alerts when platform fee rates or pricing tiers change",
+      title: "Platform Revenue & Commission Alerts",
+      description: "Notify when new subscription invoices are generated or paid",
     },
     {
       id: "systemAlerts",
-      title: "Platform Health & Security Alerts",
-      description: "Critical alerts for failed jobs, high traffic, or moderation issues",
+      title: "Critical Infrastructure Warnings",
+      description: "High-priority alerts regarding WebSocket downtime or database load",
     },
     {
       id: "emailNotifications",
-      title: "Email Digest Notifications",
-      description: "Receive daily summary reports and urgent alerts via administrator email",
+      title: "Digest Email Dispatch",
+      description: "Send daily operational summary reports to the super admin inbox",
     },
   ];
 
   return (
-    <Card className="rounded-2xl border-border/80 shadow-2xs">
-      <CardHeader className="pb-4 border-b border-border/60">
-        <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-          <Bell className="w-4 h-4 text-primary" />
-          <span>Notification Preferences</span>
+    <Card>
+      <CardHeader className="pb-3 border-b border-border/60">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Bell className="w-4 h-4 text-[#B8860B]" /> Platform Notification Channels
         </CardTitle>
-        <CardDescription className="text-xs text-muted-foreground">
-          Configure real-time system alerts and communication channels.
+        <CardDescription className="text-xs">
+          Select operational events that trigger push alerts and email notifications
         </CardDescription>
       </CardHeader>
-      <CardContent className="divide-y divide-border/60 p-4 sm:p-6">
+      <CardContent className="pt-4 space-y-3">
         {notificationItems.map((item) => (
           <NotificationItem
             key={item.id}
@@ -71,4 +69,3 @@ const NotificationSettingsForm = ({ notifications, onToggle }) => {
 };
 
 export default NotificationSettingsForm;
- 

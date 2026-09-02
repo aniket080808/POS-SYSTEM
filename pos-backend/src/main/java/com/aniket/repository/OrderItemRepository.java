@@ -22,6 +22,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
         JOIN oi.product p
         JOIN oi.order o
         WHERE o.branch.id = :branchId
+        AND o.status = com.aniket.domain.OrderStatus.COMPLETED
         GROUP BY p.id, p.name
         ORDER BY SUM(oi.quantity) DESC
     """)
@@ -33,7 +34,9 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
         JOIN oi.product p
         JOIN p.category c
         JOIN oi.order o
-        WHERE o.branch.id = :branchId AND o.createdAt BETWEEN :start AND :end
+        WHERE o.branch.id = :branchId 
+        AND o.status = com.aniket.domain.OrderStatus.COMPLETED
+        AND o.createdAt BETWEEN :start AND :end
         GROUP BY c.name
         ORDER BY SUM(oi.quantity * oi.price) DESC
     """)
@@ -42,6 +45,24 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );
+
+    @Query("""
+        SELECT c.name, SUM(oi.quantity * oi.price), SUM(oi.quantity)
+        FROM OrderItem oi
+        JOIN oi.product p
+        JOIN p.category c
+        JOIN oi.order o
+        WHERE o.branch.id = :branchId
+        AND o.status = com.aniket.domain.OrderStatus.COMPLETED
+        GROUP BY c.name
+        ORDER BY SUM(oi.quantity * oi.price) DESC
+    """)
+    List<Object[]> getAllTimeCategoryWiseSales(@Param("branchId") Long branchId);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @Query("UPDATE OrderItem oi SET oi.product = null WHERE oi.product.id = :productId")
+    void nullifyProductReference(@Param("productId") Long productId);
 
 
 

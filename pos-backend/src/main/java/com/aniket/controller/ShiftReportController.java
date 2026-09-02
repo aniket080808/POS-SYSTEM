@@ -8,6 +8,7 @@ import com.aniket.service.ShiftReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/shift-reports")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_ADMIN', 'BRANCH_MANAGER', 'BRANCH_CASHIER', 'ADMIN')")
 public class ShiftReportController {
 
     private final ShiftReportService shiftReportService;
@@ -105,6 +107,7 @@ public class ShiftReportController {
      * 📋 Get all shift reports (admin use)
      */
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ShiftReportDTO>> getAllShifts() {
         List<ShiftReport> shifts=shiftReportService.getAllShiftReports();
 
@@ -127,6 +130,7 @@ public class ShiftReportController {
      * ❌ Delete a shift report (admin use)
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'BRANCH_ADMIN', 'ADMIN')")
     public ResponseEntity<?> deleteShift(@PathVariable Long id) {
         shiftReportService.deleteShiftReport(id);
         return ResponseEntity.ok().build();

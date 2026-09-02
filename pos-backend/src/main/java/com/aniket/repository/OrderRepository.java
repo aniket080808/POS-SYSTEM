@@ -16,10 +16,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface OrderRepository extends JpaRepository<Order, Long> {
+public interface OrderRepository extends JpaRepository<Order, Long>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Order> {
+    Optional<Order> findByOfflineId(String offlineId);
     List<Order> findByCustomerId(Long customerId);
     List<Order> findByBranchId(Long branchId);
     List<Order> findByCashierId(Long cashierId);
+    Long countByCashierId(Long cashierId);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0.0) FROM Order o WHERE o.cashier.id = :cashierId AND o.status = com.aniket.domain.OrderStatus.COMPLETED")
+    Double sumTotalAmountByCashierId(@Param("cashierId") Long cashierId);
     List<Order> findByBranchIdAndCreatedAtBetween(Long branchId,
                                                   LocalDateTime start,
                                                   LocalDateTime end);
@@ -32,6 +37,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             SELECT SUM(o.totalAmount) 
             FROM Order o 
             WHERE o.branch.id = :branchId  
+            AND o.status = com.aniket.domain.OrderStatus.COMPLETED
             AND o.createdAt BETWEEN :start AND :end
            """)
     Optional<BigDecimal> getTotalSalesBetween(@Param("branchId") Long branchId,
@@ -43,6 +49,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         FROM Order o
         JOIN o.cashier u
         WHERE o.branch.id = :branchId
+        AND o.status = com.aniket.domain.OrderStatus.COMPLETED
+        AND u.role = com.aniket.domain.UserRole.ROLE_BRANCH_CASHIER
         GROUP BY u.id, u.fullName
         ORDER BY totalRevenue DESC
     """)
@@ -52,6 +60,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         SELECT COUNT(o)
         FROM Order o
         WHERE o.branch.id = :branchId
+        AND o.status = com.aniket.domain.OrderStatus.COMPLETED
         AND DATE(o.createdAt) = :date
     """)
     int countOrdersByBranchAndDate(@Param("branchId") Long branchId,
@@ -61,6 +70,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         SELECT COUNT(DISTINCT o.cashier.id)
         FROM Order o
         WHERE o.branch.id = :branchId
+        AND o.status = com.aniket.domain.OrderStatus.COMPLETED
+        AND o.cashier.role = com.aniket.domain.UserRole.ROLE_BRANCH_CASHIER
         AND DATE(o.createdAt) = :date
     """)
     int countDistinctCashiersByBranchAndDate(@Param("branchId") Long branchId,
@@ -70,6 +81,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     SELECT o.paymentType, SUM(o.totalAmount), COUNT(o)
     FROM Order o
     WHERE o.branch.id = :branchId
+    AND o.status = com.aniket.domain.OrderStatus.COMPLETED
     AND DATE(o.createdAt) = :date
     GROUP BY o.paymentType
 """)
@@ -78,12 +90,37 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("date") LocalDate date
     );
 
+    @Query("""
+    SELECT o.paymentType, SUM(o.totalAmount), COUNT(o)
+    FROM Order o
+    WHERE o.branch.id = :branchId
+    AND o.status = com.aniket.domain.OrderStatus.COMPLETED
+    AND o.createdAt BETWEEN :start AND :end
+    GROUP BY o.paymentType
+""")
+    List<Object[]> getPaymentBreakdownBetween(
+            @Param("branchId") Long branchId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
+    SELECT o.paymentType, SUM(o.totalAmount), COUNT(o)
+    FROM Order o
+    WHERE o.branch.id = :branchId
+    AND o.status = com.aniket.domain.OrderStatus.COMPLETED
+    GROUP BY o.paymentType
+""")
+    List<Object[]> getAllTimePaymentBreakdown(
+            @Param("branchId") Long branchId
+    );
+
     ////////////////////
-    // Dashboard page queries (all-time totals, no status filter)
-    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.branch.store.storeAdmin.id = :storeAdminId")
+    // Dashboard page queries (all-time totals, filtered to completed)
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.branch.store.storeAdmin.id = :storeAdminId AND o.status = com.aniket.domain.OrderStatus.COMPLETED")
     Optional<Double> sumTotalSalesByStoreAdmin(@Param("storeAdminId") Long storeAdminId);
 
-    @Query("SELECT COUNT(o) FROM Order o WHERE o.branch.store.storeAdmin.id = :storeAdminId")
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.branch.store.storeAdmin.id = :storeAdminId AND o.status = com.aniket.domain.OrderStatus.COMPLETED")
     int countByStoreAdminId(@Param("storeAdminId") Long storeAdminId);
     ////////////////////
 
@@ -171,7 +208,41 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         WHERE o.branch.store.storeAdmin.id = :storeAdminId
         GROUP BY o.branch.id
     """)
-        List<BranchSalesDTO> getSalesByBranch(@Param("storeAdminId") Long storeAdminId);
+    List<BranchSalesDTO> getSalesByBranch(@Param("storeAdminId") Long storeAdminId);
 
-//    List<Order> findByCustomerId(Long customerId);
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.branch.store.storeAdmin.id = :storeAdminId
+          AND (:branchId IS NULL OR o.branch.id = :branchId)
+          AND (:customerId IS NULL OR (o.customer IS NOT NULL AND o.customer.id = :customerId))
+          AND (:cashierId IS NULL OR (o.cashier IS NOT NULL AND o.cashier.id = :cashierId))
+          AND (:paymentType IS NULL OR o.paymentType = :paymentType)
+          AND (:status IS NULL OR o.status = :status)
+          AND (:start IS NULL OR o.createdAt >= :start)
+          AND (:end IS NULL OR o.createdAt <= :end)
+    """)
+    org.springframework.data.domain.Page<Order> findOrdersWithFilters(
+            @Param("storeAdminId") Long storeAdminId,
+            @Param("branchId") Long branchId,
+            @Param("customerId") Long customerId,
+            @Param("cashierId") Long cashierId,
+            @Param("paymentType") com.aniket.domain.PaymentType paymentType,
+            @Param("status") com.aniket.domain.OrderStatus status,
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end,
+            org.springframework.data.domain.Pageable pageable
+    );
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.branch.store.id = :storeId AND o.customer IS NOT NULL")
+    long countCustomerOrdersByStoreId(@Param("storeId") Long storeId);
+
+    @Query("""
+        SELECT COUNT(o)
+        FROM Order o
+        WHERE o.branch.store.id = :storeId
+          AND o.createdAt BETWEEN :start AND :end
+    """)
+    Long countByStoreIdAndCreatedAtBetween(@Param("storeId") Long storeId,
+                                           @Param("start") LocalDateTime start,
+                                           @Param("end") LocalDateTime end);
 }

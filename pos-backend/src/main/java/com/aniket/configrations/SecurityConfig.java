@@ -18,15 +18,21 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+
 import java.util.Arrays;
 import java.util.Collections;
 
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 	
 	@Autowired
 	private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+	@Autowired
+	private CustomAccessDeniedHandler customAccessDeniedHandler;
 
 	@Autowired
 	private MaintenanceModeFilter maintenanceModeFilter;
@@ -40,6 +46,9 @@ public class SecurityConfig {
 	@Autowired
 	private LastActivityFilter lastActivityFilter;
 	
+	@org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000,https://aniket-pos.vercel.app,https://pos-sytem-bcs6.vercel.app}")
+	private String allowedOrigins;
+	
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		
@@ -47,10 +56,16 @@ public class SecurityConfig {
 				.authorizeHttpRequests(Authorize -> Authorize
 						// Role-specific rules MUST be declared BEFORE the generic /api/** rule,
 						// because Spring Security evaluates rules in order and stops at the first match.
-						.requestMatchers("/api/super-admin/notifications/**").hasAnyRole("ADMIN", "STORE_ADMIN", "STORE_MANAGER")
+						.requestMatchers("/api/super-admin/notifications/**").hasAnyRole("ADMIN", "STORE_ADMIN", "STORE_MANAGER", "BRANCH_ADMIN", "BRANCH_MANAGER", "BRANCH_CASHIER")
 						.requestMatchers("/api/super-admin/**").hasRole("ADMIN")
+						.requestMatchers("/auth/**").permitAll()
+						.requestMatchers("/ws/**").permitAll()
+						.requestMatchers("/error").permitAll()
+						// Allow unauthenticated visitors to read active subscription plans and submit contact inquiries
+						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/subscription-plans", "/api/subscription-plans/**").permitAll()
+						.requestMatchers("/api/public/**").permitAll()
 						.requestMatchers("/api/**").authenticated()
-						.anyRequest().permitAll())
+						.anyRequest().authenticated())
 		.addFilterBefore(jwtValidator, BasicAuthenticationFilter.class)
 			.addFilterAfter(lastActivityFilter, JwtValidator.class)
 			.addFilterAfter(maintenanceModeFilter, JwtValidator.class)
@@ -75,7 +90,8 @@ public class SecurityConfig {
 			)
 			.exceptionHandling(
 					exceptionHandler -> exceptionHandler
-							.authenticationEntryPoint(customAuthenticationEntryPoint))
+							.authenticationEntryPoint(customAuthenticationEntryPoint)
+							.accessDeniedHandler(customAccessDeniedHandler))
 			.build();
 	}
 	
@@ -89,12 +105,11 @@ public class SecurityConfig {
 			@Override
 			public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
 				CorsConfiguration cfg = new CorsConfiguration();
-				cfg.setAllowedOrigins(Arrays.asList(
-						"http://localhost:3000",
-						"http://localhost:5173",
-						"https://aniket-pos.vercel.app",
-						"https://pos-sytem-bcs6.vercel.app"
-				));
+				java.util.List<String> origins = Arrays.stream(allowedOrigins.split(","))
+						.map(String::trim)
+						.filter(s -> !s.isEmpty())
+						.toList();
+				cfg.setAllowedOrigins(origins);
 				cfg.setAllowedMethods(Collections.singletonList("*"));
 				cfg.setAllowCredentials(true);
 				cfg.setAllowedHeaders(Collections.singletonList("*"));

@@ -14,15 +14,16 @@ import {
 import {
   Download,
   RefreshCw,
-  ArrowUpRight,
-  ArrowDownLeft,
-  IndianRupee,
   Search,
   X,
   CreditCard,
+  Banknote,
+  QrCode,
+  TrendingUp,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import TransactionTable from "./TransactionTable";
+import { formatDateTime } from "@/utils/formateDate";
 import {
   getOrdersByBranch,
   getOrderById,
@@ -38,10 +39,10 @@ import { handleDownloadOrderPDF } from "../../cashier/order/pdf/pdfUtils";
 export default function Transactions() {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const { orders, loading, selectedOrder } = useSelector(
-    (state) => state.order
-  );
+  const { orders = [], loading, selectedOrder } = useSelector((state) => state.order);
   const { branch } = useSelector((state) => state.branch);
+  const { userProfile } = useSelector((state) => state.user);
+  const branchId = branch?.id || userProfile?.branchId || userProfile?.branch?.id;
   const { format: formatCurrency } = useCurrencyFormatter();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,61 +51,24 @@ export default function Transactions() {
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
-    if (branch?.id) {
-      dispatch(getOrdersByBranch({ branchId: branch.id }));
+    if (branchId) {
+      dispatch(getOrdersByBranch({ branchId }));
       dispatch(
         findBranchEmployees({
-          branchId: branch.id,
+          branchId,
           role: "ROLE_BRANCH_CASHIER",
         })
       );
     }
-  }, [branch?.id, dispatch]);
+  }, [branchId, dispatch]);
 
-  // --- KPI Calculations ---
-  // Total Income = Gross Sales (sum of ALL order amounts, including refunded)
-  const totalIncome = useMemo(() => {
-    if (!orders || !Array.isArray(orders)) return 0;
-    return orders.reduce((sum, t) => sum + (Number(t.totalAmount) || 0), 0);
-  }, [orders]);
-
-  // Total Expenses = Refund Deductions (sum of REFUNDED order amounts)
-  const totalExpenses = useMemo(() => {
-    if (!orders || !Array.isArray(orders)) return 0;
-    return orders
-      .filter((t) => {
-        const status = (t.status || "").toString().toUpperCase();
-        return status === "REFUNDED";
-      })
-      .reduce((sum, t) => sum + (Number(t.totalAmount) || 0), 0);
-  }, [orders]);
-
-  // Net Amount = Total Income - Total Expenses
-  const netAmount = totalIncome - totalExpenses;
-
-  // --- Filtered transactions for the table (by status & payment method) ---
-  const filteredTransactions = useMemo(() => {
-    if (!orders || !Array.isArray(orders)) return [];
-    return orders.filter((t) => {
-      // Status filter
-      if (statusFilter !== "all") {
-        const tStatus = (t.status || "COMPLETED").toString().toUpperCase();
-        if (tStatus !== statusFilter.toUpperCase()) return false;
-      }
-      // Payment filter
-      if (paymentFilter !== "all") {
-        const tPayment = (t.paymentType || "").toString().toUpperCase();
-        if (tPayment !== paymentFilter.toUpperCase()) return false;
-      }
-      return true;
-    });
-  }, [orders, statusFilter, paymentFilter]);
-
-  // --- Handlers ---
   const handleRefresh = () => {
-    if (branch?.id) {
-      dispatch(getOrdersByBranch({ branchId: branch.id }));
-      toast({ title: "Refreshed", description: "Transactions list updated." });
+    if (branchId) {
+      dispatch(getOrdersByBranch({ branchId }));
+      toast({
+        title: "Refreshed",
+        description: "Transactions ledger updated successfully.",
+      });
     }
   };
 
@@ -116,10 +80,7 @@ export default function Transactions() {
   const handlePrintInvoice = async (orderId) => {
     try {
       const actionResult = await dispatch(getOrderById(orderId));
-      if (
-        getOrderById.fulfilled.match(actionResult) &&
-        actionResult.payload
-      ) {
+      if (getOrderById.fulfilled.match(actionResult) && actionResult.payload) {
         await handleDownloadOrderPDF(actionResult.payload, toast);
       } else {
         const found = orders?.find((o) => o.id === orderId);
@@ -128,288 +89,205 @@ export default function Transactions() {
         }
       }
     } catch (error) {
-      console.error("Error generating invoice PDF:", error);
+      console.error("Error generating transaction PDF:", error);
       toast({
         title: "Error",
-        description: "Failed to download invoice PDF",
+        description: "Failed to download tax PDF",
         variant: "destructive",
       });
     }
   };
 
-  const handleExportTransactions = () => {
-    try {
-      if (!orders || orders.length === 0) {
-        toast({
-          title: "No Data",
-          description: "No transactions to export.",
-          variant: "destructive",
-        });
-        return;
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      if (statusFilter !== "all" && (order.status || "").toLowerCase() !== statusFilter.toLowerCase()) {
+        return false;
       }
+      if (paymentFilter !== "all" && (order.paymentType || "").toLowerCase() !== paymentFilter.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+  }, [orders, statusFilter, paymentFilter]);
 
-      const exportData = orders.map((t) => {
-        const cashierName =
-          t.cashierName ||
-          t.cashier?.fullName ||
-          t.cashier?.name ||
-          (t.cashierId ? `Cashier #${t.cashierId}` : "Unknown");
-        const customerName =
-          t.customer?.fullName || t.customer?.name || "Walk-in Customer";
-        const dateStr = t.createdAt
-          ? new Date(t.createdAt).toLocaleString("en-IN", {
-              timeZone: "Asia/Kolkata",
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "-";
-        const status = t.status || "COMPLETED";
-        const amount = Number(t.totalAmount || 0);
+  const totalVolume = useMemo(() => {
+    return filteredOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+  }, [filteredOrders]);
 
-        return {
-          "Transaction ID": `#${t.id}`,
-          "Date & Time": dateStr,
-          Cashier: cashierName,
-          Customer: customerName,
-          "Amount (₹)": amount.toFixed(2),
-          "Payment Method": t.paymentType || "CASH",
-          Status: status,
-        };
-      });
+  const handleExportCSV = () => {
+    try {
+      const exportData = filteredOrders.map((o) => ({
+        "Transaction ID": o.id,
+        Customer: o.customer?.fullName || o.customer?.name || "Walk-in Guest",
+        Cashier: o.cashier?.fullName || o.cashier?.name || "Staff",
+        Payment: o.paymentType || "CASH",
+        Status: o.status || "COMPLETED",
+        Amount: o.totalAmount,
+        Date: o.createdAt ? formatDateTime(o.createdAt) : "",
+      }));
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(exportData);
-
-      // Set column widths for readability
-      ws["!cols"] = [
-        { wch: 16 }, // Transaction ID
-        { wch: 24 }, // Date & Time
-        { wch: 20 }, // Cashier
-        { wch: 20 }, // Customer
-        { wch: 14 }, // Amount
-        { wch: 18 }, // Payment Method
-        { wch: 14 }, // Status
-      ];
-
       XLSX.utils.book_append_sheet(wb, ws, "Transactions");
-      XLSX.writeFile(
-        wb,
-        `Branch_Transactions_${new Date().toISOString().split("T")[0]}.xlsx`
-      );
-      toast({
-        title: "Success",
-        description: "Transactions exported to Excel successfully.",
-      });
+      XLSX.writeFile(wb, `Branch_Transactions_${new Date().toISOString().split("T")[0]}.xlsx`);
+      toast({ title: "Export Complete", description: "Excel transaction ledger downloaded." });
     } catch (err) {
-      console.error("Export error:", err);
-      toast({
-        title: "Export Failed",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Export Failed", description: err.message, variant: "destructive" });
     }
   };
 
-  const hasActiveFilters =
-    statusFilter !== "all" ||
-    paymentFilter !== "all" ||
-    searchTerm.trim() !== "";
-
-  const transactionCount = orders?.length || 0;
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              Transactions
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Station Settlement Ledger
             </h1>
-            <Badge
-              variant="secondary"
-              className="px-2.5 py-0.5 text-xs font-semibold"
-            >
-              {transactionCount}{" "}
-              {transactionCount === 1 ? "Transaction" : "Transactions"}
+            <Badge variant="secondary" className="px-2.5 py-0.5 text-xs font-mono font-bold">
+              {filteredOrders.length} {filteredOrders.length === 1 ? "Record" : "Records"}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Track all sales transactions, refunds, and financial activity for
-            this branch.
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Audit tender receipts, register settlements, and export financial journals
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="gap-2 shadow-sm"
+            className="text-xs h-10 gap-1.5"
+            onClick={handleExportCSV}
+          >
+            <Download className="h-3.5 w-3.5" /> Export Excel
+          </Button>
+
+          <Button
+            variant="outline"
+            className="text-xs h-10 gap-1.5"
             onClick={handleRefresh}
             disabled={loading}
           >
-            <RefreshCw
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
-          <Button
-            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-            onClick={handleExportTransactions}
-          >
-            <Download className="h-4 w-4" /> Export Transactions
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Sync Ledger
           </Button>
         </div>
       </div>
 
-      {/* Transaction Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Total Income
-                </p>
-                <h3 className="text-2xl font-bold mt-1">
-                  {formatCurrency(totalIncome)}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Gross sales (all orders)
-                </p>
-              </div>
-              <div className="h-11 w-11 rounded-xl bg-green-100 flex items-center justify-center">
-                <ArrowUpRight className="h-5 w-5 text-green-600" />
-              </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border-border shadow-2xs">
+          <CardContent className="p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Settled Volume
+              </p>
+              <p className="text-2xl font-black font-mono text-foreground mt-1">
+                {formatCurrency(totalVolume)}
+              </p>
+            </div>
+            <div className="h-11 w-11 rounded-2xl bg-secondary flex items-center justify-center text-foreground">
+              <TrendingUp className="h-5 w-5 text-[#B8860B]" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Total Expenses
-                </p>
-                <h3 className="text-2xl font-bold mt-1 text-rose-600">
-                  {formatCurrency(totalExpenses)}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Refund deductions
-                </p>
-              </div>
-              <div className="h-11 w-11 rounded-xl bg-red-100 flex items-center justify-center">
-                <ArrowDownLeft className="h-5 w-5 text-red-600" />
-              </div>
+        <Card className="border-border shadow-2xs">
+          <CardContent className="p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Transaction Count
+              </p>
+              <p className="text-2xl font-black font-mono text-foreground mt-1">
+                {filteredOrders.length}
+              </p>
+            </div>
+            <div className="h-11 w-11 rounded-2xl bg-secondary flex items-center justify-center text-foreground">
+              <CreditCard className="h-5 w-5 text-[#B8860B]" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Net Amount
-                </p>
-                <h3 className="text-2xl font-bold mt-1">
-                  {formatCurrency(netAmount)}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Income minus refunds
-                </p>
-              </div>
-              <div className="h-11 w-11 rounded-xl bg-blue-100 flex items-center justify-center">
-                <IndianRupee className="h-5 w-5 text-blue-600" />
-              </div>
+        <Card className="border-border shadow-2xs">
+          <CardContent className="p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Average Basket
+              </p>
+              <p className="text-2xl font-black font-mono text-foreground mt-1">
+                {formatCurrency(filteredOrders.length > 0 ? totalVolume / filteredOrders.length : 0)}
+              </p>
+            </div>
+            <div className="h-11 w-11 rounded-2xl bg-secondary flex items-center justify-center text-foreground">
+              <Banknote className="h-5 w-5 text-[#B8860B]" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="bg-card p-4 rounded-xl border shadow-sm space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Search Input */}
+      {/* Filter Bar */}
+      <div className="space-y-3 bg-card p-4 rounded-2xl border border-border shadow-2xs">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search by ID, Cashier, Customer..."
+              placeholder="Search Transaction #, Customer, or Cashier..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-8"
+              className="pl-9 text-xs h-10"
             />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          </div>
+
+          <div>
+            <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+              <SelectTrigger className="text-xs h-10">
+                <SelectValue placeholder="All Tender Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tender Types</SelectItem>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="card">Credit / Debit Card</SelectItem>
+                <SelectItem value="upi">UPI QR Payment</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="text-xs h-10">
+                <SelectValue placeholder="All Settlement Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Settlement Status</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {(paymentFilter !== "all" || statusFilter !== "all" || searchTerm.trim() !== "") && (
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setPaymentFilter("all");
+                  setStatusFilter("all");
+                  setSearchTerm("");
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground h-10 gap-1.5"
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full">
-              <div className="flex items-center gap-2 truncate">
-                <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
-                <SelectValue placeholder="All Statuses" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-              <SelectItem value="REFUNDED">Refunded</SelectItem>
-              <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Payment Method Filter */}
-          <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-            <SelectTrigger className="w-full">
-              <div className="flex items-center gap-2 truncate">
-                <IndianRupee className="h-4 w-4 text-muted-foreground shrink-0" />
-                <SelectValue placeholder="All Payment Methods" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Payment Methods</SelectItem>
-              <SelectItem value="CASH">Cash</SelectItem>
-              <SelectItem value="UPI">UPI</SelectItem>
-              <SelectItem value="CARD">Card</SelectItem>
-              <SelectItem value="NET_BANKING">Net Banking</SelectItem>
-            </SelectContent>
-          </Select>
+                <X className="w-3.5 h-3.5" /> Clear Filters
+              </Button>
+            </div>
+          )}
         </div>
-
-        {hasActiveFilters && (
-          <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground border-t">
-            <span>Filtered results active</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("all");
-                setPaymentFilter("all");
-              }}
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
-            >
-              <X className="h-3 w-3" />
-              Clear Filters
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* Transactions Table */}
+      {/* Transaction Table */}
       <TransactionTable
-        transactions={filteredTransactions}
+        transactions={filteredOrders}
         loading={loading}
         searchTerm={searchTerm}
         onViewDetails={handleViewDetails}
@@ -418,7 +296,7 @@ export default function Transactions() {
         getPaymentIcon={getPaymentIcon}
       />
 
-      {/* Transaction Details Dialog (reuses OrderDetailsDialog) */}
+      {/* Order Details Dialog */}
       <OrderDetailsDialog
         open={showDetails && !!selectedOrder}
         onOpenChange={setShowDetails}

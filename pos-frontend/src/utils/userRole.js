@@ -34,6 +34,13 @@ export const branchAdminRole = [
   "ROLE_BRANCH_CASHIER",
 ];
 
+// Roles selectable by a Store Manager (strictly Branch-level roles)
+export const storeManagerRole = [
+  "ROLE_BRANCH_MANAGER",
+  "ROLE_BRANCH_ADMIN",
+  "ROLE_BRANCH_CASHIER",
+];
+
 export const getRoleDisplayName = (role) => {
   switch (role) {
     case "ROLE_SUPER_ADMIN":

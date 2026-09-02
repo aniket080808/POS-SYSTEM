@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const InventoryFilters = ({
@@ -15,35 +15,33 @@ const InventoryFilters = ({
   onSearch,
   category,
   onCategoryChange,
-  products,
-  inventoryRows,
-}) => (
-  <Card>
-    <CardContent className="p-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 items-center">
+  products = [],
+  inventoryRows = [],
+}) => {
+  const totalUnits = inventoryRows.reduce((sum, row) => sum + (row.quantity || 0), 0);
+
+  return (
+    <div className="space-y-3 bg-card p-4 rounded-2xl border border-border shadow-2xs">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 items-center">
         <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search by name..."
-            className=""
+            placeholder="Search SKU or Product Name..."
+            className="pl-9 text-xs h-10"
             value={searchTerm}
             onChange={onSearch}
-           
           />
         </div>
-        <div className="relative">
+
+        <div>
           <Select value={category} onValueChange={onCategoryChange}>
-            <SelectTrigger
-              startIcon={<Filter className="h-4 w-4 text-gray-500" />}
-              className="w-full"
-            >
+            <SelectTrigger className="text-xs h-10 w-full">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {[
-                ...new Set(products.map((p) => p.category).filter(Boolean)),
-              ].map((cat) => (
+              <SelectItem value="all">All Product Categories</SelectItem>
+              {[...new Set(products.map((p) => p.category).filter(Boolean))].map((cat) => (
                 <SelectItem key={cat} value={cat}>
                   {cat}
                 </SelectItem>
@@ -51,17 +49,18 @@ const InventoryFilters = ({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-5 items-center border p-3 rounded-md">
-          <h3 className="text-lg font-medium text-gray-500">
-            Total Quantity :{" "}
-          </h3>
-          <p className="text-xl font-bold  text-green-600">
-            {inventoryRows.reduce((sum, row) => sum + (row.quantity || 0), 0)}
-          </p>
+
+        <div className="flex items-center justify-between p-2.5 px-4 rounded-xl bg-secondary/30 border border-border/60">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Total Allocated Units:
+          </span>
+          <span className="text-base font-black font-mono text-foreground">
+            {totalUnits.toLocaleString("en-IN")}
+          </span>
         </div>
       </div>
-    </CardContent>
-  </Card>
-);
+    </div>
+  );
+};
 
 export default InventoryFilters;
