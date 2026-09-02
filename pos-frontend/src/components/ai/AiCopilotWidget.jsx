@@ -230,24 +230,35 @@ const AiCopilotWidget = () => {
 
   return (
     <>
-      {/* Floating Trigger Pill */}
-      <div className="fixed bottom-5 right-5 z-40">
+      {/* Floating 3D AI Robot Trigger */}
+      <div className="fixed bottom-5 right-5 z-40 group">
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-full font-bold text-xs shadow-2xl transition-all duration-200 cursor-pointer ${isOpen
-              ? "bg-[#262422] text-[#C9A227] border border-[#C9A227]/40 ring-4 ring-[#C9A227]/20"
-              : "bg-linear-to-r from-[#262422] to-[#383532] text-white hover:border-[#C9A227] border border-border/80 hover:shadow-[#C9A227]/10"
-            }`}
+          className={`flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full font-bold text-xs shadow-2xl transition-all duration-300 cursor-pointer ${
+            isOpen
+              ? "bg-[#262422] text-[#C9A227] border-2 border-[#C9A227] ring-4 ring-[#C9A227]/25 scale-105"
+              : "bg-linear-to-r from-[#1c1a18] via-[#262422] to-[#36322e] text-white hover:border-[#C9A227] border border-[#C9A227]/40 hover:shadow-[0_10px_25px_-5px_rgba(201,162,39,0.35)] hover:scale-105"
+          }`}
         >
-          <div className="relative">
-            <Sparkles className="w-4 h-4 text-[#C9A227] animate-pulse" />
-            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+          {/* 3D Robot Avatar with Glow */}
+          <div className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#C9A227]/70 shadow-md shrink-0 bg-black/40">
+            <img
+              src="/ai-avatar.jpg"
+              alt="Groq AI Assistant"
+              className="w-full h-full object-cover object-top scale-110 group-hover:scale-125 transition-transform duration-300"
+            />
+            <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-[#1c1a18] animate-pulse"></span>
           </div>
-          <span className="font-semibold tracking-wide">Groq Copilot</span>
-          <Badge variant="secondary" className="text-[9px] font-mono px-1.5 py-0 bg-amber-500/20 text-[#C9A227] border-0">
-            ⚡ &lt;0.4s
-          </Badge>
+
+          <div className="flex flex-col text-left">
+            <span className="font-bold tracking-wide text-xs leading-tight text-white flex items-center gap-1">
+              Groq Copilot
+            </span>
+            <span className="text-[9px] font-mono text-[#C9A227] leading-none">
+              ⚡ &lt;0.4s LPU
+            </span>
+          </div>
         </button>
       </div>
 
@@ -257,8 +268,13 @@ const AiCopilotWidget = () => {
           {/* Header */}
           <div className="p-3.5 bg-[#262422] text-white flex items-center justify-between border-b border-[#383532]">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-2xl bg-linear-to-br from-[#C9A227] to-[#8C6D14] text-[#262422] shadow-xs">
-                <Sparkles className="w-4 h-4 text-white" />
+              <div className="relative w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-[#C9A227]/60 shadow-md shrink-0 bg-black/40">
+                <img
+                  src="/ai-avatar.jpg"
+                  alt="NexPOS AI Robot"
+                  className="w-full h-full object-cover object-top scale-110"
+                />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#262422]"></span>
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -317,8 +333,8 @@ const AiCopilotWidget = () => {
                   className={`flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   {!isUser && (
-                    <div className="w-6 h-6 rounded-full bg-[#262422] text-[#C9A227] flex items-center justify-center shrink-0 mt-0.5 border border-[#383532]">
-                      <Bot className="w-3.5 h-3.5" />
+                    <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 mt-0.5 ring-1 ring-[#C9A227]/50 shadow-xs bg-black/40">
+                      <img src="/ai-avatar.jpg" alt="AI" className="w-full h-full object-cover object-top scale-110" />
                     </div>
                   )}
 
@@ -373,8 +389,8 @@ const AiCopilotWidget = () => {
 
             {copilotLoading && (
               <div className="flex gap-2 justify-start items-center p-2 text-xs text-muted-foreground">
-                <div className="w-6 h-6 rounded-full bg-[#262422] text-[#C9A227] flex items-center justify-center shrink-0">
-                  <Bot className="w-3.5 h-3.5" />
+                <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 ring-1 ring-[#C9A227]/50 shadow-xs bg-black/40">
+                  <img src="/ai-avatar.jpg" alt="AI" className="w-full h-full object-cover object-top scale-110" />
                 </div>
                 <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-secondary border border-border">
                   <Sparkles className="w-3.5 h-3.5 text-[#C9A227] animate-spin" />
