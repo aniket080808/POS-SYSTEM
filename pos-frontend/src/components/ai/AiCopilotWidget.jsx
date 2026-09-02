@@ -230,35 +230,32 @@ const AiCopilotWidget = () => {
 
   return (
     <>
-      {/* Floating 3D AI Robot Trigger */}
-      <div className="fixed bottom-5 right-5 z-40 group">
+      {/* Floating 3D AI Robot Trigger (Pure Avatar Icon) */}
+      <div className="fixed bottom-6 right-6 z-40">
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full font-bold text-xs shadow-2xl transition-all duration-300 cursor-pointer ${
+          title="NexPOS AI Copilot"
+          aria-label="Toggle AI Copilot"
+          className={`relative w-14 h-14 rounded-full p-0.5 shadow-2xl transition-all duration-300 cursor-pointer flex items-center justify-center group ${
             isOpen
-              ? "bg-[#262422] text-[#C9A227] border-2 border-[#C9A227] ring-4 ring-[#C9A227]/25 scale-105"
-              : "bg-linear-to-r from-[#1c1a18] via-[#262422] to-[#36322e] text-white hover:border-[#C9A227] border border-[#C9A227]/40 hover:shadow-[0_10px_25px_-5px_rgba(201,162,39,0.35)] hover:scale-105"
-          }`}
+              ? "ring-4 ring-[#C9A227] shadow-[0_0_30px_rgba(201,162,39,0.6)] scale-110"
+              : "ring-2 ring-[#C9A227]/70 hover:ring-[#C9A227] hover:shadow-[0_0_25px_rgba(201,162,39,0.5)] hover:scale-110 active:scale-95"
+          } bg-linear-to-br from-[#262422] to-[#121110]`}
         >
-          {/* 3D Robot Avatar with Glow */}
-          <div className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#C9A227]/70 shadow-md shrink-0 bg-black/40">
+          {/* 3D Robot Avatar */}
+          <div className="w-full h-full rounded-full overflow-hidden relative bg-black/40">
             <img
               src="/ai-avatar.jpg"
-              alt="Groq AI Assistant"
-              className="w-full h-full object-cover object-top scale-110 group-hover:scale-125 transition-transform duration-300"
+              alt="NexPOS AI Robot"
+              className="w-full h-full object-cover object-top scale-115 group-hover:scale-125 transition-transform duration-300"
             />
-            <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-[#1c1a18] animate-pulse"></span>
           </div>
 
-          <div className="flex flex-col text-left">
-            <span className="font-bold tracking-wide text-xs leading-tight text-white flex items-center gap-1">
-              Groq Copilot
-            </span>
-            <span className="text-[9px] font-mono text-[#C9A227] leading-none">
-              ⚡ &lt;0.4s LPU
-            </span>
-          </div>
+          {/* Live Online Pulse Dot */}
+          <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-[#1c1a18] shadow-xs">
+            <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75"></span>
+          </span>
         </button>
       </div>
 
