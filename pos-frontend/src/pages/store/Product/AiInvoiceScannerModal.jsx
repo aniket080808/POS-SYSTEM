@@ -87,7 +87,7 @@ const AiInvoiceScannerModal = ({ open, onOpenChange, storeId }) => {
         if (res.items && res.items.length > 0) {
           setEditableItems(res.items);
           toast({
-            title: "Invoice Parsed with Gemini AI",
+            title: "Invoice Parsed with Groq Vision AI",
             description: `Successfully extracted ${res.items.length} product items from bill.`,
           });
         }
@@ -183,9 +183,9 @@ const AiInvoiceScannerModal = ({ open, onOpenChange, storeId }) => {
               </div>
               <div>
                 <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
-                  Gemini AI Supplier Invoice Ingestion
+                  Groq AI Supplier Invoice Ingestion
                   <Badge className="bg-[#C9A227] text-[#262422] text-[10px] font-mono font-bold">
-                    VISION OCR
+                    ⚡ LLAMA 3.2 VISION
                   </Badge>
                 </DialogTitle>
                 <DialogDescription className="text-xs text-[#A8A29E]">

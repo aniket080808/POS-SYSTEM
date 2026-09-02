@@ -55,9 +55,13 @@ razorpay:
     key: ${RAZORPAY_KEY_ID:}
     secret: ${RAZORPAY_KEY_SECRET:}
 
-gemini:
+groq:
   api:
-    key: ${GEMINI_API_KEY:}
+    key: ${GROQ_API_KEY:}
+    url: ${GROQ_API_URL:https://api.groq.com/openai/v1/chat/completions}
+  model: ${GROQ_MODEL:llama-3.3-70b-versatile}
+  fast-model: ${GROQ_FAST_MODEL:llama-3.1-8b-instant}
+  vision-model: ${GROQ_VISION_MODEL:llama-3.2-11b-vision-preview}
 
 app:
   jwt:

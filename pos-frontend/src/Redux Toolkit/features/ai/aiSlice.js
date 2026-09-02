@@ -19,13 +19,13 @@ const initialState = {
     {
       role: "assistant",
       content:
-        "👋 Hello! I am your **Gemini Retail Copilot**. Ask me anything about today's sales, low stock alerts, inventory turnover, or reorder forecasts!",
+        "👋 Hello! I am your **Groq AI Retail Copilot** (⚡ Ultra-Fast LPU Engine). I have real-time live access to your store's sales, stock levels, orders, and customer database. Ask me **anything** about your store operations, specific product inventory, today's revenue, or retail strategies!",
       timestamp: new Date().toISOString(),
       intent: "GREETING",
       suggestedFollowUps: [
-        "What are our top selling items today?",
+        "What are our total sales and orders today?",
         "Which products need urgent reordering?",
-        "Show revenue & profit summary for this week",
+        "Show our cash vs UPI payment breakdown",
       ],
     },
   ],
@@ -100,7 +100,7 @@ const aiSlice = createSlice({
         state.copilotError = action.payload;
         state.copilotHistory.push({
           role: "assistant",
-          content: `⚠️ ${action.payload || "Could not process your query at this time. Please ensure GEMINI_API_KEY is configured."}`,
+          content: `⚠️ ${action.payload || "Could not process your query at this time. Please ensure GROQ_API_KEY is configured."}`,
           isError: true,
           timestamp: new Date().toISOString(),
         });

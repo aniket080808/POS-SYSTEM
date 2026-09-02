@@ -86,10 +86,11 @@ const formatInline = (text) => {
 };
 
 const PROMPT_CHIPS = [
-  { label: "📊 Today's Sales Snapshot", query: "What are our total sales and orders today?" },
-  { label: "🚨 Stock Reorder Alert", query: "Which items are low in stock and need reordering?" },
-  { label: "🔥 Top 5 Best Sellers", query: "Which are the top 5 revenue generating products?" },
-  { label: "💡 Profit Margin Strategy", query: "How can we optimize gross margins this week?" },
+  { label: "📊 Today's Sales & Orders", query: "What are our total sales and orders today?" },
+  { label: "🚨 Critical Low Stock", query: "Which products have low stock and need urgent reordering?" },
+  { label: "💳 Payment Breakdown", query: "What is our payment method breakdown today between cash, card, and UPI?" },
+  { label: "👥 Customers & Performance", query: "How many customers do we have and what is our average order value?" },
+  { label: "💡 Profit & Sales Strategy", query: "Give me 3 practical tips to maximize evening sales in our store." },
 ];
 
 const AiCopilotWidget = () => {
@@ -190,9 +191,9 @@ const AiCopilotWidget = () => {
             <Sparkles className="w-4 h-4 text-[#C9A227] animate-pulse" />
             <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
           </div>
-          <span className="font-semibold tracking-wide">Gemini Copilot</span>
-          <Badge variant="secondary" className="text-[9px] font-mono px-1 py-0 bg-white/10 text-[#C9A227] border-0">
-            AI
+          <span className="font-semibold tracking-wide">Groq Copilot</span>
+          <Badge variant="secondary" className="text-[9px] font-mono px-1.5 py-0 bg-amber-500/20 text-[#C9A227] border-0">
+            ⚡ &lt;0.4s
           </Badge>
         </button>
       </div>
@@ -208,13 +209,13 @@ const AiCopilotWidget = () => {
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="font-bold text-xs text-white">Copilot</h3>
+                  <h3 className="font-bold text-xs text-white">NexPOS AI Copilot</h3>
                   <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-[9px] font-bold">
-                    ONLINE
+                    ⚡ GROQ LPU
                   </span>
                 </div>
                 <p className="text-[10px] text-[#A8A29E] font-mono truncate max-w-[200px]">
-                  {store?.storeName || "Supermarket AI Assistant"}
+                  {store?.storeName || "Live Store Intelligence"}
                 </p>
               </div>
             </div>
