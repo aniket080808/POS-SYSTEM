@@ -85,19 +85,72 @@ const formatInline = (text) => {
     .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-muted font-mono text-[10px] text-[#B8860B]">$1</code>');
 };
 
-const PROMPT_CHIPS = [
-  { label: "📊 Today's Sales & Orders", query: "What are our total sales and orders today?" },
-  { label: "🚨 Critical Low Stock", query: "Which products have low stock and need urgent reordering?" },
-  { label: "💳 Payment Breakdown", query: "What is our payment method breakdown today between cash, card, and UPI?" },
-  { label: "👥 Customers & Performance", query: "How many customers do we have and what is our average order value?" },
-  { label: "💡 Profit & Sales Strategy", query: "Give me 3 practical tips to maximize evening sales in our store." },
-];
+const getRolePromptChips = (role) => {
+  switch (role) {
+    case "ROLE_ADMIN":
+      return [
+        { label: "🌐 Platform Overview", query: "What is the overall platform GMV and active merchant count?" },
+        { label: "🏪 Stores & Branches", query: "Give me an overview of all onboarded stores and branches." },
+        { label: "👥 Platform Users", query: "How many total staff and cashier accounts are registered?" },
+        { label: "📈 System Health", query: "What is the status of database connections and API uptime?" },
+      ];
+    case "ROLE_BRANCH_CASHIER":
+      return [
+        { label: "💰 My Billed Amount", query: "How many orders have I billed today and what is my total collection?" },
+        { label: "🎯 Counter Upsell Tips", query: "Give me a quick 1-line customer pitch to upsell cold drinks or impulse snacks." },
+        { label: "⚡ Fast Billing Advice", query: "Tips to scan faster and clear counter queues during rush hours." },
+        { label: "💳 My Payment Split", query: "How much cash vs UPI have I collected in my till today?" },
+      ];
+    case "ROLE_BRANCH_ADMIN":
+    case "ROLE_BRANCH_MANAGER":
+      return [
+        { label: "🏪 Branch Sales Today", query: "What is this branch's total completed sales and order volume today?" },
+        { label: "⚡ Counter Queue Pace", query: "How can we optimize counter checkout queues during peak rush?" },
+        { label: "📦 Branch Low Stock", query: "Which products in this branch need replenishment?" },
+        { label: "👥 Cashier Performance", query: "How are cashiers performing on this branch today?" },
+      ];
+    case "ROLE_STORE_MANAGER":
+      return [
+        { label: "📋 Store Shift Orders", query: "How are today's completed orders pacing against target?" },
+        { label: "📦 Inventory Urgency", query: "Which fast-moving grocery items are nearing critical safety threshold?" },
+        { label: "👥 Cashier Shift Pace", query: "How is our cashier checkout pace and attendance today?" },
+        { label: "💡 Store Operations", query: "Suggest 3 tips to streamline stock movements between branches." },
+      ];
+    case "ROLE_STORE_ADMIN":
+    default:
+      return [
+        { label: "📊 Today's Store Revenue", query: "What are our total sales and completed orders today across branches?" },
+        { label: "🚨 Stock Reorder Alert", query: "Which items are low in stock and need urgent supplier purchase orders?" },
+        { label: "💰 Profit & Margins", query: "Suggest 3 actionable strategies to boost store gross profit margins." },
+        { label: "💳 Cash vs Digital Sales", query: "Show our payment collection breakdown for today." },
+      ];
+  }
+};
+
+const getRoleSubtitle = (role, store, userProfile) => {
+  switch (role) {
+    case "ROLE_ADMIN":
+      return "Super Admin Platform Intelligence";
+    case "ROLE_BRANCH_CASHIER":
+      return `Counter Coach • ${userProfile?.fullName || "Cashier Till"}`;
+    case "ROLE_BRANCH_ADMIN":
+    case "ROLE_BRANCH_MANAGER":
+      return `Branch Operations • ${userProfile?.branch?.name || "Local Branch"}`;
+    case "ROLE_STORE_MANAGER":
+      return `Store Operations • ${store?.brand || store?.storeName || "Store"}`;
+    case "ROLE_STORE_ADMIN":
+    default:
+      return `Business Partner • ${store?.brand || store?.storeName || "Swapnil Mega Mart"}`;
+  }
+};
 
 const AiCopilotWidget = () => {
   const dispatch = useDispatch();
   const { copilotHistory = [], copilotLoading } = useSelector((state) => state.ai || {});
   const { userProfile } = useSelector((state) => state.user || {});
   const { store } = useSelector((state) => state.store || {});
+
+  const promptChips = getRolePromptChips(userProfile?.role);
 
   const [isOpen, setIsOpen] = useState(false);
   const [inputQuery, setInputQuery] = useState("");
@@ -215,7 +268,7 @@ const AiCopilotWidget = () => {
                   </span>
                 </div>
                 <p className="text-[10px] text-[#A8A29E] font-mono truncate max-w-[200px]">
-                  {store?.storeName || "Live Store Intelligence"}
+                  {getRoleSubtitle(userProfile?.role, store, userProfile)}
                 </p>
               </div>
             </div>
@@ -242,7 +295,7 @@ const AiCopilotWidget = () => {
 
           {/* Quick Prompt Chips */}
           <div className="p-2.5 bg-secondary/40 border-b border-border/60 overflow-x-auto flex items-center gap-1.5 no-scrollbar">
-            {PROMPT_CHIPS.map((chip, idx) => (
+            {promptChips.map((chip, idx) => (
               <button
                 key={idx}
                 type="button"
