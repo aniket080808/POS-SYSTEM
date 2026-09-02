@@ -466,9 +466,7 @@ public class GroqAiServiceImpl implements AiService {
                                 Boolean.TRUE.equals(p.getEnableInventory()) ? "Yes" : "No"));
                     }
                 } else {
-                    plansSummary.append("  - **Starter Plan**: ₹999/month (1 Branch, 3 Users, 2,000 SKUs, Razorpay)\n");
-                    plansSummary.append("  - **Growth Plan**: ₹2,499/month (3 Branches, 10 Users, 10,000 SKUs, Razorpay)\n");
-                    plansSummary.append("  - **Enterprise Plan**: ₹5,999/month (Unlimited Branches, Unlimited Users, Unlimited SKUs, Razorpay)\n");
+                    plansSummary.append("  - No subscription plans configured in database yet.\n");
                 }
 
                 // Pending Approvals count for Super Admin
@@ -489,14 +487,14 @@ public class GroqAiServiceImpl implements AiService {
 
                 // Super Admin Platform Commissions & Subscription Revenue Sharing (Matching CommissionsPage.jsx)
                 double totalGrossSubRevenue = 0.0;
-                double commRate = 10.0; // 10% platform fee rate as shown on CommissionsPage
+                double commRate = 10.0; // 10% platform fee rate as configured on platform
                 double totalCommShare = 0.0;
                 StringBuilder commSummary = new StringBuilder();
 
                 for (Store s : stores) {
                     StoreSubscription sub = storeSubscriptionRepository.findByStoreId(s.getId()).orElse(null);
-                    double fee = 2499.0; // Seeded Business/Growth plan fee
-                    String planTitle = "Business";
+                    double fee = 0.0;
+                    String planTitle = "No Active Plan";
                     if (sub != null && sub.getCurrentPlan() != null && sub.getCurrentPlan().getPrice() != null) {
                         fee = sub.getCurrentPlan().getPrice();
                         planTitle = sub.getCurrentPlan().getName();
@@ -505,23 +503,21 @@ public class GroqAiServiceImpl implements AiService {
                     double netComm = Math.round(fee * (commRate / 100.0));
                     totalCommShare += netComm;
                     commSummary.append(String.format("  - Store: %s | Owner: %s (%s) | Plan: %s | Gross Fee: ₹%.0f | Rate: 10%% | Net Commission: ₹%.0f | Status: %s\n",
-                            s.getBrand() != null ? s.getBrand() : "Swapnil Mega Mart",
-                            s.getStoreAdmin() != null ? s.getStoreAdmin().getFullName() : "Swapnil Jadhav",
-                            s.getStoreAdmin() != null && s.getStoreAdmin().getEmail() != null ? s.getStoreAdmin().getEmail() : "sm2021jadhav@gmail.com",
+                            s.getBrand() != null ? s.getBrand() : "Store #" + s.getId(),
+                            s.getStoreAdmin() != null && s.getStoreAdmin().getFullName() != null ? s.getStoreAdmin().getFullName() : "N/A",
+                            s.getStoreAdmin() != null && s.getStoreAdmin().getEmail() != null ? s.getStoreAdmin().getEmail() : "N/A",
                             planTitle, fee, netComm,
                             s.getStatus() != null ? s.getStatus().name() : "ACTIVE"));
                 }
 
-                if (totalGrossSubRevenue == 0.0) {
-                    totalGrossSubRevenue = 2499.0;
-                    totalCommShare = 250.0;
-                    commSummary.append("  - Store: Swapnil Mega Mart | Owner: Swapnil Jadhav (sm2021jadhav@gmail.com) | Plan: Business | Gross Fee: ₹2,499 | Rate: 10% | Net Commission: ₹250 | Status: ACTIVE\n");
+                if (stores.isEmpty()) {
+                    commSummary.append("  - No merchant stores registered on the platform yet.\n");
                 }
 
-                context.put("totalStores", totalStores > 0 ? totalStores : 1);
-                context.put("totalBranches", totalBranches > 0 ? totalBranches : 1);
-                context.put("totalUsers", totalUsers > 0 ? totalUsers : 6);
-                context.put("totalPlatformOrders", totalPlatformOrders > 0 ? totalPlatformOrders : 5);
+                context.put("totalStores", totalStores);
+                context.put("totalBranches", totalBranches);
+                context.put("totalUsers", totalUsers);
+                context.put("totalPlatformOrders", totalPlatformOrders);
                 context.put("totalPlatformGmv", totalPlatformGmv);
                 context.put("totalCatalogSkus", productRepository.count());
                 context.put("pendingApprovalsCount", pendingApprovalsCount);
@@ -817,7 +813,7 @@ public class GroqAiServiceImpl implements AiService {
                          Cite the EXACT data above:
                          * Platform Fee Rate: %s
                          * Total Gross Revenue: ₹%.0f
-                         * Total Commission Share: ₹%.0f (earned from merchant store subscriptions like Swapnil Mega Mart on Business plan for ₹2,499)
+                         * Total Commission Share: ₹%.0f (earned from active merchant store subscriptions as recorded in the database)
                          * Manageable and exportable via CSV from 'Super Admin Dashboard → Commissions'.
                        - NEVER hallucinate or invent a "2%% order fee" or order-level transaction cut!
                     4. TIME-RANGE INTELLIGENCE: When asked about today, yesterday, last 7 days, or last 30 days, cite the exact figures above.
