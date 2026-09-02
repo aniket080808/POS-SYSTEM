@@ -3,7 +3,7 @@ package com.aniket.service.impl;
 import com.aniket.modal.*;
 import com.aniket.payload.dto.ai.*;
 import com.aniket.repository.*;
-import com.aniket.service.GeminiAiService;
+import com.aniket.service.AiService;
 import com.aniket.service.StoreService;
 import com.aniket.service.UserService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class GroqAiServiceImpl implements GeminiAiService {
+public class GroqAiServiceImpl implements AiService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;

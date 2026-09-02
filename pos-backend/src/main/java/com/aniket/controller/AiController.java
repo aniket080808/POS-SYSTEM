@@ -3,7 +3,7 @@ package com.aniket.controller;
 import com.aniket.modal.User;
 import com.aniket.payload.dto.ProductDTO;
 import com.aniket.payload.dto.ai.*;
-import com.aniket.service.GeminiAiService;
+import com.aniket.service.AiService;
 import com.aniket.service.ProductService;
 import com.aniket.service.UserService;
 import jakarta.validation.Valid;
@@ -26,7 +26,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AiController {
 
-    private final GeminiAiService geminiAiService;
+    private final AiService aiService;
     private final UserService userService;
     private final ProductService productService;
 
@@ -39,21 +39,21 @@ public class AiController {
                     .errorMessage("Uploaded invoice file is empty")
                     .build());
         }
-        InvoiceExtractionResponse response = geminiAiService.scanSupplierInvoice(file);
+        InvoiceExtractionResponse response = aiService.scanSupplierInvoice(file);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/copilot-query")
     @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_ADMIN', 'BRANCH_MANAGER', 'ADMIN', 'BRANCH_CASHIER')")
     public ResponseEntity<AiCopilotResponse> queryCopilot(@Valid @RequestBody AiCopilotRequest request) {
-        AiCopilotResponse response = geminiAiService.processCopilotQuery(request);
+        AiCopilotResponse response = aiService.processCopilotQuery(request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/upsell-suggestions")
     @PreAuthorize("hasAnyRole('BRANCH_CASHIER', 'STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_MANAGER')")
     public ResponseEntity<AiUpsellResponse> getUpsellSuggestions(@RequestBody AiUpsellRequest request) {
-        AiUpsellResponse response = geminiAiService.getUpsellRecommendations(request);
+        AiUpsellResponse response = aiService.getUpsellRecommendations(request);
         return ResponseEntity.ok(response);
     }
 
