@@ -1,26 +1,37 @@
-import { Check, BarChart3, Zap, ShieldCheck, RefreshCw } from "lucide-react";
 import React from "react";
+import { Check, X, ArrowRight, ShieldCheck, Zap, Cloud, Smartphone, AlertOctagon } from "lucide-react";
+import { useNavigate } from "react-router";
 import { useScrollReveal } from "@/hooks/useAnimations";
 
 const WhyChooseUsSection = () => {
   const { ref: sectionRef, isVisible } = useScrollReveal();
+  const navigate = useNavigate();
 
-  const benefits = [
+  const comparisons = [
     {
-      title: "Fast Barcode Scanning",
-      desc: "Ring up items quickly using keyboard shortcuts and handheld barcode scanners.",
+      feature: "Multi-Branch Inventory",
+      legacy: "Disconnected branch spreadsheets; painful manual stock counting",
+      nexpos: "Real-time consolidated cloud inventory synced across every outlet",
     },
     {
-      title: "Accurate Register Balancing",
-      desc: "Easily verify cash drawer amounts against digital sales at the end of every shift.",
+      feature: "Hardware & Reliability",
+      legacy: "Single local PC crash shuts down entire store checkout line",
+      nexpos: "Runs in any browser on PC, tablet, or POS terminal with instant recovery",
     },
     {
-      title: "Clear User Permissions",
-      desc: "Keep management settings safe by giving staff only the access they need.",
+      feature: "Cash Drawer Governance",
+      legacy: "No shift float logs; untracked drawer shortages at shift end",
+      nexpos: "Strict opening float, split UPI/Cash tracking, and closing Z-reports",
     },
     {
-      title: "Clean, Simple Design",
-      desc: "Easy for new cashiers to learn and start billing without extensive training.",
+      feature: "Tax & Invoice Compliance",
+      legacy: "Manual GST tax calculation and slow paper bills",
+      nexpos: "Auto CGST/SGST itemized tax slabs, HSN codes, and dynamic UPI QR",
+    },
+    {
+      feature: "Customer Retention",
+      legacy: "No customer purchase history or repeat incentives",
+      nexpos: "Built-in loyalty points accumulation, lifetime spend, and VIP tiers",
     },
   ];
 
@@ -29,76 +40,92 @@ const WhyChooseUsSection = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
           ref={sectionRef}
-          className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center transition-all duration-700 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          className={`text-center max-w-3xl mx-auto mb-16 transition-all duration-700 ${
+            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
           }`}
         >
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[#FDF6E2] text-[#785600] border border-[#EED896] mb-4">
-              Built for Daily Retail
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[#FDF6E2] text-[#785600] border border-[#EED896] dark:bg-[#3A3530] dark:text-[#F5A623] dark:border-[#5A4F3D] mb-3">
+            <ShieldCheck className="w-3.5 h-3.5" /> Modern Cloud Advantage
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight mb-4">
+            Why Retailers Are Upgrading from Legacy POS
+          </h2>
+          <p className="text-base text-muted-foreground leading-relaxed">
+            Stop losing sales to single-computer crashes and manual Excel sheets. See how NexPOS transforms retail operations.
+          </p>
+        </div>
+
+        {/* Side-by-Side Comparison Container */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto mb-12">
+          {/* Legacy POS Column */}
+          <div className="p-6 sm:p-8 rounded-3xl border border-red-500/20 bg-red-500/5 space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 flex items-center justify-center font-bold">
+                <AlertOctagon className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Legacy Desktop Softwares</h3>
+                <p className="text-xs text-muted-foreground">Outdated, brittle, single-PC setups</p>
+              </div>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight mb-4">
-              Designed to keep checkout lines moving
-            </h2>
-            <p className="text-base text-muted-foreground mb-8 leading-relaxed">
-              We focus on speed and clarity so your cashiers can process orders quickly, handle returns easily, and close daily registers without errors.
-            </p>
+
             <div className="space-y-4">
-              {benefits.map((benefit, index) => (
-                <div
-                  key={index}
-                  className={`flex items-start gap-3.5 transition-all duration-500 ${
-                    isVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
-                  }`}
-                  style={{ transitionDelay: `${300 + index * 100}ms` }}
-                >
-                  <div className="w-6 h-6 rounded-full bg-[#262422] text-[#C9A227] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+              {comparisons.map((c, i) => (
+                <div key={i} className="flex items-start gap-3 text-xs leading-relaxed">
+                  <div className="w-5 h-5 rounded-full bg-red-500/10 text-red-600 flex items-center justify-center shrink-0 mt-0.5 font-bold">
+                    <X className="w-3 h-3 stroke-[3]" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-foreground">{benefit.title}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{benefit.desc}</p>
+                    <span className="font-bold text-foreground block mb-0.5">{c.feature}</span>
+                    <span className="text-muted-foreground">{c.legacy}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-secondary/60 rounded-3xl p-6 sm:p-8 border border-border">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-5 rounded-2xl bg-card border border-border shadow-2xs space-y-2 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                <div className="w-9 h-9 rounded-xl bg-[#FDF6E2] border border-[#EED896] flex items-center justify-center text-[#B8860B]">
+          {/* NexPOS Modern Cloud Column */}
+          <div className="p-6 sm:p-8 rounded-3xl border-2 border-[#B8860B]/40 bg-gradient-to-b from-[#B8860B]/10 via-card to-background shadow-lg space-y-6 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#B8860B] text-white flex items-center justify-center font-bold shadow-xs">
                   <Zap className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-foreground">Quick Checkout</h3>
-                <p className="text-xs text-muted-foreground">Scan barcodes and collect payments in seconds</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-card border border-border shadow-2xs space-y-2 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                <div className="w-9 h-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-foreground">
-                  <RefreshCw className="w-5 h-5" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-foreground">NexPOS Retail Cloud</h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#B8860B] text-white font-bold">Recommended</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">High-velocity multi-branch architecture</p>
                 </div>
-                <h3 className="text-sm font-bold text-foreground">Live Stock Sync</h3>
-                <p className="text-xs text-muted-foreground">Inventory counts update instantly as sales happen</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-card border border-border shadow-2xs space-y-2 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                <div className="w-9 h-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-foreground">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm font-bold text-foreground">Secure Roles</h3>
-                <p className="text-xs text-muted-foreground">Admins control prices, discounts, and staff access</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-card border border-border shadow-2xs space-y-2 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                <div className="w-9 h-9 rounded-xl bg-[#FDF6E2] border border-[#EED896] flex items-center justify-center text-[#B8860B]">
-                  <BarChart3 className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm font-bold text-foreground">Daily Summaries</h3>
-                <p className="text-xs text-muted-foreground">Clear sales and payment breakdown reports</p>
               </div>
             </div>
+
+            <div className="space-y-4">
+              {comparisons.map((c, i) => (
+                <div key={i} className="flex items-start gap-3 text-xs leading-relaxed">
+                  <div className="w-5 h-5 rounded-full bg-[#B8860B] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-foreground block mb-0.5">{c.feature}</span>
+                    <span className="text-muted-foreground">{c.nexpos}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
+        </div>
+
+        {/* Bottom Simulator Hook */}
+        <div className="text-center">
+          <button
+            onClick={() => navigate("/guide")}
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-[#B8860B] hover:underline cursor-pointer"
+          >
+            <span>See the difference for yourself — Launch the Live Interactive Role Simulator</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </section>

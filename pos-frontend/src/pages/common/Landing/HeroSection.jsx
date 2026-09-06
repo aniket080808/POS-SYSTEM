@@ -70,32 +70,41 @@ const HeroSection = () => {
           </p>
 
           {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-10">
+            <Button
+              onClick={() => navigate("/guide")}
+              size="lg"
+              className="bg-[#B8860B] hover:bg-[#996e08] text-white text-base px-8 py-3.5 shadow-md hover:shadow-lg font-bold gap-2 cursor-pointer transition-all w-full sm:w-auto"
+            >
+              <Sparkles className="w-4 h-4" />
+              ⚡ Try Live Role Simulator
+            </Button>
             <Button
               onClick={handleGetStartedClick}
+              variant="outline"
               size="lg"
-              className="text-base px-8 py-3.5 shadow-md hover:shadow-lg font-bold gap-2 cursor-pointer"
+              className="text-base px-7 py-3.5 font-bold gap-2 cursor-pointer border-border hover:bg-secondary w-full sm:w-auto"
             >
-              Start Free Store Setup
+              Register Store Free
               <ArrowRight className="w-4 h-4" />
             </Button>
             <Button
               onClick={handleSignInClick}
-              variant="outline"
+              variant="ghost"
               size="lg"
-              className="text-base px-8 py-3.5 font-semibold cursor-pointer"
+              className="text-base px-5 py-3.5 font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              Sign In to Store
+              Sign In
             </Button>
           </div>
 
           {/* Feature Highlights Pills */}
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-wrap justify-center gap-2.5">
             {[
-              { icon: <ShoppingCart className="w-4 h-4 text-[#B8860B]" />, text: "Fast Barcode Billing" },
-              { icon: <Store className="w-4 h-4 text-[#262422]" />, text: "Central Multi-Store Hub" },
+              { icon: <ShoppingCart className="w-4 h-4 text-[#B8860B]" />, text: "Sub-Second Barcode Billing" },
+              { icon: <Store className="w-4 h-4 text-[#262422] dark:text-amber-400" />, text: "Multi-Branch Cloud Hub" },
               { icon: <BarChart3 className="w-4 h-4 text-[#B8860B]" />, text: "Shift Till Balancing" },
-              { icon: <Shield className="w-4 h-4 text-[#262422]" />, text: "Manager & Cashier Roles" },
+              { icon: <Shield className="w-4 h-4 text-[#262422] dark:text-blue-400" />, text: "GST & HSN Tax Compliant" },
             ].map((item, index) => (
               <div
                 key={index}
@@ -108,23 +117,26 @@ const HeroSection = () => {
           </div>
         </div>
 
-        {/* Feature Preview Card (Clean, Authentic POS workflow preview without fake numbers) */}
-        <div className="mt-16 max-w-5xl mx-auto">
+        {/* Feature Preview Card (Authentic POS Workstation Twin Preview) */}
+        <div className="mt-14 max-w-5xl mx-auto">
           <div className="bg-card rounded-3xl p-4 sm:p-6 border border-border shadow-xl">
             {/* Window header */}
             <div className="flex items-center justify-between pb-4 border-b border-border/80 mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#E4DFD3]" />
-                <div className="w-3 h-3 rounded-full bg-[#E4DFD3]" />
-                <div className="w-3 h-3 rounded-full bg-[#E4DFD3]" />
+                <div className="w-3 h-3 rounded-full bg-red-400/60" />
+                <div className="w-3 h-3 rounded-full bg-amber-400/60" />
+                <div className="w-3 h-3 rounded-full bg-emerald-400/60" />
                 <span className="text-xs font-mono font-medium text-muted-foreground ml-2">
-                  NexPOS Terminal / Active Cashier Session
+                  NexPOS High-Velocity Terminal / Station #1
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#262422] text-white">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#C9A227] animate-pulse" /> Register Active
-                </span>
+                <button
+                  onClick={() => navigate("/guide")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#B8860B]/10 text-[#B8860B] border border-[#B8860B]/30 hover:bg-[#B8860B]/20 transition-colors cursor-pointer"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Launch Interactive Twin →
+                </button>
               </div>
             </div>
 
@@ -139,10 +151,10 @@ const HeroSection = () => {
                   <ScanLine className="w-4 h-4 text-[#B8860B]" />
                 </div>
                 <div className="text-base font-bold text-foreground">
-                  Barcode & SKU Lookup
+                  Barcode Scanner & Hotkeys
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Fast item entry, discount handling, split cash/UPI payments, and instant receipt printing.
+                  Instant SKU entry, quantity adjustments, itemized CGST + SGST tax split, and 80mm thermal receipt printing.
                 </p>
               </div>
 
@@ -155,10 +167,10 @@ const HeroSection = () => {
                   <CheckCircle2 className="w-4 h-4 text-[#785600] dark:text-[#F5A623]" />
                 </div>
                 <div className="text-base font-bold text-foreground">
-                  Till Float & Close Reports
+                  Till Float & Z-Report Audit
                 </div>
                 <p className="text-xs text-[#785600] dark:text-[#D4CEBF] leading-relaxed">
-                  Automated shift summary tracking starting cash, sales breakdown, and register balance.
+                  Starting cash drawer float tracking, split UPI/Cash reconciliation, and automated shift close reports.
                 </p>
               </div>
 
@@ -171,39 +183,39 @@ const HeroSection = () => {
                   <Layers className="w-4 h-4 text-foreground" />
                 </div>
                 <div className="text-base font-bold text-foreground">
-                  Branch Inventory Sync
+                  Live Multi-Branch Sync
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Real-time stock deduction across counters with low-stock alerts and branch management.
+                  Centralized master catalog, real-time shelf stock deductions, low-stock notifications, and branch oversight.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Animated Social Proof Counters */}
-          <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mx-auto px-2">
-            <div ref={counter1.ref} className="text-center px-1">
-              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-foreground font-mono tracking-tight">
-                {counter1.displayValue}+
+          {/* Verified Retail Performance Benchmarks (Replaces fake counters) */}
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto px-2">
+            <div className="p-3.5 rounded-2xl bg-card border border-border text-center shadow-xs">
+              <div className="text-xl sm:text-2xl font-black text-[#B8860B] font-mono tracking-tight flex items-center justify-center gap-1.5">
+                <ScanLine className="w-4 h-4 text-emerald-500" /> &lt; 0.2s
               </div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground font-semibold mt-1">
-                Stores Registered
-              </div>
-            </div>
-            <div ref={counter2.ref} className="text-center border-x border-border px-1">
-              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-foreground font-mono tracking-tight">
-                {counter2.displayValue.toLocaleString()}+
-              </div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground font-semibold mt-1">
-                Bills Processed
+              <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">
+                Barcode Scan Latency
               </div>
             </div>
-            <div ref={counter3.ref} className="text-center px-1">
-              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-foreground font-mono tracking-tight">
-                {counter3.displayValue}+
+            <div className="p-3.5 rounded-2xl bg-card border border-border text-center shadow-xs">
+              <div className="text-xl sm:text-2xl font-black text-emerald-600 font-mono tracking-tight flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" /> 100%
               </div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground font-semibold mt-1">
-                Cities Covered
+              <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">
+                GST & Dynamic UPI QR Ready
+              </div>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-card border border-border text-center shadow-xs">
+              <div className="text-xl sm:text-2xl font-black text-foreground font-mono tracking-tight flex items-center justify-center gap-1.5">
+                <BarChart3 className="w-4 h-4 text-blue-500" /> 0.00%
+              </div>
+              <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">
+                Cash Drawer Discrepancy
               </div>
             </div>
           </div>

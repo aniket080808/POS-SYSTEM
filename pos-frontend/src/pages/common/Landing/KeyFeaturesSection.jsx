@@ -1,4 +1,3 @@
-import React from "react";
 import {
   ShoppingCart,
   Layers,
@@ -7,45 +6,49 @@ import {
   FileSpreadsheet,
   Store,
   RotateCcw,
+  PauseCircle,
+  Award,
+  Printer,
+  Barcode,
 } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useAnimations";
 
 const keyFeatures = [
   {
-    icon: <ShoppingCart className="w-6 h-6 text-[#B8860B]" />,
-    iconBg: "bg-[#FDF6E2] border-[#EED896]",
-    title: "Fast Counter Billing",
-    description: "Scan barcodes, search products quickly, hold orders, and accept cash, card, or UPI payments.",
+    icon: <Barcode className="w-6 h-6 text-[#B8860B]" />,
+    iconBg: "bg-[#FDF6E2] border-[#EED896] dark:bg-[#3A3530] dark:border-[#5A4F3D]",
+    title: "Sub-Second Barcode Checkout",
+    description: "Lightning-fast item entry with USB/wireless barcode scanners, dynamic CGST/SGST split, and multi-tender UPI QR payments.",
   },
   {
-    icon: <Layers className="w-6 h-6 text-[#262422]" />,
+    icon: <PauseCircle className="w-6 h-6 text-[#262422] dark:text-[#F5A623]" />,
     iconBg: "bg-secondary border-border",
-    title: "Real-Time Stock Tracking",
-    description: "Keep track of items in stock across counters with automatic updates and low-stock alerts.",
+    title: "Held Orders & Cart Parking",
+    description: "Never hold up checkout queues. Cashiers can park an active bill in 1-click, serve the next shopper, and resume the held cart instantly.",
   },
   {
-    icon: <Store className="w-6 h-6 text-[#B8860B]" />,
-    iconBg: "bg-[#FDF6E2] border-[#EED896]",
-    title: "Multi-Store Control",
-    description: "Add multiple branches and checkout counters from a single admin dashboard.",
+    icon: <Layers className="w-6 h-6 text-[#B8860B]" />,
+    iconBg: "bg-[#FDF6E2] border-[#EED896] dark:bg-[#3A3530] dark:border-[#5A4F3D]",
+    title: "Multi-Branch Live Stock Sync",
+    description: "Central master catalog with automated stock deduction across branches, low-stock alerts, and warehouse replenishment workflows.",
   },
   {
-    icon: <Users className="w-6 h-6 text-[#262422]" />,
+    icon: <Award className="w-6 h-6 text-[#262422] dark:text-[#F5A623]" />,
     iconBg: "bg-secondary border-border",
-    title: "Staff Roles & Permissions",
-    description: "Separate access levels for store owners, branch managers, and counter cashiers.",
+    title: "Customer Loyalty & VIP Points",
+    description: "Built-in customer retention directory: track shopper visit frequency, lifetime spend, and auto-issue redeemable reward points per rupee.",
   },
   {
     icon: <FileSpreadsheet className="w-6 h-6 text-[#B8860B]" />,
-    iconBg: "bg-[#FDF6E2] border-[#EED896]",
-    title: "Cashier Shift Reports",
-    description: "Track opening cash, sales by payment type, and end-of-shift register balances.",
+    iconBg: "bg-[#FDF6E2] border-[#EED896] dark:bg-[#3A3530] dark:border-[#5A4F3D]",
+    title: "Shift Till Balancing & Z-Reports",
+    description: "Audit register opening floats, cash collections, UPI QR totals, and cash drawer discrepancies with automatic shift-end reports.",
   },
   {
-    icon: <RotateCcw className="w-6 h-6 text-[#262422]" />,
+    icon: <Printer className="w-6 h-6 text-[#262422] dark:text-[#F5A623]" />,
     iconBg: "bg-secondary border-border",
-    title: "Returns & Refund Slips",
-    description: "Look up previous receipts, process full or partial returns, and print refund slips easily.",
+    title: "Thermal Printers & Hardware Ready",
+    description: "Plug-and-play standard 80mm & 58mm ESC-POS thermal receipt printers, electronic cash drawers (RJ11), and USB barcode scanners.",
   },
 ];
 

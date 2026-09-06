@@ -7,22 +7,22 @@ const steps = [
   {
     step: 1,
     icon: <UserPlus className="w-6 h-6" />,
-    title: "Register Your Store",
-    description: "Submit your store profile with owner details. A system admin verifies your account within hours.",
+    title: "Instant Store Registration",
+    description: "Submit your retail brand details in 60 seconds. Get your dedicated merchant workspace activated immediately.",
     accent: true,
   },
   {
     step: 2,
     icon: <Package className="w-6 h-6" />,
-    title: "Add Products & Branches",
-    description: "Import your product catalog, set up branch locations, and configure billing counters.",
+    title: "Add SKUs & Branch Outlets",
+    description: "Upload product catalogs with GST tax slabs, provision cashier accounts, and link branch counters.",
     accent: false,
   },
   {
     step: 3,
     icon: <ShoppingCart className="w-6 h-6" />,
-    title: "Start Billing Customers",
-    description: "Cashiers log in, scan barcodes, process payments, and close shifts — all from day one.",
+    title: "Start Sub-Second Billing",
+    description: "Plug in your barcode scanner & thermal printer. Process payments, park carts, and close daily shifts.",
     accent: true,
   },
 ];

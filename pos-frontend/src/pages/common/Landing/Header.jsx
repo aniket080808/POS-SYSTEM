@@ -69,10 +69,10 @@ const Header = () => {
           <nav className="hidden md:flex items-center space-x-6">
             <button
               onClick={() => navigate("/guide")}
-              className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-[#B8860B] hover:bg-[#996e08] text-white shadow-xs hover:shadow-sm transition-all cursor-pointer transform hover:scale-[1.02]"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              Role Guide
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              ✨ Live Role Simulator
             </button>
             {navItems.map((item) => {
               const isActive = activeSection === item.id;
@@ -163,10 +163,13 @@ const Header = () => {
                   setIsMenuOpen(false);
                   navigate("/guide");
                 }}
-                className="w-full text-left py-2 px-3 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold text-sm flex items-center justify-between border border-amber-500/20"
+                className="w-full text-left py-2.5 px-3.5 rounded-xl bg-[#B8860B] text-white font-bold text-xs flex items-center justify-between shadow-xs cursor-pointer"
               >
-                <span>Role & Architecture Guide</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-white font-bold">New</span>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  ✨ Launch Live Role Simulator
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-black/20 text-white font-mono font-bold">Try Now</span>
               </button>
               {navItems.map((item) => (
                 <a
