@@ -16,6 +16,7 @@ import java.util.Set;
 public interface UserRepository extends JpaRepository<User, Long> {
 	
 	User findByEmail(String email);
+	User findByEmailIgnoreCase(String email);
 	User findByPhone(String phone);
 
 	@Query("SELECT u FROM User u WHERE u.fullName = :q OR u.email = :q")

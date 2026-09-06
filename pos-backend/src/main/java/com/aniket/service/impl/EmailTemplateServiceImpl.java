@@ -1,6 +1,7 @@
 package com.aniket.service.impl;
 
 import com.aniket.service.EmailTemplateService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Year;
@@ -11,8 +12,34 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
 
     private static final String APP_NAME = "NexPOS";
     private static final String BRAND_TAGLINE = "Platform Master Console & Retail Intelligence";
-    private static final String DEFAULT_LOGIN_URL = "http://localhost:5173/auth/login";
     private static final String DEFAULT_SUPPORT_EMAIL = "support@nexpos.com";
+
+    @Value("${app.frontend.base-url:https://pos-system-97v.pages.dev}")
+    private String frontendBaseUrl;
+
+    private String getBaseUrl() {
+        if (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) {
+            String trimmed = frontendBaseUrl.trim();
+            return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
+        }
+        return "https://pos-system-97v.pages.dev";
+    }
+
+    private String getLoginUrl() {
+        return getBaseUrl() + "/auth/login";
+    }
+
+    private String getOnboardingUrl() {
+        return getBaseUrl() + "/auth/onboarding";
+    }
+
+    private String getSettingsUrl() {
+        return getBaseUrl() + "/store/settings";
+    }
+
+    private String getUpgradeUrl() {
+        return getBaseUrl() + "/store/upgrade";
+    }
 
     @Override
     public String buildPasswordResetEmail(String recipientName, String resetLink, int expiryMinutes) {
@@ -50,7 +77,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
                 + renderDetailsTable(detailsHtml)
                 + renderAlertBox("What happens next?", "1. Our verification team reviews your store profile within 24 hours.<br/>2. You will receive an email confirmation as soon as your store is approved.<br/>3. Once approved, you can log in, select a plan, and start billing immediately.", "info")
                 + "<div style='text-align:center;margin:28px 0 10px 0;'>"
-                + "  <a href='" + DEFAULT_LOGIN_URL + "' target='_blank' style='display:inline-block;background:linear-gradient(135deg,#F59E0B 0%,#D97706 100%);color:#09090B;font-size:14px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:8px;'>Visit Store Console</a>"
+                + "  <a href='" + getLoginUrl() + "' target='_blank' style='display:inline-block;background:linear-gradient(135deg,#F59E0B 0%,#D97706 100%);color:#09090B;font-size:14px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:8px;'>Visit Store Console</a>"
                 + "</div>";
 
         return buildBaseLayout(
@@ -65,7 +92,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
     @Override
     public String buildStoreApprovedEmail(String recipientName, String storeBrand, String planName, String loginUrl) {
         String greeting = (recipientName != null && !recipientName.isBlank()) ? "Hello " + escapeHtml(recipientName) + "," : "Hello,";
-        String targetLogin = (loginUrl != null && !loginUrl.isBlank()) ? loginUrl : DEFAULT_LOGIN_URL;
+        String targetLogin = (loginUrl != null && !loginUrl.isBlank()) ? loginUrl : getLoginUrl();
         String detailsHtml = ""
                 + renderDetailRow("Store Brand", storeBrand)
                 + renderDetailRow("Account Status", "Active & Approved")
@@ -92,7 +119,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
     @Override
     public String buildStoreRejectedEmail(String recipientName, String storeBrand, String reason, String resubmitUrl) {
         String greeting = (recipientName != null && !recipientName.isBlank()) ? "Hello " + escapeHtml(recipientName) + "," : "Hello,";
-        String targetResubmit = (resubmitUrl != null && !resubmitUrl.isBlank()) ? resubmitUrl : "http://localhost:5173/auth/onboarding";
+        String targetResubmit = (resubmitUrl != null && !resubmitUrl.isBlank()) ? resubmitUrl : getOnboardingUrl();
         String note = (reason != null && !reason.isBlank()) ? reason : "Store information did not meet verification criteria.";
 
         String content = ""
@@ -137,7 +164,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
     @Override
     public String buildSubscriptionApprovedEmail(String recipientName, String storeBrand, String planName, Double price, String manageUrl) {
         String greeting = (recipientName != null && !recipientName.isBlank()) ? "Hello " + escapeHtml(recipientName) + "," : "Hello,";
-        String targetUrl = (manageUrl != null && !manageUrl.isBlank()) ? manageUrl : "http://localhost:5173/store/settings";
+        String targetUrl = (manageUrl != null && !manageUrl.isBlank()) ? manageUrl : getSettingsUrl();
         String priceStr = price != null ? String.format("₹%,.0f / month", price) : "Active Tier";
 
         String detailsHtml = ""
@@ -166,7 +193,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
     @Override
     public String buildSubscriptionRejectedEmail(String recipientName, String storeBrand, String planName, String reason, String upgradeUrl) {
         String greeting = (recipientName != null && !recipientName.isBlank()) ? "Hello " + escapeHtml(recipientName) + "," : "Hello,";
-        String targetUrl = (upgradeUrl != null && !upgradeUrl.isBlank()) ? upgradeUrl : "http://localhost:5173/store/upgrade";
+        String targetUrl = (upgradeUrl != null && !upgradeUrl.isBlank()) ? upgradeUrl : getUpgradeUrl();
         String note = (reason != null && !reason.isBlank()) ? reason : "Payment verification failed or invalid reference provided.";
 
         String content = ""
@@ -190,7 +217,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
     @Override
     public String buildStaffInviteEmail(String staffName, String roleName, String storeBrand, String branchName, String email, String temporaryPassword, String loginUrl) {
         String greeting = (staffName != null && !staffName.isBlank()) ? "Hello " + escapeHtml(staffName) + "," : "Hello,";
-        String targetUrl = (loginUrl != null && !loginUrl.isBlank()) ? loginUrl : DEFAULT_LOGIN_URL;
+        String targetUrl = (loginUrl != null && !loginUrl.isBlank()) ? loginUrl : getLoginUrl();
         String formattedRole = roleName != null ? roleName.replace("ROLE_", "").replace("_", " ") : "Staff Member";
 
         String detailsHtml = ""

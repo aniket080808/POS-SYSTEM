@@ -71,6 +71,9 @@ public class StoreServiceImpl implements StoreService {
     private final StoreSettingsService storeSettingsService;
     private final EmailService emailService;
     private final EmailTemplateService emailTemplateService;
+
+    @org.springframework.beans.factory.annotation.Value("${app.frontend.base-url:https://pos-system-97v.pages.dev}")
+    private String frontendBaseUrl;
     @Override
     public StoreDTO createStore(StoreDTO storeDto, User user) throws UserException {
         if (storeRepository.findByStoreAdminId(user.getId()) != null) {
@@ -591,6 +594,8 @@ public class StoreServiceImpl implements StoreService {
             String storeAdminActionUrl;
             String emailBody;
 
+            String baseUrl = (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) ? frontendBaseUrl : "https://pos-system-97v.pages.dev";
+
             switch (action) {
                 case ACTIVE:
                     storeAdminTitle = "Store Approved";
@@ -601,7 +606,7 @@ public class StoreServiceImpl implements StoreService {
                             updatedStore.getStoreAdmin().getFullName(),
                             updatedStore.getBrand(),
                             "Starter",
-                            "http://localhost:5173/auth/login"
+                            baseUrl + "/auth/login"
                     );
                     break;
                 case BLOCKED:
@@ -636,7 +641,7 @@ public class StoreServiceImpl implements StoreService {
                             updatedStore.getStoreAdmin().getFullName(),
                             updatedStore.getBrand(),
                             updatedStore.getRegistrationRejectionReason(),
-                            "http://localhost:5173/auth/onboarding"
+                            baseUrl + "/auth/onboarding"
                     );
                     break;
                 default:
@@ -652,7 +657,7 @@ public class StoreServiceImpl implements StoreService {
                             storeAdminMessage,
                             java.util.Map.of("Store Brand", updatedStore.getBrand(), "New Status", action.name()),
                             "Open Dashboard",
-                            "http://localhost:5173/store/dashboard"
+                            baseUrl + "/store/dashboard"
                     );
             }
 

@@ -29,7 +29,7 @@ public class RazorpayService {
     @Value("${razorpay.api.secret}")
     private String razorpayKeySecret;
 
-    @Value("${razorpay.callback.base-url:http://localhost:5173}")
+    @Value("${razorpay.callback.base-url:https://pos-system-97v.pages.dev}")
     private String callbackBaseUrl;
 
     /**

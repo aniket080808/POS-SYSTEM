@@ -48,7 +48,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailTemplateService emailTemplateService;
     private final ActivityLogService activityLogService;
 
-    @Value("${app.frontend.reset-url:http://localhost:5173/auth/reset-password?token=}")
+    @Value("${app.frontend.reset-url:https://pos-system-97v.pages.dev/auth/reset-password?token=}")
     private String frontendResetUrl;
 
 
@@ -163,10 +163,19 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception ignored) {
         }
 
-        User user = userRepository.findByEmail(email);
+        if (email == null || email.trim().isEmpty()) {
+            return;
+        }
+
+        String normalizedEmail = email.trim();
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail);
+        if (user == null) {
+            user = userRepository.findByEmail(normalizedEmail);
+        }
 
         // Always return silently to caller to avoid account enumeration attacks.
         if (user == null) {
+            log.info("[Password Reset] No registered account found for: {}", normalizedEmail);
             return;
         }
 
@@ -182,7 +191,7 @@ public class AuthServiceImpl implements AuthService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        String baseUrl = frontendResetUrl != null ? frontendResetUrl : "http://localhost:5173/auth/reset-password?token=";
+        String baseUrl = frontendResetUrl != null ? frontendResetUrl : "https://pos-system-97v.pages.dev/auth/reset-password?token=";
         if (!baseUrl.endsWith("=") && !baseUrl.contains("?token=")) {
             baseUrl = baseUrl.endsWith("/") ? baseUrl + "reset-password?token=" : baseUrl + "?token=";
         }
@@ -192,9 +201,10 @@ public class AuthServiceImpl implements AuthService {
 
         try {
             emailService.sendEmail(user.getEmail(), subject, body);
+            log.info("[Password Reset] Password reset email queued for {}", user.getEmail());
         } catch (Exception e) {
             // Log error silently without failing or exposing account existence
-            log.warn("Failed to send password reset email to {}: {}", email, e.getMessage());
+            log.warn("Failed to send password reset email to {}: {}", user.getEmail(), e.getMessage(), e);
         }
     }
 

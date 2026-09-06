@@ -40,6 +40,9 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
     private final EmailService emailService;
     private final EmailTemplateService emailTemplateService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.frontend.base-url:https://pos-system-97v.pages.dev}")
+    private String frontendBaseUrl;
+
     @Override
     @Transactional
     public ApprovalRequest createRegistrationRequest(Store store, User user) {
@@ -171,11 +174,12 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
             // Send fail-safe themed email notification
             if (store.getStoreAdmin() != null && store.getStoreAdmin().getEmail() != null) {
                 String planTitle = storeSub.getCurrentPlan() != null ? storeSub.getCurrentPlan().getName() : "Starter";
+                String targetLogin = (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) ? frontendBaseUrl + "/auth/login" : "https://pos-system-97v.pages.dev/auth/login";
                 String emailBody = emailTemplateService.buildStoreApprovedEmail(
                         store.getStoreAdmin().getFullName(),
                         store.getBrand(),
                         planTitle,
-                        "http://localhost:5173/auth/login"
+                        targetLogin
                 );
                 sendFailSafeEmail(store.getStoreAdmin(), "Your Store Has Been Approved! 🎉", emailBody);
             }
@@ -215,12 +219,13 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
 
             // Send fail-safe themed email notification
             if (store.getStoreAdmin() != null && store.getStoreAdmin().getEmail() != null) {
+                String targetSettings = (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) ? frontendBaseUrl + "/store/settings" : "https://pos-system-97v.pages.dev/store/settings";
                 String emailBody = emailTemplateService.buildSubscriptionApprovedEmail(
                         store.getStoreAdmin().getFullName(),
                         store.getBrand(),
                         request.getRequestedPlan().getName(),
                         request.getRequestedPlan().getPrice(),
-                        "http://localhost:5173/store/settings"
+                        targetSettings
                 );
                 sendFailSafeEmail(store.getStoreAdmin(), "Subscription Plan Upgrade Approved! ⚡", emailBody);
             }
@@ -274,11 +279,12 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
 
             // Send fail-safe themed email notification
             if (store.getStoreAdmin() != null && store.getStoreAdmin().getEmail() != null) {
+                String targetOnboarding = (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) ? frontendBaseUrl + "/auth/onboarding" : "https://pos-system-97v.pages.dev/auth/onboarding";
                 String emailBody = emailTemplateService.buildStoreRejectedEmail(
                         store.getStoreAdmin().getFullName(),
                         store.getBrand(),
                         reason,
-                        "http://localhost:5173/auth/onboarding"
+                        targetOnboarding
                 );
                 sendFailSafeEmail(store.getStoreAdmin(), "Important: Store Registration Application Update", emailBody);
             }
@@ -307,12 +313,13 @@ public class ApprovalRequestServiceImpl implements ApprovalRequestService {
             // Send fail-safe themed email notification
             if (store.getStoreAdmin() != null && store.getStoreAdmin().getEmail() != null) {
                 String planName = request.getRequestedPlan() != null ? request.getRequestedPlan().getName() : "Requested Plan";
+                String targetUpgrade = (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) ? frontendBaseUrl + "/store/upgrade" : "https://pos-system-97v.pages.dev/store/upgrade";
                 String emailBody = emailTemplateService.buildSubscriptionRejectedEmail(
                         store.getStoreAdmin().getFullName(),
                         store.getBrand(),
                         planName,
                         reason,
-                        "http://localhost:5173/store/upgrade"
+                        targetUpgrade
                 );
                 sendFailSafeEmail(store.getStoreAdmin(), "Subscription Plan Request Update", emailBody);
             }

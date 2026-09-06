@@ -9,7 +9,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.CompletableFuture;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +17,9 @@ import java.util.concurrent.CompletableFuture;
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender javaMailSender;
+
+    @Value("${spring.mail.username:aniketmeshram445@gmail.com}")
+    private String fromEmail;
 
     @Async
     @Override
@@ -38,21 +41,21 @@ public class EmailServiceImpl implements EmailService {
             return;
         }
 
-        CompletableFuture.runAsync(() -> {
-            String threadName = Thread.currentThread().getName();
-            log.info("[Async Email] Starting email dispatch to {} on thread: {}", to, threadName);
-            try {
-                MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-                MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+        try {
+            log.info("[Async Email] Starting email dispatch to {} with subject: '{}'", to, subject);
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
-                helper.setSubject(subject);
-                helper.setText(body, true);
-                helper.setTo(to);
-                javaMailSender.send(mimeMessage);
-                log.info("[Async Email] Successfully sent email to {} on thread: {}", to, threadName);
-            } catch (Exception e) {
-                log.error("[Async Email] Failed to send email to {}: {}", to, e.getMessage());
-            }
-        });
+            String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail.trim() : "aniketmeshram445@gmail.com";
+            helper.setFrom(sender, "NexPOS");
+            helper.setTo(to.trim());
+            helper.setSubject(subject);
+            helper.setText(body, true);
+
+            javaMailSender.send(mimeMessage);
+            log.info("[Async Email] Successfully sent email to {}", to);
+        } catch (Exception e) {
+            log.error("[Async Email] Failed to send email to {}: {}", to, e.getMessage(), e);
+        }
     }
 }

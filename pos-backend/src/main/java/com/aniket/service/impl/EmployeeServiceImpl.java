@@ -48,6 +48,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmailService emailService;
     private final EmailTemplateService emailTemplateService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.frontend.base-url:https://pos-system-97v.pages.dev}")
+    private String frontendBaseUrl;
+
     // Branch-level roles that require a branch assignment
     private static final List<UserRole> BRANCH_LEVEL_ROLES = List.of(
             UserRole.ROLE_BRANCH_ADMIN,
@@ -157,6 +160,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (savedEmployee.getEmail() != null) {
             try {
                 String branchTitle = branch != null ? branch.getName() : "Main Store Terminal";
+                String targetLogin = (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) ? frontendBaseUrl + "/auth/login" : "https://pos-system-97v.pages.dev/auth/login";
                 String emailBody = emailTemplateService.buildStaffInviteEmail(
                         savedEmployee.getFullName(),
                         savedEmployee.getRole().name(),
@@ -164,7 +168,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                         branchTitle,
                         savedEmployee.getEmail(),
                         rawPassword,
-                        "http://localhost:5173/auth/login"
+                        targetLogin
                 );
                 emailService.sendEmail(savedEmployee.getEmail(), "You're Invited to Join " + store.getBrand() + " on NexPOS", emailBody);
             } catch (Exception emailEx) {
@@ -245,6 +249,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         // Send themed Staff Invitation Email
         if (savedEmployee.getEmail() != null) {
             try {
+                String targetLogin = (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) ? frontendBaseUrl + "/auth/login" : "https://pos-system-97v.pages.dev/auth/login";
                 String emailBody = emailTemplateService.buildStaffInviteEmail(
                         savedEmployee.getFullName(),
                         savedEmployee.getRole().name(),
@@ -252,7 +257,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                         branch.getName(),
                         savedEmployee.getEmail(),
                         rawBranchPassword,
-                        "http://localhost:5173/auth/login"
+                        targetLogin
                 );
                 emailService.sendEmail(savedEmployee.getEmail(), "You're Invited to Join " + branch.getStore().getBrand() + " on NexPOS", emailBody);
             } catch (Exception emailEx) {
