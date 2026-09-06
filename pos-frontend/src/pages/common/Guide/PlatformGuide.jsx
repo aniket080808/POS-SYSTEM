@@ -7,10 +7,6 @@ import {
   ShieldCheck,
   Zap,
   Printer,
-  Receipt,
-  Users,
-  Boxes,
-  BarChart3,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
@@ -22,327 +18,175 @@ import {
   RefreshCw,
   AlertTriangle,
   Lock,
-  Globe,
   Clock,
   Coins,
-  ChevronRight,
   ShoppingCart,
   Plus,
   Minus,
   Trash2,
-  FileCheck2,
-  Moon,
+  Search,
+  Check,
+  X,
+  Sliders,
+  TrendingUp,
+  Boxes,
+  Users,
   Sun,
+  Moon,
+  Receipt,
+  FileCheck2,
+  Layers,
 } from "lucide-react";
 import NexPOSLogo from "@/components/common/NexPOSLogo";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
 
-// Sample products for interactive POS terminal simulation
-const DEMO_PRODUCTS = [
-  { id: 1, name: "Cold Brew Coffee (350ml)", sku: "SKU-BEV-001", price: 180, category: "Beverages", gst: 18 },
-  { id: 2, name: "Artisan Sourdough Loaf", sku: "SKU-BAK-042", price: 140, category: "Bakery", gst: 5 },
-  { id: 3, name: "Organic Dark Chocolate 70%", sku: "SKU-SNK-109", price: 220, category: "Snacks", gst: 18 },
-  { id: 4, name: "Farm Fresh Whole Milk 1L", sku: "SKU-DAI-005", price: 65, category: "Dairy", gst: 0 },
-  { id: 5, name: "Sparkling Mint Lemonade", sku: "SKU-BEV-088", price: 95, category: "Beverages", gst: 12 },
-  { id: 6, name: "Roasted Almonds 200g", sku: "SKU-NUT-023", price: 280, category: "Dry Fruits", gst: 12 },
-];
-
-const ROLES_DATA = {
-  store_owner: {
-    id: "store_owner",
-    title: "Store Owner / Merchant Admin",
-    badge: "ROLE_STORE_ADMIN",
-    icon: Store,
-    accentColor: "text-amber-600 dark:text-amber-400",
-    bgColor: "bg-amber-500/10 border-amber-500/30",
-    description: "The business decision-maker. Manages subscriptions, physical branches, product catalog, staff permissions, and store-wide revenue analytics.",
-    lifecycle: [
-      {
-        step: 1,
-        title: "Registration & Store Onboarding",
-        route: "/auth/signup & /auth/onboarding",
-        description: "Creates store profile with GSTIN, business category, store contact, logo, and sets up invoice tax details.",
-        actions: ["Register account", "Input Store Profile", "Await admin verification", "Define currency & tax headers"],
-      },
-      {
-        step: 2,
-        title: "Subscription & Feature Tier",
-        route: "/store/upgrade",
-        description: "Selects subscription plan (Starter, Pro, Enterprise) via integrated Razorpay gateway (UPI/Cards).",
-        actions: ["Compare plan limits", "Razorpay secure payment", "Instant automated tier upgrade", "Unlock branch & product limits"],
-      },
-      {
-        step: 3,
-        title: "Branch Network Expansion",
-        route: "/store/branches",
-        description: "Configures physical outlets across different locations (e.g. Connaught Place, Cyber City, Indiranagar).",
-        actions: ["Create branch profile", "Set operating hours", "Assign physical address", "Manage branch active status"],
-      },
-      {
-        step: 4,
-        title: "Master Product Catalog & SKU",
-        route: "/store/categories & /store/products",
-        description: "Sets up product master list with barcodes/SKUs, cost price, selling MRP, and GST tax slabs.",
-        actions: ["Define hierarchical categories", "Assign unique barcodes", "Set GST tax rates (0-28%)", "Configure low-stock alert limits"],
-      },
-      {
-        step: 5,
-        title: "Staff Provisioning & Role Delegation",
-        route: "/store/employees",
-        description: "Creates credentials for Branch Managers and Cashiers, assigning them to designated branch counters.",
-        actions: ["Add Branch Managers", "Create Cashier logins", "Scoped access permissions", "Password reset & deactivate control"],
-      },
-      {
-        step: 6,
-        title: "Executive Reports & Multi-Branch Sales",
-        route: "/store/sales & /store/reports",
-        description: "Monitors centralized sales performance, top-selling items, payment mode distribution, and exports reports.",
-        actions: ["Store-wide revenue ticker", "Branch vs Branch comparisons", "Payment split (Cash/UPI/Card)", "Export CSV & PDF invoices"],
-      },
-    ],
-    features: [
-      { name: "Multi-Branch Management", desc: "Manage multiple retail outlets under one central umbrella" },
-      { name: "Subscription Plan Control", desc: "Scale branch, staff, and SKU limits seamlessly via Razorpay" },
-      { name: "Unified Product Catalog", desc: "Add product once, auto-sync pricing & GST across all branches" },
-      { name: "Employee Provisioning", desc: "Create and manage roles without exposing master credentials" },
-      { name: "Executive Business BI", desc: "Live graphs, sales trends, profit margins, and tax audits" },
-      { name: "Central Low-Stock Alerts", desc: "Instant visibility into warehouse and shelf depletion across outlets" },
-    ],
-  },
-  branch_manager: {
-    id: "branch_manager",
-    title: "Branch Manager / Supervisor",
-    badge: "ROLE_BRANCH_MANAGER",
-    icon: Building2,
-    accentColor: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-500/10 border-blue-500/30",
-    description: "The on-ground store supervisor. Controls branch stock inventory, audits cashier shifts, approves returns, and monitors daily cash drawer balances.",
-    lifecycle: [
-      {
-        step: 1,
-        title: "Scoped Branch Login",
-        route: "/branch/dashboard",
-        description: "Logs into the branch console. The system strictly scopes inventory and transactions to their assigned outlet.",
-        actions: ["Authenticated login", "Automatic branch binding", "View today's branch revenue", "Inspect active cash registers"],
-      },
-      {
-        step: 2,
-        title: "Branch Inventory & Stock Adjustments",
-        route: "/branch/inventory",
-        description: "Receives new stock shipments from suppliers/central warehouse and updates real-time shelf counts.",
-        actions: ["Update current stock counts", "Flag damaged/expired goods", "Low-stock replenishment alerts", "Product search & tracking"],
-      },
-      {
-        step: 3,
-        title: "Real-Time Cashier Orders Oversight",
-        route: "/branch/orders",
-        description: "Monitors live transactions happening at counters. Verifies invoice details and customer dispute logs.",
-        actions: ["Live order feed", "Filter by cashier / payment mode", "Reprint customer tax invoices", "Inspect order audit trail"],
-      },
-      {
-        step: 4,
-        title: "Customer Returns & Refund Approval",
-        route: "/branch/refunds",
-        description: "Inspects return requests initiated by cashiers, verifies condition, and approves refund to adjust stock automatically.",
-        actions: ["Review refund claims", "Approve/Reject return orders", "Automatic inventory re-stocking", "Discrepancy mitigation"],
-      },
-      {
-        step: 5,
-        title: "Cashier Shift Auditing & Drawer Tally",
-        route: "/branch/reports",
-        description: "Audits daily shift closing summaries submitted by cashiers to detect cash shortages or excess.",
-        actions: ["Inspect opening cash float", "Verify collected cash/cards/UPI", "Identify cashier drawer variance", "Sign off on day-close report"],
-      },
-    ],
-    features: [
-      { name: "Scoped Data Isolation", desc: "Zero access to competitor branches or parent business banking settings" },
-      { name: "Real-Time Stock Depletion", desc: "Branch inventory auto-decrements with every barcode scanned at counter" },
-      { name: "Return & Refund Verification", desc: "Prevent cashier fraud by requiring manager sign-off on refunds" },
-      { name: "Cash Drawer Float Tally", desc: "Compare expected cash vs physical drawer count with zero guesswork" },
-      { name: "Cashier Performance Metrics", desc: "Track billing speed, total sales, and volume per cashier" },
-      { name: "Branch Customer History", desc: "Identify repeat local shoppers and purchase patterns" },
-    ],
-  },
-  cashier: {
-    id: "cashier",
-    title: "Branch Cashier / POS Terminal",
-    badge: "ROLE_BRANCH_CASHIER",
-    icon: CreditCard,
-    accentColor: "text-emerald-600 dark:text-emerald-400",
-    bgColor: "bg-emerald-500/10 border-emerald-500/30",
-    description: "The checkout operator. Powered by a lightning-fast POS workstation for barcode scanning, GST auto-calculation, multi-tender payments, and thermal printing.",
-    lifecycle: [
-      {
-        step: 1,
-        title: "Shift Opening & Cash Float",
-        route: "/cashier",
-        description: "Starts the morning duty by registering the physical starting cash drawer float for customer change.",
-        actions: ["Login to workstation", "Declare opening drawer float", "Initialize thermal printer link", "Open counter for billing"],
-      },
-      {
-        step: 2,
-        title: "Sub-Second Barcode Scanning & Cart",
-        route: "/cashier",
-        description: "Scans product barcodes or taps category quick-keys to build cart with automated tax breakdowns.",
-        actions: ["Hardware barcode scanning", "Dynamic category tap grid", "Apply line item discounts", "Link customer phone/loyalty"],
-      },
-      {
-        step: 3,
-        title: "Multi-Tender Payment Acceptance",
-        route: "/cashier",
-        description: "Offers instant customer checkout via UPI QR code, Cash with automatic change calculation, or Card.",
-        actions: ["Instant UPI QR generation", "Cash tender change calculator", "Card POS terminal swipe", "Split-payment support"],
-      },
-      {
-        step: 4,
-        title: "Thermal Receipt & Tax Invoice",
-        route: "/cashier",
-        description: "Prints compliant 80mm/58mm thermal receipts with GSTIN, itemized tax slabs, barcode, and store logo.",
-        actions: ["1-Click instant print", "Itemized GST (CGST+SGST)", "Digital SMS receipt logging", "Invoice sequence numbering"],
-      },
-      {
-        step: 5,
-        title: "Returns & Exchanges Processing",
-        route: "/cashier/returns",
-        description: "Processes customer returns by looking up original bill number and selecting damaged/unwanted items.",
-        actions: ["Lookup order by invoice #", "Select item return quantity", "Submit for manager approval", "Dispense refund"],
-      },
-      {
-        step: 6,
-        title: "Shift Summary & Cash Drawer Close",
-        route: "/cashier/shift-summary",
-        description: "Counts physical cash in drawer, submits handover report, and closes the terminal for the day.",
-        actions: ["View shift metrics", "Input counted physical cash", "Review calculated balance", "Submit shift report"],
-      },
-    ],
-    features: [
-      { name: "Sub-Second Barcode Processing", desc: "Zero-lag keyboard wedge / USB barcode scanner listener" },
-      { name: "Dynamic GST Tax Calculation", desc: "Automatic CGST, SGST, IGST, and round-off auto-computation" },
-      { name: "Cash Tender Change Helper", desc: "Never make mental math errors when handing back change" },
-      { name: "Multi-Tender UPI & Card", desc: "Seamless acceptance of GPay, PhonePe, Paytm, and credit cards" },
-      { name: "Thermal Receipt Engine", desc: "Optimized for standard ESC/POS 58mm and 80mm thermal printers" },
-      { name: "Anti-Theft Shift Balancing", desc: "Transparent shift close with variance audit" },
-    ],
-  },
-  super_admin: {
-    id: "super_admin",
-    title: "Super Admin / Platform Owner",
-    badge: "ROLE_ADMIN",
-    icon: ShieldCheck,
-    accentColor: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-500/10 border-purple-500/30",
-    description: "The SaaS ecosystem controller. Oversees platform health, store verification approvals, global subscription pricing plans, and system audit logs.",
-    lifecycle: [
-      {
-        step: 1,
-        title: "Global Platform Health & Monitoring",
-        route: "/super-admin/dashboard",
-        description: "Real-time visibility into all stores, active subscriptions, platform volume, and system uptime.",
-        actions: ["Global revenue metrics", "Active retail stores count", "Total platform transactions", "System health alerts"],
-      },
-      {
-        step: 2,
-        title: "Merchant Store Verification Queue",
-        route: "/super-admin/requests",
-        description: "Reviews newly registered businesses, validates GSTIN/store details, and approves legitimate merchants.",
-        actions: ["Review onboarding requests", "Validate business legality", "1-Click Approve / Reject", "Trigger activation emails"],
-      },
-      {
-        step: 3,
-        title: "Subscription Tier Engineering",
-        route: "/super-admin/subscriptions",
-        description: "Configures commercial pricing tiers, branch quotas, staff quotas, and feature flags.",
-        actions: ["Set plan pricing & cycles", "Configure max branches limit", "Configure max product limits", "Toggle Advanced Analytics flag"],
-      },
-      {
-        step: 4,
-        title: "Public Inquiries & Merchant Support",
-        route: "/super-admin/inquiries",
-        description: "Manages business inquiries sent from the public website contact form.",
-        actions: ["Inspect customer inquiries", "Categorize merchant leads", "Assign support follow-ups", "Update resolution status"],
-      },
-      {
-        step: 5,
-        title: "Platform Security & Audit Trails",
-        route: "/super-admin/audit-logs",
-        description: "Full compliance tracking of authentication attempts, store state modifications, and admin actions.",
-        actions: ["Track auth failures & lockouts", "Audit role escalations", "Inspect store deactivations", "Export platform data"],
-      },
-    ],
-    features: [
-      { name: "Multi-Tenant Architecture", desc: "Securely partitions data across hundreds of independent retail businesses" },
-      { name: "Onboarding Gatekeeper", desc: "Protects platform integrity with merchant review workflows" },
-      { name: "Dynamic Plan Configurator", desc: "Change pricing, features, and quotas on the fly without redeploying" },
-      { name: "Compliance Audit Logging", desc: "Detailed activity records for every privileged administrative operation" },
-      { name: "Lead & Inquiry Management", desc: "Built-in CRM for enterprise demo requests and merchant support" },
-      { name: "Platform-Wide Data Exports", desc: "Aggregate reporting and data export tools for SaaS compliance" },
-    ],
-  },
+// ==========================================
+// 1. STORE OWNER SIMULATOR STATE & DATA
+// ==========================================
+const INITIAL_BRANCH_DATA = {
+  all: { name: "All Outlets (Consolidated)", revenue: "₹1,84,650", orders: 342, topProduct: "Cold Brew Coffee", activeStaff: 18, growth: "+22.4%" },
+  delhi: { name: "Delhi Connaught Place", revenue: "₹92,400", orders: 178, topProduct: "Artisan Sourdough", activeStaff: 8, growth: "+28.1%" },
+  mumbai: { name: "Mumbai Bandra Central", revenue: "₹64,250", orders: 114, topProduct: "Organic Dark Chocolate", activeStaff: 6, growth: "+16.8%" },
+  bengaluru: { name: "Bengaluru Indiranagar", revenue: "₹28,000", orders: 50, topProduct: "Roasted Almonds", activeStaff: 4, growth: "+12.2%" },
 };
 
-const FEATURE_MATRIX = [
-  { feature: "Access Public Landing & Pricing", roles: { store_owner: true, branch_manager: true, cashier: true, super_admin: true } },
-  { feature: "Store Registration & Razorpay Billing", roles: { store_owner: true, branch_manager: false, cashier: false, super_admin: false } },
-  { feature: "Approve/Reject Store Onboarding", roles: { store_owner: false, branch_manager: false, cashier: false, super_admin: true } },
-  { feature: "Configure Platform Subscription Plans", roles: { store_owner: false, branch_manager: false, cashier: false, super_admin: true } },
-  { feature: "Create & Manage Physical Branches", roles: { store_owner: true, branch_manager: false, cashier: false, super_admin: false } },
-  { feature: "Master Product Catalog & SKU Setup", roles: { store_owner: true, branch_manager: false, cashier: false, super_admin: false } },
-  { feature: "Branch Inventory Adjustment & Restock", roles: { store_owner: true, branch_manager: true, cashier: false, super_admin: false } },
-  { feature: "Create Staff Logins (Manager & Cashier)", roles: { store_owner: true, branch_manager: false, cashier: false, super_admin: false } },
-  { feature: "High-Speed POS Checkout & Barcode Billing", roles: { store_owner: false, branch_manager: false, cashier: true, super_admin: false } },
-  { feature: "UPI QR, Cash & Card Payment Acceptance", roles: { store_owner: false, branch_manager: false, cashier: true, super_admin: false } },
-  { feature: "Print 80mm/58mm GST Thermal Receipts", roles: { store_owner: false, branch_manager: false, cashier: true, super_admin: false } },
-  { feature: "Initiate Customer Return / Refund", roles: { store_owner: false, branch_manager: false, cashier: true, super_admin: false } },
-  { feature: "Approve Returns & Restock Items", roles: { store_owner: true, branch_manager: true, cashier: false, super_admin: false } },
-  { feature: "Open & Close Shift (Cash Drawer Float)", roles: { store_owner: false, branch_manager: false, cashier: true, super_admin: false } },
-  { feature: "Audit Cashier Drawer Variance & Discrepancies", roles: { store_owner: true, branch_manager: true, cashier: false, super_admin: false } },
-  { feature: "Store-Wide Sales & Margin Analytics", roles: { store_owner: true, branch_manager: false, cashier: false, super_admin: false } },
-  { feature: "Platform Audit Logs & Security Trails", roles: { store_owner: false, branch_manager: false, cashier: false, super_admin: true } },
+const INITIAL_MASTER_CATALOG = [
+  { id: 101, name: "Cold Brew Coffee 350ml", sku: "SKU-BEV-001", category: "Beverages", mrp: 180, cost: 95, gst: 18 },
+  { id: 102, name: "Artisan Sourdough Loaf", sku: "SKU-BAK-042", category: "Bakery", mrp: 140, cost: 70, gst: 5 },
+  { id: 103, name: "Organic Dark Chocolate 70%", sku: "SKU-SNK-109", category: "Snacks", mrp: 220, cost: 130, gst: 18 },
+  { id: 104, name: "Farm Fresh Milk 1L", sku: "SKU-DAI-005", category: "Dairy", mrp: 65, cost: 52, gst: 0 },
+];
+
+// ==========================================
+// 2. BRANCH MANAGER SIMULATOR STATE & DATA
+// ==========================================
+const INITIAL_BRANCH_INVENTORY = [
+  { id: 201, name: "Organic Basmati Rice 1kg", sku: "SKU-GR-01", stock: 4, threshold: 10, category: "Grocery" },
+  { id: 202, name: "Cold Pressed Olive Oil 500ml", sku: "SKU-GR-12", stock: 2, threshold: 5, category: "Grocery" },
+  { id: 203, name: "Artisan Sourdough Loaf", sku: "SKU-BAK-042", stock: 38, threshold: 15, category: "Bakery" },
+  { id: 204, name: "Cold Brew Coffee 350ml", sku: "SKU-BEV-001", stock: 45, threshold: 12, category: "Beverages" },
+];
+
+const INITIAL_REFUNDS = [
+  { id: "REF-902", orderId: "ORD-8812", item: "Cold Pressed Olive Oil", amount: 320, cashier: "Rahul V.", reason: "Broken seal on delivery", status: "PENDING" },
+  { id: "REF-903", orderId: "ORD-8825", item: "Artisan Sourdough", amount: 140, cashier: "Pooja S.", reason: "Customer changed mind", status: "PENDING" },
+];
+
+// ==========================================
+// 3. CASHIER POS TERMINAL DATA
+// ==========================================
+const POS_CATALOG = [
+  { id: 1, name: "Cold Brew Coffee", sku: "SKU-BEV-001", price: 180, category: "Beverages", gst: 18 },
+  { id: 2, name: "Sourdough Bread", sku: "SKU-BAK-042", price: 140, category: "Bakery", gst: 5 },
+  { id: 3, name: "Dark Chocolate", sku: "SKU-SNK-109", price: 220, category: "Snacks", gst: 18 },
+  { id: 4, name: "Whole Milk 1L", sku: "SKU-DAI-005", price: 65, category: "Dairy", gst: 0 },
+  { id: 5, name: "Lemonade Soda", sku: "SKU-BEV-088", price: 95, category: "Beverages", gst: 12 },
+  { id: 6, name: "Roasted Almonds", sku: "SKU-NUT-023", price: 280, category: "Snacks", gst: 12 },
+];
+
+// ==========================================
+// 4. SUPER ADMIN DATA
+// ==========================================
+const INITIAL_STORE_REQUESTS = [
+  { id: "REQ-101", storeName: "Sharma Supermarket", owner: "Ramesh Sharma", city: "Delhi", gstin: "07AAAAA1234A1Z5", status: "PENDING" },
+  { id: "REQ-102", storeName: "Organic Greens Mart", owner: "Sunita Rao", city: "Bengaluru", gstin: "29BBBBB5678B2Z1", status: "PENDING" },
 ];
 
 export default function PlatformGuide() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const [selectedRole, setSelectedRole] = useState("cashier");
+  const [activeRole, setActiveRole] = useState("store_owner"); // 'store_owner' | 'branch_manager' | 'cashier' | 'super_admin'
 
-  // State for interactive POS terminal simulation
+  // --- STORE OWNER STATE ---
+  const [selectedBranch, setSelectedBranch] = useState("all");
+  const [masterCatalog, setMasterCatalog] = useState(INITIAL_MASTER_CATALOG);
+  const [newProductName, setNewProductName] = useState("");
+  const [newProductPrice, setNewProductPrice] = useState("");
+  const [newProductCategory, setNewProductCategory] = useState("Beverages");
+  const [branchQuotaSlider, setBranchQuotaSlider] = useState(3);
+  const [productAddedNotice, setProductAddedNotice] = useState(false);
+
+  // --- BRANCH MANAGER STATE ---
+  const [inventory, setInventory] = useState(INITIAL_BRANCH_INVENTORY);
+  const [refunds, setRefunds] = useState(INITIAL_REFUNDS);
+  const [invSearchQuery, setInvSearchQuery] = useState("");
+  const [drawerAudited, setDrawerAudited] = useState(false);
+
+  // --- CASHIER POS STATE ---
   const [cart, setCart] = useState([
-    { ...DEMO_PRODUCTS[0], qty: 1 },
-    { ...DEMO_PRODUCTS[2], qty: 2 },
+    { ...POS_CATALOG[0], qty: 1 },
+    { ...POS_CATALOG[1], qty: 2 },
   ]);
   const [paymentMode, setPaymentMode] = useState("upi");
-  const [cashTendered, setCashTendered] = useState(700);
-  const [receiptGenerated, setReceiptGenerated] = useState(false);
-  const [invoiceNumber] = useState("INV-2026-9812");
+  const [cashGiven, setCashGiven] = useState(500);
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [receiptPrinted, setReceiptPrinted] = useState(false);
+  const [lastScannedItem, setLastScannedItem] = useState(null);
 
-  const activeRoleData = ROLES_DATA[selectedRole];
+  // --- SUPER ADMIN STATE ---
+  const [storeRequests, setStoreRequests] = useState(INITIAL_STORE_REQUESTS);
+  const [starterPlanPrice, setStarterPlanPrice] = useState(999);
 
-  // Cart math
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const taxAmount = cart.reduce((sum, item) => sum + ((item.price * item.qty * item.gst) / 100), 0);
-  const grandTotal = Math.round(subtotal + taxAmount);
-  const changeToReturn = Math.max(0, cashTendered - grandTotal);
+  // ==========================================
+  // HANDLERS
+  // ==========================================
+  // Store Owner: Add Product
+  const handleAddMasterProduct = (e) => {
+    e.preventDefault();
+    if (!newProductName.trim() || !newProductPrice) return;
+    const newProd = {
+      id: Date.now(),
+      name: newProductName.trim(),
+      sku: `SKU-${newProductCategory.substring(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
+      category: newProductCategory,
+      mrp: Number(newProductPrice),
+      cost: Math.round(Number(newProductPrice) * 0.6),
+      gst: 18,
+    };
+    setMasterCatalog([newProd, ...masterCatalog]);
+    setNewProductName("");
+    setNewProductPrice("");
+    setProductAddedNotice(true);
+    setTimeout(() => setProductAddedNotice(false), 3000);
+  };
 
+  // Branch Manager: Restock
+  const handleRestock = (id, count = 50) => {
+    setInventory((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, stock: item.stock + count } : item))
+    );
+  };
+
+  // Branch Manager: Approve Refund
+  const handleApproveRefund = (refId) => {
+    setRefunds((prev) =>
+      prev.map((r) => (r.id === refId ? { ...r, status: "APPROVED" } : r))
+    );
+  };
+
+  // Cashier: Cart Operations
   const addToCart = (product) => {
-    setReceiptGenerated(false);
+    setReceiptPrinted(false);
+    setLastScannedItem(product.name);
     setCart((prev) => {
-      const existing = prev.find((p) => p.id === product.id);
-      if (existing) {
+      const exists = prev.find((p) => p.id === product.id);
+      if (exists) {
         return prev.map((p) => (p.id === product.id ? { ...p, qty: p.qty + 1 } : p));
       }
       return [...prev, { ...product, qty: 1 }];
     });
+    setTimeout(() => setLastScannedItem(null), 1500);
   };
 
-  const updateQty = (id, delta) => {
-    setReceiptGenerated(false);
+  const updateCartQty = (id, delta) => {
+    setReceiptPrinted(false);
     setCart((prev) =>
       prev
         .map((p) => {
           if (p.id === id) {
-            const newQty = p.qty + delta;
-            return newQty > 0 ? { ...p, qty: newQty } : null;
+            const next = p.qty + delta;
+            return next > 0 ? { ...p, qty: next } : null;
           }
           return p;
         })
@@ -350,31 +194,43 @@ export default function PlatformGuide() {
     );
   };
 
-  const clearCart = () => {
-    setCart([]);
-    setReceiptGenerated(false);
+  // Super Admin: Approve Store
+  const handleApproveStore = (id) => {
+    setStoreRequests((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: "APPROVED" } : s))
+    );
   };
+
+  // Cart Calculations
+  const rawSubtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const discountAmount = Math.round((rawSubtotal * discountPercent) / 100);
+  const discountedSubtotal = rawSubtotal - discountAmount;
+  const taxAmount = cart.reduce((sum, item) => sum + ((item.price * item.qty * item.gst) / 100), 0);
+  const grandTotal = Math.round(discountedSubtotal + taxAmount);
+  const changeDue = Math.max(0, cashGiven - grandTotal);
+
+  const activeBranch = INITIAL_BRANCH_DATA[selectedBranch];
 
   return (
     <div className="min-h-screen bg-background text-foreground antialiased selection:bg-amber-500/20 selection:text-amber-600">
-      {/* Top Sticky Header */}
-      <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border transition-all">
+      {/* 1. TOP STICKY APP BAR */}
+      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/")}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-secondary transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-secondary transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
             </button>
             <div className="h-4 w-px bg-border hidden sm:block" />
             <NexPOSLogo onClick={() => navigate("/")} size="sm" />
-            <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              <Sparkles className="w-3 h-3" /> Architecture & Workflow Guide
+            <span className="hidden lg:inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              <Sparkles className="w-3 h-3" /> Interactive Role Simulator
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={toggleTheme}
@@ -384,706 +240,825 @@ export default function PlatformGuide() {
               {theme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
             </button>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/auth/login")}
-              className="hidden sm:inline-flex text-xs font-bold"
-            >
-              Sign In
-            </Button>
-            <Button
               size="sm"
               onClick={() => navigate("/auth/onboarding")}
-              className="bg-[#B8860B] hover:bg-[#996e08] text-white text-xs font-bold shadow-sm"
+              className="bg-[#B8860B] hover:bg-[#996e08] text-white text-xs font-bold shadow-xs cursor-pointer"
             >
-              Get Started Free <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              Register Your Store <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero Banner */}
-      <section className="relative overflow-hidden py-14 border-b border-border/80 bg-gradient-to-b from-secondary/30 to-background">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-[#FDF6E2] text-[#785600] border border-[#EED896] dark:bg-[#3A3530] dark:text-[#F5A623] dark:border-[#5A4F3D] mb-4 shadow-xs">
-            <BadgeCheck className="w-4 h-4" /> End-to-End Retail OS
+      {/* 2. HERO HEADLINE & ROLE SELECTOR PILLS */}
+      <section className="pt-8 pb-6 border-b border-border/80 bg-gradient-to-b from-secondary/40 via-background to-background text-center px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[#FDF6E2] text-[#785600] border border-[#EED896] dark:bg-[#3A3530] dark:text-[#F5A623] dark:border-[#5A4F3D] mb-3">
+            <Zap className="w-3.5 h-3.5 animate-pulse" /> Live Interactive Sandbox
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground mb-4">
-            How NexPOS Works: <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 dark:from-amber-400 dark:to-yellow-300">Every Role, Step by Step</span>
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground mb-2">
+            Experience NexPOS Through Any Role
           </h1>
-          <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            From the business owner configuring store subscription limits to a cashier scanning barcodes at sub-second speeds — discover how our interconnected role architecture powers modern retail.
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl mx-auto mb-6">
+            Click a role below. The simulated workstation screen will transform live to give you real hands-on controls — restock items, toggle branches, or print a receipt!
           </p>
 
-          {/* Quick jump anchor bar */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-            <a href="#roles-section" className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors">
-              👉 Role Journeys
-            </a>
-            <a href="#simulator-section" className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-colors">
-              ⚡ Try Interactive POS Terminal
-            </a>
-            <a href="#architecture-section" className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors">
-              🔄 Data Architecture
-            </a>
-            <a href="#matrix-section" className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors">
-              📊 Role Permission Matrix
-            </a>
+          {/* 4 Interactive Segmented Role Buttons */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-w-3xl mx-auto p-1.5 rounded-2xl bg-secondary/80 border border-border">
+            <button
+              onClick={() => setActiveRole("store_owner")}
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeRole === "store_owner"
+                  ? "bg-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Store className="w-4 h-4" /> Store Owner
+            </button>
+
+            <button
+              onClick={() => setActiveRole("branch_manager")}
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeRole === "branch_manager"
+                  ? "bg-card text-blue-600 dark:text-blue-400 shadow-sm border border-blue-500/30"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Building2 className="w-4 h-4" /> Branch Manager
+            </button>
+
+            <button
+              onClick={() => setActiveRole("cashier")}
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeRole === "cashier"
+                  ? "bg-card text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-500/30"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <CreditCard className="w-4 h-4" /> Cashier POS
+            </button>
+
+            <button
+              onClick={() => setActiveRole("super_admin")}
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeRole === "super_admin"
+                  ? "bg-card text-purple-600 dark:text-purple-400 shadow-sm border border-purple-500/30"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" /> Super Admin
+            </button>
           </div>
         </div>
       </section>
 
-      {/* SECTION 1: Interactive Role Switcher & Lifecycles */}
-      <section id="roles-section" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground mb-3">
-            Choose a Role to Explore Their Workflow
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Select any role below to see their daily responsibilities, starting-to-ending steps, and exact in-app capabilities.
-          </p>
-        </div>
-
-        {/* Role Selector Tabs (Segmented pills) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto mb-12">
-          {Object.values(ROLES_DATA).map((role) => {
-            const Icon = role.icon;
-            const isSelected = selectedRole === role.id;
-            return (
-              <button
-                key={role.id}
-                onClick={() => setSelectedRole(role.id)}
-                className={`flex flex-col items-center sm:flex-row sm:items-center gap-2.5 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  isSelected
-                    ? "bg-card border-amber-500 shadow-md ring-2 ring-amber-500/20"
-                    : "bg-card/50 border-border hover:bg-card hover:border-border/80"
-                }`}
-              >
-                <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                    isSelected ? "bg-amber-500 text-white" : "bg-secondary text-muted-foreground"
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className={`text-xs font-bold truncate ${isSelected ? "text-foreground font-extrabold" : "text-foreground"}`}>
-                    {role.title.split("/")[0]}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider truncate">
-                    {role.badge.replace("ROLE_", "")}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Selected Role Deep-Dive Card */}
-        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden transition-all">
-          {/* Role Header Banner */}
-          <div className={`p-6 sm:p-8 border-b border-border ${activeRoleData.bgColor} flex flex-col md:flex-row md:items-center justify-between gap-4`}>
-            <div>
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-background/80 border border-border text-foreground mb-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                Role: {activeRoleData.badge}
-              </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-foreground">
-                {activeRoleData.title}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-3xl leading-relaxed">
-                {activeRoleData.description}
-              </p>
+      {/* 3. SIMULATED WORKSTATION SCREEN (THE INTERACTIVE PLAYGROUND) */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="rounded-2xl border-2 border-border bg-card shadow-lg overflow-hidden transition-all">
+          {/* Simulated Browser / OS Window Bar */}
+          <div className="h-10 bg-secondary/80 border-b border-border px-4 flex items-center justify-between text-xs text-muted-foreground select-none">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+              <span className="ml-2 font-mono text-[11px] text-foreground font-semibold flex items-center gap-1.5">
+                <Lock className="w-3 h-3 text-emerald-500" />
+                {activeRole === "store_owner" && "app.nexpos.in/store/dashboard"}
+                {activeRole === "branch_manager" && "app.nexpos.in/branch/inventory"}
+                {activeRole === "cashier" && "app.nexpos.in/cashier/terminal"}
+                {activeRole === "super_admin" && "app.nexpos.in/super-admin/overview"}
+              </span>
             </div>
 
-            <div className="shrink-0 flex items-center gap-2">
-              <Button
-                onClick={() => navigate("/auth/login")}
-                size="sm"
-                className="bg-foreground text-background hover:bg-foreground/90 font-bold text-xs"
-              >
-                Sign In as this Role <ArrowRight className="w-3.5 h-3.5 ml-1" />
-              </Button>
+            <div className="flex items-center gap-2 text-[11px] font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">LIVE WORKSPACE SIMULATOR</span>
             </div>
           </div>
 
-          <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Step-by-Step Lifecycle (Left 2 cols) */}
-            <div className="lg:col-span-2">
-              <div className="flex items-center justify-between mb-6">
-                <h4 className="text-base font-bold text-foreground flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-amber-500" /> Step-by-Step Daily Lifecycle
-                </h4>
-                <span className="text-xs text-muted-foreground font-medium">
-                  {activeRoleData.lifecycle.length} Sequential Milestones
-                </span>
+          {/* ============================================================ */}
+          {/* VIEW 1: STORE OWNER INTERACTIVE CONSOLE                     */}
+          {/* ============================================================ */}
+          {activeRole === "store_owner" && (
+            <div className="p-6 sm:p-8 space-y-6">
+              {/* Header Info */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 mb-1">
+                    <Store className="w-3.5 h-3.5" /> ROLE_STORE_ADMIN
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+                    Apex Retail Chain — Executive Command Console
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Centralized management of subscription quotas, branch network, and global product catalog.
+                  </p>
+                </div>
+
+                {/* Interactive Branch Switcher */}
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-secondary border border-border shrink-0">
+                  <span className="text-[11px] font-bold text-muted-foreground px-2">Branch:</span>
+                  {["all", "delhi", "mumbai", "bengaluru"].map((b) => (
+                    <button
+                      key={b}
+                      onClick={() => setSelectedBranch(b)}
+                      className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer capitalize ${
+                        selectedBranch === b
+                          ? "bg-amber-500 text-white shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="space-y-4">
-                {activeRoleData.lifecycle.map((item, idx) => (
-                  <div
-                    key={item.step}
-                    className="flex gap-4 p-4 rounded-xl border border-border/80 bg-background hover:border-amber-500/40 transition-colors"
-                  >
-                    {/* Step badge */}
-                    <div className="flex flex-col items-center">
-                      <div className="w-8 h-8 rounded-full bg-[#FDF6E2] text-[#B8860B] dark:bg-[#3A3530] dark:text-[#F5A623] border border-amber-500/30 flex items-center justify-center font-bold text-xs shrink-0">
-                        {item.step}
+              {/* Dynamic Metrics Cards (Changes when branch changes) */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl border border-border bg-background">
+                  <div className="text-xs text-muted-foreground mb-1">Revenue Today</div>
+                  <div className="text-xl sm:text-2xl font-black text-foreground">{activeBranch.revenue}</div>
+                  <div className="text-[11px] text-emerald-500 font-bold mt-1 flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" /> {activeBranch.growth} vs yesterday
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border bg-background">
+                  <div className="text-xs text-muted-foreground mb-1">Orders Processed</div>
+                  <div className="text-xl sm:text-2xl font-black text-foreground">{activeBranch.orders}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1">Across all cashier counters</div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border bg-background">
+                  <div className="text-xs text-muted-foreground mb-1">Top Selling SKU</div>
+                  <div className="text-sm font-bold text-foreground truncate mt-1">{activeBranch.topProduct}</div>
+                  <div className="text-[11px] text-amber-600 font-bold mt-1">High Velocity Item</div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border bg-background">
+                  <div className="text-xs text-muted-foreground mb-1">Staff on Duty</div>
+                  <div className="text-xl sm:text-2xl font-black text-foreground">{activeBranch.activeStaff}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1">Logged into branch counters</div>
+                </div>
+              </div>
+
+              {/* Two Column Layout: Add Product + Razorpay Quota Tuner */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left: Master Catalog & Live Add Product Form (7 cols) */}
+                <div className="lg:col-span-7 p-5 rounded-2xl border border-border bg-secondary/30 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Boxes className="w-4 h-4 text-amber-500" /> Master SKU Catalog
+                      </h3>
+                      <p className="text-xs text-muted-foreground">Add a product once — it auto-syncs to all branch inventories.</p>
+                    </div>
+                    {productAddedNotice && (
+                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 animate-in fade-in">
+                        ✓ Product Added!
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Interactive Add Form */}
+                  <form onSubmit={handleAddMasterProduct} className="p-3 rounded-xl bg-card border border-border grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Product Name (e.g. Green Tea)"
+                      value={newProductName}
+                      onChange={(e) => setNewProductName(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background sm:col-span-2 text-foreground"
+                    />
+                    <input
+                      type="number"
+                      placeholder="MRP (₹)"
+                      value={newProductPrice}
+                      onChange={(e) => setNewProductPrice(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground"
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add SKU
+                    </button>
+                  </form>
+
+                  {/* Table */}
+                  <div className="rounded-xl border border-border bg-card overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-secondary/60 text-muted-foreground border-b border-border">
+                        <tr>
+                          <th className="py-2.5 px-3">SKU Code</th>
+                          <th className="py-2.5 px-3">Item Name</th>
+                          <th className="py-2.5 px-3">Category</th>
+                          <th className="py-2.5 px-3 text-right">MRP</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {masterCatalog.map((prod) => (
+                          <tr key={prod.id} className="hover:bg-secondary/20">
+                            <td className="py-2 px-3 font-mono text-[11px] text-muted-foreground">{prod.sku}</td>
+                            <td className="py-2 px-3 font-bold text-foreground">{prod.name}</td>
+                            <td className="py-2 px-3 text-muted-foreground">{prod.category}</td>
+                            <td className="py-2 px-3 text-right font-bold text-amber-600">₹{prod.mrp}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Right: Razorpay Subscription Quota Simulator (5 cols) */}
+                <div className="lg:col-span-5 p-5 rounded-2xl border border-border bg-secondary/30 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-amber-500" /> Plan & Multi-Branch Quota
+                    </h3>
+                    <p className="text-xs text-muted-foreground">Adjust branch quota to see automated tier calculation.</p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-card border border-border space-y-4">
+                    <div>
+                      <div className="flex justify-between text-xs font-bold mb-1.5">
+                        <span>Physical Branches Allowed:</span>
+                        <span className="text-amber-600 font-black">{branchQuotaSlider} Branches</span>
                       </div>
-                      {idx !== activeRoleData.lifecycle.length - 1 && (
-                        <div className="w-0.5 h-full bg-border mt-2" />
+                      <input
+                        type="range"
+                        min={1}
+                        max={10}
+                        value={branchQuotaSlider}
+                        onChange={(e) => setBranchQuotaSlider(Number(e.target.value))}
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                        <span>1 Branch (Solo)</span>
+                        <span>5 Branches (Growth)</span>
+                        <span>10 Branches (Enterprise)</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-secondary/70 border border-border space-y-1 text-xs">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Current Tier:</span>
+                        <span className="font-bold text-foreground">
+                          {branchQuotaSlider <= 2 ? "Starter Tier" : branchQuotaSlider <= 5 ? "Professional Tier" : "Enterprise Retail"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Max Employees:</span>
+                        <span className="font-bold text-foreground">{branchQuotaSlider * 4} Staff Logins</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Monthly Subscription:</span>
+                        <span className="font-extrabold text-amber-600 text-sm">
+                          ₹{branchQuotaSlider <= 2 ? "999" : branchQuotaSlider <= 5 ? "2,499" : "4,999"} / mo
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={() => navigate("/auth/onboarding")}
+                      className="w-full bg-[#B8860B] hover:bg-[#996e08] text-white text-xs font-bold h-9 cursor-pointer"
+                    >
+                      Subscribe & Activate via Razorpay
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* VIEW 2: BRANCH MANAGER INTERACTIVE CONSOLE                  */}
+          {/* ============================================================ */}
+          {activeRole === "branch_manager" && (
+            <div className="p-6 sm:p-8 space-y-6">
+              {/* Header Info */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 mb-1">
+                    <Building2 className="w-3.5 h-3.5" /> ROLE_BRANCH_MANAGER (Delhi Flagship Branch)
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+                    Branch Inventory, Shifts & Returns Oversight
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Strictly scoped to your assigned branch. Restock shelf inventory and verify customer refunds.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDrawerAudited(true)}
+                    className="px-3 py-1.5 text-xs font-bold rounded-lg border border-border bg-card hover:bg-secondary transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <FileCheck2 className="w-3.5 h-3.5 text-blue-500" />
+                    {drawerAudited ? "✓ Shift Drawer Audited" : "Audit Cashier Till Float"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Two Column Layout: Interactive Inventory + Live Refund Claims */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left: Inventory Restock Table (7 cols) */}
+                <div className="lg:col-span-7 p-5 rounded-2xl border border-border bg-secondary/30 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Boxes className="w-4 h-4 text-blue-500" /> Branch Shelf Stock Levels
+                      </h3>
+                      <p className="text-xs text-muted-foreground">Click restock to increase units and resolve low-stock alert.</p>
+                    </div>
+
+                    <div className="relative w-48">
+                      <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-2.5" />
+                      <input
+                        type="text"
+                        placeholder="Search stock..."
+                        value={invSearchQuery}
+                        onChange={(e) => setInvSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-border bg-background text-foreground"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-card overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-secondary/60 text-muted-foreground border-b border-border">
+                        <tr>
+                          <th className="py-2.5 px-3">Item Name</th>
+                          <th className="py-2.5 px-3 text-center">Status</th>
+                          <th className="py-2.5 px-3 text-right">Units in Stock</th>
+                          <th className="py-2.5 px-3 text-right">Quick Restock</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {inventory
+                          .filter((i) => i.name.toLowerCase().includes(invSearchQuery.toLowerCase()))
+                          .map((item) => (
+                            <tr key={item.id} className="hover:bg-secondary/20">
+                              <td className="py-3 px-3">
+                                <div className="font-bold text-foreground">{item.name}</div>
+                                <div className="text-[10px] font-mono text-muted-foreground">{item.sku}</div>
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                {item.stock <= item.threshold ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20">
+                                    Low Stock
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                    In Stock
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-right font-black text-sm text-foreground">
+                                {item.stock}
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <button
+                                  onClick={() => handleRestock(item.id, 50)}
+                                  className="px-2 py-1 text-[11px] font-bold rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
+                                >
+                                  +50 Units
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Right: Refund & Shift Approvals (5 cols) */}
+                <div className="lg:col-span-5 p-5 rounded-2xl border border-border bg-secondary/30 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 text-blue-500" /> Pending Customer Return Claims
+                    </h3>
+                    <p className="text-xs text-muted-foreground">Approve refunds initiated by cashiers at billing counters.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {refunds.map((ref) => (
+                      <div key={ref.id} className="p-3.5 rounded-xl border border-border bg-card space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                            {ref.id} • {ref.orderId}
+                          </span>
+                          <span className="text-xs font-extrabold text-foreground">₹{ref.amount}</span>
+                        </div>
+
+                        <div className="text-xs font-bold text-foreground">{ref.item}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Cashier: <strong className="text-foreground">{ref.cashier}</strong> — <em>"{ref.reason}"</em>
+                        </div>
+
+                        <div className="pt-2 border-t border-border flex items-center justify-between">
+                          {ref.status === "APPROVED" ? (
+                            <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Refund Approved & Restocked
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleApproveRefund(ref.id)}
+                              className="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              ✓ Approve Refund (₹{ref.amount})
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Cashier Till Float Discrepancy Box */}
+                  <div className="p-3.5 rounded-xl border border-border bg-card text-xs space-y-1.5">
+                    <div className="font-bold text-foreground flex items-center justify-between">
+                      <span>Shift Till Float Audit:</span>
+                      <span className="text-emerald-600 font-bold">BALANCED (₹0 Discrepancy)</span>
+                    </div>
+                    <div className="text-muted-foreground text-[11px]">
+                      Expected Cash: ₹24,800 • Physical Count: ₹24,800 • Cashier: Rahul Verma
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* VIEW 3: CASHIER POS BILLING TERMINAL                       */}
+          {/* ============================================================ */}
+          {activeRole === "cashier" && (
+            <div className="p-6 sm:p-8 space-y-6">
+              {/* Terminal Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 mb-1">
+                    <CreditCard className="w-3.5 h-3.5" /> ROLE_BRANCH_CASHIER (Workstation #1)
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+                    Sub-Second POS Billing Counter
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Click items to simulate barcode scanning. Watch real-time tax calculate and print an authentic thermal invoice.
+                  </p>
+                </div>
+
+                {lastScannedItem && (
+                  <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 font-bold text-xs flex items-center gap-1.5 animate-bounce">
+                    <ScanLine className="w-3.5 h-3.5" /> Scanned: {lastScannedItem}!
+                  </div>
+                )}
+              </div>
+
+              {/* Grid: 7 cols Catalog + 5 cols Cart/Printer */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Product Tiles (7 cols) */}
+                <div className="lg:col-span-7 p-5 rounded-2xl border border-border bg-secondary/30 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <ScanLine className="w-4 h-4 text-emerald-500" /> Touch Catalog / Fast Barcode Grid
+                    </h3>
+                    <button
+                      onClick={() => addToCart(POS_CATALOG[Math.floor(Math.random() * POS_CATALOG.length)])}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-all cursor-pointer"
+                    >
+                      ⚡ Scan Random Barcode
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {POS_CATALOG.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => addToCart(item)}
+                        className="p-3.5 rounded-xl border border-border bg-card hover:border-emerald-500 hover:shadow-sm text-left transition-all group cursor-pointer flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex justify-between text-[10px] font-mono text-muted-foreground mb-1">
+                            <span>{item.category}</span>
+                            <span className="text-emerald-600 font-bold">{item.gst}% GST</span>
+                          </div>
+                          <div className="text-xs font-bold text-foreground group-hover:text-emerald-600 transition-colors">
+                            {item.name}
+                          </div>
+                        </div>
+                        <div className="mt-3 pt-2 border-t border-border flex justify-between items-center">
+                          <span className="text-xs font-black text-foreground">₹{item.price}</span>
+                          <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-0.5">
+                            <Plus className="w-3 h-3" /> Add
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cart & Thermal Receipt Output (5 cols) */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <ShoppingCart className="w-4 h-4 text-emerald-500" /> Current Bill
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                          {cart.reduce((s, i) => s + i.qty, 0)} Items
+                        </span>
+                      </h3>
+                      {cart.length > 0 && (
+                        <button
+                          onClick={() => {
+                            setCart([]);
+                            setReceiptPrinted(false);
+                          }}
+                          className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" /> Clear
+                        </button>
                       )}
                     </div>
 
-                    {/* Step details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                        <h5 className="text-sm font-bold text-foreground">{item.title}</h5>
-                        <code className="text-[11px] font-mono px-2 py-0.5 rounded bg-secondary text-muted-foreground border border-border">
-                          {item.route}
-                        </code>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                        {item.description}
-                      </p>
-
-                      {/* Action chips */}
-                      <div className="flex flex-wrap gap-1.5">
-                        {item.actions.map((act, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-secondary text-foreground border border-border"
-                          >
-                            <CheckCircle2 className="w-3 h-3 text-emerald-500" /> {act}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Role Feature Arsenal (Right 1 col) */}
-            <div className="space-y-6">
-              <div>
-                <h4 className="text-base font-bold text-foreground flex items-center gap-2 mb-4">
-                  <Zap className="w-4 h-4 text-amber-500" /> Core Feature Capabilities
-                </h4>
-                <div className="space-y-3">
-                  {activeRoleData.features.map((feat, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3.5 rounded-xl border border-border bg-background"
-                    >
-                      <div className="text-xs font-bold text-foreground flex items-center gap-1.5 mb-1">
-                        <BadgeCheck className="w-3.5 h-3.5 text-amber-500" /> {feat.name}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        {feat.desc}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Security Boundary Notice */}
-              <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">
-                  <Lock className="w-4 h-4" /> Role Isolation & Security
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Every API request verifies JWT claims, tenant store ID, and branch boundaries. A cashier cannot access branch manager reports, and a branch manager cannot view rival branch financials.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 2: Interactive POS Terminal Simulator */}
-      <section id="simulator-section" className="py-16 bg-secondary/30 border-y border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mb-3">
-              <Zap className="w-3.5 h-3.5" /> Hands-On Interactive Sandbox
-            </div>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight mb-3">
-              Try the Cashier Billing Counter Right Here
-            </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Experience the sub-second speed of the NexPOS checkout terminal. Click products to scan, select payment method, and generate a real-time thermal receipt instantly.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left: Product Catalog Grid (7 cols) */}
-            <div className="lg:col-span-7 rounded-2xl border border-border bg-card p-5 shadow-xs">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <ScanLine className="w-4 h-4 text-amber-500" /> Quick-Tap Product Catalog
-                  </h3>
-                  <p className="text-xs text-muted-foreground">Click any item to simulate barcode scanning</p>
-                </div>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-secondary text-muted-foreground border border-border">
-                  6 Demo SKUs
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                {DEMO_PRODUCTS.map((prod) => (
-                  <button
-                    key={prod.id}
-                    onClick={() => addToCart(prod)}
-                    className="p-3 rounded-xl border border-border/80 bg-background hover:border-amber-500 hover:shadow-xs transition-all text-left group cursor-pointer flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
-                          {prod.category}
-                        </span>
-                        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                          {prod.gst}% GST
-                        </span>
-                      </div>
-                      <div className="text-xs font-bold text-foreground line-clamp-2 group-hover:text-amber-600 transition-colors">
-                        {prod.name}
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between pt-2 border-t border-border/60">
-                      <span className="text-xs font-extrabold text-foreground">₹{prod.price}</span>
-                      <span className="text-[11px] font-bold text-amber-600 flex items-center gap-0.5">
-                        <Plus className="w-3 h-3" /> Add
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Fast Barcode Simulator Button */}
-              <div className="p-3 rounded-xl bg-secondary/50 border border-border flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <ScanLine className="w-4 h-4 text-amber-500" />
-                  <span>Physical USB/Bluetooth barcode scanners emit instant ENTER keys</span>
-                </div>
-                <button
-                  onClick={() => addToCart(DEMO_PRODUCTS[Math.floor(Math.random() * DEMO_PRODUCTS.length)])}
-                  className="px-3 py-1 text-xs font-bold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors cursor-pointer"
-                >
-                  ⚡ Simulate Barcode Scan
-                </button>
-              </div>
-            </div>
-
-            {/* Right: Live Cart & Thermal Receipt Preview (5 cols) */}
-            <div className="lg:col-span-5 space-y-4">
-              {/* Cart Drawer */}
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-amber-500" />
-                    <h3 className="text-sm font-bold text-foreground">Terminal Cart</h3>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-bold">
-                      {cart.reduce((sum, item) => sum + item.qty, 0)} items
-                    </span>
-                  </div>
-                  {cart.length > 0 && (
-                    <button
-                      onClick={clearCart}
-                      className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3 h-3" /> Clear
-                    </button>
-                  )}
-                </div>
-
-                {/* Cart Item List */}
-                {cart.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
-                    Cart is empty. Click a product on the left to begin billing.
-                  </div>
-                ) : (
-                  <div className="max-h-48 overflow-y-auto space-y-2 mb-4 pr-1">
-                    {cart.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-2 rounded-lg bg-background border border-border text-xs"
-                      >
-                        <div className="min-w-0 flex-1 pr-2">
-                          <div className="font-semibold text-foreground truncate">{item.name}</div>
-                          <div className="text-[10px] text-muted-foreground font-mono">
-                            ₹{item.price} × {item.qty} + {item.gst}% GST
+                    {/* Cart Items */}
+                    <div className="max-h-44 overflow-y-auto space-y-2 pr-1">
+                      {cart.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
+                          Cart empty. Click an item on the left to scan.
+                        </div>
+                      ) : (
+                        cart.map((item) => (
+                          <div key={item.id} className="p-2 rounded-lg bg-secondary/50 border border-border flex justify-between items-center text-xs">
+                            <div className="min-w-0 flex-1 pr-2">
+                              <div className="font-bold text-foreground truncate">{item.name}</div>
+                              <div className="text-[10px] text-muted-foreground">₹{item.price} × {item.qty}</div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => updateCartQty(item.id, -1)}
+                                className="w-5 h-5 rounded flex items-center justify-center bg-card hover:bg-border text-foreground cursor-pointer"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="font-bold w-4 text-center">{item.qty}</span>
+                              <button
+                                onClick={() => updateCartQty(item.id, 1)}
+                                className="w-5 h-5 rounded flex items-center justify-center bg-card hover:bg-border text-foreground cursor-pointer"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                              <span className="font-bold w-12 text-right">₹{item.price * item.qty}</span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        ))
+                      )}
+                    </div>
+
+                    {/* Math Breakdown */}
+                    <div className="pt-2 border-t border-border space-y-1.5 text-xs">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Subtotal:</span>
+                        <span>₹{rawSubtotal}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Discount:</span>
+                        <div className="flex items-center gap-1">
                           <button
-                            onClick={() => updateQty(item.id, -1)}
-                            className="w-5 h-5 rounded flex items-center justify-center bg-secondary hover:bg-border text-foreground cursor-pointer"
+                            onClick={() => setDiscountPercent((p) => (p === 10 ? 0 : 10))}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
+                              discountPercent > 0 ? "bg-emerald-500 text-white" : "bg-secondary text-muted-foreground"
+                            }`}
                           >
-                            <Minus className="w-3 h-3" />
+                            {discountPercent > 0 ? "10% OFF APPLIED" : "Apply 10%"}
                           </button>
-                          <span className="font-bold w-4 text-center">{item.qty}</span>
-                          <button
-                            onClick={() => updateQty(item.id, 1)}
-                            className="w-5 h-5 rounded flex items-center justify-center bg-secondary hover:bg-border text-foreground cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                          <span className="font-bold w-12 text-right">₹{item.price * item.qty}</span>
+                          <span>-₹{discountAmount}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>GST (Auto CGST+SGST):</span>
+                        <span>₹{Math.round(taxAmount)}</span>
+                      </div>
+                      <div className="flex justify-between font-black text-foreground text-sm pt-1 border-t border-border">
+                        <span>Grand Total:</span>
+                        <span className="text-emerald-600 text-base">₹{grandTotal}</span>
+                      </div>
+                    </div>
 
-                {/* Subtotals & Taxes */}
-                <div className="space-y-1.5 text-xs border-t border-border pt-3">
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Taxable Subtotal:</span>
-                    <span>₹{subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>GST (CGST + SGST):</span>
-                    <span>₹{taxAmount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-extrabold text-foreground text-sm pt-1 border-t border-border/60">
-                    <span>Grand Total:</span>
-                    <span className="text-amber-600 dark:text-amber-400">₹{grandTotal}</span>
-                  </div>
-                </div>
+                    {/* Payment Mode Selector */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={() => setPaymentMode("upi")}
+                        className={`p-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          paymentMode === "upi" ? "bg-emerald-600 text-white border-emerald-700" : "bg-secondary text-foreground"
+                        }`}
+                      >
+                        <QrCode className="w-3.5 h-3.5 mx-auto mb-1" /> UPI QR
+                      </button>
+                      <button
+                        onClick={() => setPaymentMode("cash")}
+                        className={`p-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          paymentMode === "cash" ? "bg-emerald-600 text-white border-emerald-700" : "bg-secondary text-foreground"
+                        }`}
+                      >
+                        <Coins className="w-3.5 h-3.5 mx-auto mb-1" /> Cash
+                      </button>
+                      <button
+                        onClick={() => setPaymentMode("card")}
+                        className={`p-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          paymentMode === "card" ? "bg-emerald-600 text-white border-emerald-700" : "bg-secondary text-foreground"
+                        }`}
+                      >
+                        <CreditCard className="w-3.5 h-3.5 mx-auto mb-1" /> Card
+                      </button>
+                    </div>
 
-                {/* Tender Mode Selector */}
-                <div className="mt-4 pt-3 border-t border-border">
-                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">
-                    Select Payment Mode:
-                  </span>
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <button
-                      onClick={() => setPaymentMode("upi")}
-                      className={`p-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        paymentMode === "upi"
-                          ? "bg-amber-500 text-white border-amber-600 shadow-xs"
-                          : "bg-background border-border text-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      <QrCode className="w-3.5 h-3.5" /> UPI QR
-                    </button>
-                    <button
-                      onClick={() => setPaymentMode("cash")}
-                      className={`p-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        paymentMode === "cash"
-                          ? "bg-amber-500 text-white border-amber-600 shadow-xs"
-                          : "bg-background border-border text-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      <Coins className="w-3.5 h-3.5" /> Cash
-                    </button>
-                    <button
-                      onClick={() => setPaymentMode("card")}
-                      className={`p-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        paymentMode === "card"
-                          ? "bg-amber-500 text-white border-amber-600 shadow-xs"
-                          : "bg-background border-border text-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      <CreditCard className="w-3.5 h-3.5" /> Card
-                    </button>
-                  </div>
-
-                  {paymentMode === "cash" && (
-                    <div className="p-2.5 rounded-lg bg-secondary/60 border border-border text-xs mb-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Cash Tendered by Customer:</span>
+                    {paymentMode === "cash" && (
+                      <div className="p-2.5 rounded-lg bg-secondary border border-border text-xs flex justify-between items-center">
+                        <span className="text-muted-foreground">Tendered:</span>
                         <input
                           type="number"
-                          value={cashTendered}
-                          onChange={(e) => setCashTendered(Number(e.target.value))}
-                          className="w-24 px-2 py-1 text-right font-bold rounded border border-border bg-background"
+                          value={cashGiven}
+                          onChange={(e) => setCashGiven(Number(e.target.value))}
+                          className="w-20 px-2 py-0.5 rounded border border-border bg-background text-right font-bold"
                         />
+                        <span className="text-emerald-600 font-bold">Return: ₹{changeDue}</span>
                       </div>
-                      <div className="flex items-center justify-between font-bold text-emerald-600 dark:text-emerald-400">
-                        <span>Change to Return:</span>
-                        <span>₹{changeToReturn}</span>
+                    )}
+
+                    <Button
+                      disabled={cart.length === 0}
+                      onClick={() => setReceiptPrinted(true)}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold h-10 shadow-xs cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4 mr-1.5" /> Complete Sale & Print Receipt
+                    </Button>
+                  </div>
+
+                  {/* Thermal Receipt Print Animation */}
+                  {receiptPrinted && (
+                    <div className="p-5 rounded-2xl border-2 border-emerald-500/40 bg-white text-slate-900 shadow-xl font-mono text-[11px] leading-snug animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div className="text-center border-b border-dashed border-slate-400 pb-2 mb-2">
+                        <div className="font-bold text-xs uppercase tracking-wider">APEX RETAIL STORE</div>
+                        <div className="text-[10px] text-slate-600">Connaught Place Outlet • GSTIN: 07AAAAA0000A1Z5</div>
+                        <div className="text-[9px] text-slate-500 mt-1">Invoice: INV-2026-0982 • Cashier: Rahul</div>
+                      </div>
+
+                      <div className="space-y-1 border-b border-dashed border-slate-400 pb-2 mb-2">
+                        {cart.map((c) => (
+                          <div key={c.id} className="flex justify-between">
+                            <span>{c.name} ×{c.qty}</span>
+                            <span>₹{c.price * c.qty}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-0.5 border-b border-dashed border-slate-400 pb-2 mb-2">
+                        <div className="flex justify-between"><span>Subtotal:</span><span>₹{discountedSubtotal}</span></div>
+                        <div className="flex justify-between"><span>GST:</span><span>₹{Math.round(taxAmount)}</span></div>
+                        <div className="flex justify-between font-black text-xs pt-1">
+                          <span>TOTAL PAID:</span><span>₹{grandTotal}</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-600">
+                          <span>Mode: {paymentMode.toUpperCase()}</span><span>STATUS: PAID ✓</span>
+                        </div>
+                      </div>
+
+                      <div className="text-center text-[9px] text-slate-500">
+                        *** Thank you for shopping! ***
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
 
-                  <Button
-                    disabled={cart.length === 0}
-                    onClick={() => setReceiptGenerated(true)}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 shadow-sm cursor-pointer"
-                  >
-                    <Printer className="w-4 h-4 mr-1.5" /> Complete Sale & Print Receipt
-                  </Button>
+          {/* ============================================================ */}
+          {/* VIEW 4: SUPER ADMIN INTERACTIVE CONSOLE                     */}
+          {/* ============================================================ */}
+          {activeRole === "super_admin" && (
+            <div className="p-6 sm:p-8 space-y-6">
+              {/* Header Info */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20 mb-1">
+                    <ShieldCheck className="w-3.5 h-3.5" /> ROLE_ADMIN (Platform SaaS Controller)
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+                    SaaS Platform Control, Store Verification & Tier Limits
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Global oversight of all retail merchants, subscription pricing packages, and system audit trails.
+                  </p>
                 </div>
               </div>
 
-              {/* Thermal Receipt Preview Modal/Card */}
-              {receiptGenerated && (
-                <div className="p-5 rounded-2xl border-2 border-emerald-500/30 bg-white text-slate-900 shadow-lg font-mono text-[11px] leading-tight animate-in fade-in slide-in-from-top-4 duration-300">
-                  <div className="text-center border-b border-dashed border-slate-300 pb-3 mb-2">
-                    <div className="font-bold text-sm uppercase tracking-wider">NEXPOS RETAIL PVT LTD</div>
-                    <div className="text-[10px] text-slate-600">Connaught Place Flagship Branch</div>
-                    <div className="text-[10px] text-slate-600">GSTIN: 07AAAAA0000A1Z5</div>
-                    <div className="text-[10px] text-slate-500 mt-1">Tax Invoice #: {invoiceNumber}</div>
-                    <div className="text-[9px] text-slate-400">Date: {new Date().toLocaleString()}</div>
+              {/* Two Column Layout: Store Approvals + Pricing Tier Adjuster */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Pending Store Approvals (7 cols) */}
+                <div className="lg:col-span-7 p-5 rounded-2xl border border-border bg-secondary/30 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <FileCheck2 className="w-4 h-4 text-purple-500" /> Merchant Verification Queue
+                    </h3>
+                    <p className="text-xs text-muted-foreground">Verify business credentials and approve new store registrations.</p>
                   </div>
 
-                  {/* Items on receipt */}
-                  <div className="space-y-1.5 border-b border-dashed border-slate-300 pb-2 mb-2">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex justify-between">
-                        <span className="truncate pr-2">
-                          {item.name} ×{item.qty}
-                        </span>
-                        <span className="shrink-0">₹{item.price * item.qty}</span>
+                  <div className="space-y-3">
+                    {storeRequests.map((req) => (
+                      <div key={req.id} className="p-4 rounded-xl border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-sm text-foreground">{req.storeName}</span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                              {req.city}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Owner: <strong className="text-foreground">{req.owner}</strong> • GSTIN: {req.gstin}
+                          </div>
+                        </div>
+
+                        <div>
+                          {req.status === "APPROVED" ? (
+                            <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Store Activated ✓
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleApproveStore(req.id)}
+                              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors cursor-pointer"
+                            >
+                              ✓ Approve Store
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
+                </div>
 
-                  {/* Summary */}
-                  <div className="space-y-1 border-b border-dashed border-slate-300 pb-2 mb-2">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>₹{subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>CGST + SGST:</span>
-                      <span>₹{taxAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-xs pt-1 border-t border-slate-200">
-                      <span>TOTAL PAID:</span>
-                      <span>₹{grandTotal}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px] text-slate-600">
-                      <span>Mode: {paymentMode.toUpperCase()}</span>
-                      <span>STATUS: PAID ✓</span>
-                    </div>
+                {/* Plan Tier Tuner (5 cols) */}
+                <div className="lg:col-span-5 p-5 rounded-2xl border border-border bg-secondary/30 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-purple-500" /> Subscription Pricing Tuner
+                    </h3>
+                    <p className="text-xs text-muted-foreground">Dynamically modify platform tier rates without code redeploy.</p>
                   </div>
 
-                  <div className="text-center text-[10px] text-slate-500 pt-1">
-                    Thank you for shopping with us!<br />
-                    * Powered by NexPOS Engine *
+                  <div className="p-4 rounded-xl border border-border bg-card space-y-3 text-xs">
+                    <div className="flex justify-between font-bold">
+                      <span>Starter Tier Monthly Price:</span>
+                      <span className="text-purple-600 font-black text-sm">₹{starterPlanPrice} / mo</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={499}
+                      max={2499}
+                      step={100}
+                      value={starterPlanPrice}
+                      onChange={(e) => setStarterPlanPrice(Number(e.target.value))}
+                      className="w-full accent-purple-500 cursor-pointer"
+                    />
+                    <div className="p-2.5 rounded-lg bg-secondary text-[11px] text-muted-foreground">
+                      Setting this price automatically propagates to all public landing pricing tables and Razorpay payment orders.
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      </section>
+      </main>
 
-      {/* SECTION 3: End-to-End Data Architecture Flow */}
-      <section id="architecture-section" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#FDF6E2] text-[#785600] border border-[#EED896] dark:bg-[#3A3530] dark:text-[#F5A623] dark:border-[#5A4F3D] mb-3">
-            <Boxes className="w-3.5 h-3.5" /> Synchronized Ecosystem
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground mb-3">
-            How Data Flows Through NexPOS in Real Time
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            A single sale at a cashier terminal instantly ripples through inventory, manager shift audits, and executive revenue dashboards.
+      {/* 4. FOOTER CALL TO ACTION */}
+      <footer className="py-12 border-t border-border bg-secondary/30 text-center px-4">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <h3 className="text-xl font-bold text-foreground">
+            Ready to deploy NexPOS for your retail business?
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Create your account in 2 minutes, configure your branches, and begin billing immediately.
           </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
-          {/* Card 1 */}
-          <div className="p-5 rounded-2xl border border-border bg-card shadow-xs relative">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs mb-3 border border-amber-500/20">
-              01
-            </div>
-            <h4 className="text-sm font-bold text-foreground mb-1">Catalog Defined</h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Store Owner enters product name, SKU barcode, cost, MRP, and GST tax rate once in central catalog.
-            </p>
-            <div className="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[11px] font-bold text-amber-600">
-              <Store className="w-3.5 h-3.5" /> Store Owner Console
-            </div>
-          </div>
-
-          {/* Card 2 */}
-          <div className="p-5 rounded-2xl border border-border bg-card shadow-xs relative">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs mb-3 border border-blue-500/20">
-              02
-            </div>
-            <h4 className="text-sm font-bold text-foreground mb-1">Stock Assigned</h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Branch Manager receives shipment and assigns 100 units to Delhi Branch shelf inventory with low-stock alert set at 10.
-            </p>
-            <div className="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[11px] font-bold text-blue-600">
-              <Building2 className="w-3.5 h-3.5" /> Branch Manager Console
-            </div>
-          </div>
-
-          {/* Card 3 */}
-          <div className="p-5 rounded-2xl border border-border bg-card shadow-xs relative">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs mb-3 border border-emerald-500/20">
-              03
-            </div>
-            <h4 className="text-sm font-bold text-foreground mb-1">Customer Billed</h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Cashier scans barcode in 0.1s. Customer pays via UPI QR. Thermal receipt prints and stock automatically decrements to 99.
-            </p>
-            <div className="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
-              <CreditCard className="w-3.5 h-3.5" /> Cashier POS Terminal
-            </div>
-          </div>
-
-          {/* Card 4 */}
-          <div className="p-5 rounded-2xl border border-border bg-card shadow-xs relative">
-            <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs mb-3 border border-purple-500/20">
-              04
-            </div>
-            <h4 className="text-sm font-bold text-foreground mb-1">Executive Sync</h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Owner dashboard ticks up by revenue amount. Shift audit automatically tracks cashier till balance. Zero reconciliation delay.
-            </p>
-            <div className="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[11px] font-bold text-purple-600">
-              <BarChart3 className="w-3.5 h-3.5" /> Real-time Analytics
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 4: Role Permission & Feature Matrix Table */}
-      <section id="matrix-section" className="py-16 bg-secondary/30 border-t border-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground mb-2">
-              Role Permission & Capability Matrix
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              A transparent view of what each role can access and execute across the platform.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border bg-secondary/50 text-muted-foreground">
-                    <th className="py-3.5 px-4 font-bold text-foreground">Platform Capability</th>
-                    <th className="py-3.5 px-3 font-bold text-amber-600 text-center">👔 Store Owner</th>
-                    <th className="py-3.5 px-3 font-bold text-blue-600 text-center">🏢 Branch Manager</th>
-                    <th className="py-3.5 px-3 font-bold text-emerald-600 text-center">💳 Cashier</th>
-                    <th className="py-3.5 px-3 font-bold text-purple-600 text-center">👑 Super Admin</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {FEATURE_MATRIX.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-secondary/30 transition-colors">
-                      <td className="py-3 px-4 font-semibold text-foreground">{row.feature}</td>
-                      <td className="py-3 px-3 text-center">
-                        {row.roles.store_owner ? (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">✓</span>
-                        ) : (
-                          <span className="text-muted-foreground/40 font-bold">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        {row.roles.branch_manager ? (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">✓</span>
-                        ) : (
-                          <span className="text-muted-foreground/40 font-bold">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        {row.roles.cashier ? (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">✓</span>
-                        ) : (
-                          <span className="text-muted-foreground/40 font-bold">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        {row.roles.super_admin ? (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-purple-500/10 text-purple-600 font-bold">✓</span>
-                        ) : (
-                          <span className="text-muted-foreground/40 font-bold">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 5: Frequently Asked Questions */}
-      <section className="py-16 max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground mb-2">
-            Frequently Asked Questions
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Common questions from business owners onboarding their staff to NexPOS.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl border border-border bg-card">
-            <h4 className="text-sm font-bold text-foreground mb-1">
-              What hardware is required for the Cashier workstation?
-            </h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              NexPOS runs directly in modern web browsers (Chrome, Edge, Safari, Firefox). You only need any computer, laptop, or tablet. For printing, standard 58mm or 80mm ESC/POS USB or Bluetooth thermal printers work out of the box. For barcode scanning, standard plug-and-play USB barcode scanners are supported without any drivers.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-border bg-card">
-            <h4 className="text-sm font-bold text-foreground mb-1">
-              How does the system prevent cash drawer theft or cashier discrepancies?
-            </h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Every cashier starts duty by declaring an opening cash float. Throughout the shift, the system tracks every cash, UPI, and card transaction. When the cashier closes the shift, they submit their physical cash count. The system automatically calculates variance (Over / Short) and reports it directly to the Branch Manager for sign-off.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-border bg-card">
-            <h4 className="text-sm font-bold text-foreground mb-1">
-              Can a business run 5 branches in different cities simultaneously?
-            </h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Yes! The Store Owner has centralized visibility across all 5 branches. Each branch has its own Branch Manager and Cashiers who only see their local inventory and sales. The Store Owner sees consolidated revenue as well as individual branch breakdowns.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 6: Call To Action Footer Banner */}
-      <section className="py-16 border-t border-border bg-gradient-to-b from-background to-secondary/30">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight mb-3">
-            Ready to Streamline Your Retail Operations?
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-8">
-            Create your store in under 2 minutes. Add branches, import your catalog, and start billing customers today.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3">
             <Button
-              size="lg"
               onClick={() => navigate("/auth/onboarding")}
-              className="bg-[#B8860B] hover:bg-[#996e08] text-white font-bold text-sm h-11 px-6 shadow-sm cursor-pointer"
+              className="bg-[#B8860B] hover:bg-[#996e08] text-white text-xs font-bold shadow-xs cursor-pointer"
             >
-              Start Free Trial <ArrowRight className="w-4 h-4 ml-2" />
+              Start Free Trial <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Button>
             <Button
-              size="lg"
               variant="outline"
               onClick={() => navigate("/auth/login")}
-              className="font-bold text-sm h-11 px-6 cursor-pointer"
+              className="text-xs font-bold cursor-pointer"
             >
-              Log In to Workstation
+              Sign In to Workstation
             </Button>
           </div>
         </div>
-      </section>
-
-      {/* Mini Footer */}
-      <footer className="py-6 border-t border-border bg-card text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} NexPOS Retail System. All rights reserved. High-Performance Multi-Branch POS Architecture.
       </footer>
     </div>
   );
