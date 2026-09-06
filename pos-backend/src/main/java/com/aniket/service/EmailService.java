@@ -7,5 +7,5 @@ public interface EmailService {
     @Async
     void sendEmail(String to, String subject, String body);
 
-//    void sendResetEmail(String to, String subject, String text);
+    void sendEmailSync(String to, String subject, String body) throws Exception;
 }

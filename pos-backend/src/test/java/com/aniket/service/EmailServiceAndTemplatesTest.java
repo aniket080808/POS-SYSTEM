@@ -205,4 +205,13 @@ public class EmailServiceAndTemplatesTest {
         verify(javaMailSender, never()).createMimeMessage();
         verify(javaMailSender, never()).send(any(MimeMessage.class));
     }
+
+    @Test
+    void testSendEmailSync_Success() throws Exception {
+        MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+        when(javaMailSender.createMimeMessage()).thenReturn(mimeMessage);
+
+        assertDoesNotThrow(() -> emailService.sendEmailSync("aniketmeshram445@gmail.com", "Subject", "<p>Body</p>"));
+        verify(javaMailSender, times(1)).createMimeMessage();
+    }
 }

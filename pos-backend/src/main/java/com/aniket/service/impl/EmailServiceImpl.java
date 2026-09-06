@@ -21,6 +21,33 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username:aniketmeshram445@gmail.com}")
     private String fromEmail;
 
+    @Override
+    public void sendEmailSync(String to, String subject, String body) throws Exception {
+        if (to == null || to.trim().isEmpty()) {
+            throw new IllegalArgumentException("Recipient address cannot be empty");
+        }
+
+        // Sanitize password spaces if present on JavaMailSenderImpl instance
+        if (javaMailSender instanceof org.springframework.mail.javamail.JavaMailSenderImpl impl) {
+            if (impl.getPassword() != null && impl.getPassword().contains(" ")) {
+                impl.setPassword(impl.getPassword().replace(" ", ""));
+            }
+        }
+
+        MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+        String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail.trim() : "aniketmeshram445@gmail.com";
+        helper.setFrom(sender, "NexPOS");
+        helper.setTo(to.trim());
+        helper.setSubject(subject);
+        helper.setText(body, true);
+
+        log.info("[EmailService] Dispatching email to {} with subject: '{}'", to, subject);
+        javaMailSender.send(mimeMessage);
+        log.info("[EmailService] Successfully sent email to {}", to);
+    }
+
     @Async
     @Override
     public void sendEmail(String to, String subject, String body) {
@@ -42,18 +69,7 @@ public class EmailServiceImpl implements EmailService {
         }
 
         try {
-            log.info("[Async Email] Starting email dispatch to {} with subject: '{}'", to, subject);
-            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
-            String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail.trim() : "aniketmeshram445@gmail.com";
-            helper.setFrom(sender, "NexPOS");
-            helper.setTo(to.trim());
-            helper.setSubject(subject);
-            helper.setText(body, true);
-
-            javaMailSender.send(mimeMessage);
-            log.info("[Async Email] Successfully sent email to {}", to);
+            sendEmailSync(to, subject, body);
         } catch (Exception e) {
             log.error("[Async Email] Failed to send email to {}: {}", to, e.getMessage(), e);
         }

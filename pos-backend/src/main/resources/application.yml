@@ -35,7 +35,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: ${MAIL_USERNAME:aniketmeshram445@gmail.com}
-    password: ${MAIL_PASSWORD:otah jlph xjrd jzwq}
+    password: ${MAIL_PASSWORD:otahjlphxjrdjzwq}
     properties:
       mail:
         smtp:
@@ -45,9 +45,10 @@ spring:
             required: true
           ssl:
             trust: smtp.gmail.com
-          connectiontimeout: 10000
-          timeout: 10000
-          writetimeout: 10000
+            protocols: TLSv1.2 TLSv1.3
+          connectiontimeout: 15000
+          timeout: 15000
+          writetimeout: 15000
 
   devtools:
     livereload:

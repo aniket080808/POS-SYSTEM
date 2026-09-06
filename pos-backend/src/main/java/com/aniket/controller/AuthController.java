@@ -42,6 +42,8 @@ public class AuthController {
 
     private final AuthService authService;
     private final OnboardingService onboardingService;
+    private final com.aniket.service.EmailService emailService;
+    private final com.aniket.service.EmailTemplateService emailTemplateService;
 
     // Per-IP Rate limit: 20 login attempts per minute per client IP (production-grade brute-force protection)
     private final java.util.Map<String, Bucket> ipBuckets = new java.util.concurrent.ConcurrentHashMap<>();
@@ -174,5 +176,28 @@ public class AuthController {
         return ResponseEntity.ok(res);
     }
 
+    @org.springframework.web.bind.annotation.GetMapping("/diagnostic-email")
+    public ResponseEntity<java.util.Map<String, Object>> diagnosticEmail(
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "aniketmeshram445@gmail.com") String to) {
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("version", "v4-sync-diagnostic");
+        result.put("timestamp", java.time.LocalDateTime.now().toString());
+        result.put("recipient", to);
+        try {
+            String testBody = emailTemplateService.buildPasswordResetEmail("Diagnostic Test User", "https://pos-system-97v.pages.dev/auth/reset-password?token=diag-token-12345", 5);
+            emailService.sendEmailSync(to, "NexPOS Diagnostic Test", testBody);
+            result.put("status", "SUCCESS");
+            result.put("message", "Email successfully delivered via Google SMTP to " + to);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            result.put("status", "ERROR");
+            result.put("error", e.getMessage());
+            result.put("errorClass", e.getClass().getName());
+            java.io.StringWriter sw = new java.io.StringWriter();
+            e.printStackTrace(new java.io.PrintWriter(sw));
+            result.put("stackTrace", sw.toString());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
 
 }
