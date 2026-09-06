@@ -21,6 +21,23 @@ public class EmailServiceImpl implements EmailService {
     @Async
     @Override
     public void sendEmail(String to, String subject, String body) {
+        if (to == null || to.trim().isEmpty()) {
+            log.warn("[Async Email] Recipient address is empty, skipping dispatch.");
+            return;
+        }
+
+        String recipient = to.trim().toLowerCase();
+        // Guard against test/dummy email domains that cause mailer-daemon delivery failure loops
+        if (recipient.endsWith("@branch1.com")
+                || recipient.endsWith("@test.com")
+                || recipient.endsWith("@example.com")
+                || recipient.endsWith("@teststore.com")
+                || recipient.startsWith("live_audit")
+                || recipient.startsWith("audit_test")) {
+            log.info("[Async Email] Bypassing email dispatch for test/dummy recipient: {}", to);
+            return;
+        }
+
         CompletableFuture.runAsync(() -> {
             String threadName = Thread.currentThread().getName();
             log.info("[Async Email] Starting email dispatch to {} on thread: {}", to, threadName);

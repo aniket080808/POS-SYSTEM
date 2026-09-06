@@ -46,6 +46,9 @@ public class StoreGatingAndMultiTenancyTest {
     @Autowired
     private StoreService storeService;
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private EmailService emailService;
+
     private User storeAdmin;
     private User storeManager;
     private Store store;

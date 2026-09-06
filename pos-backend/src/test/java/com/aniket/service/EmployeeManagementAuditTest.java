@@ -40,6 +40,9 @@ public class EmployeeManagementAuditTest {
     @Autowired
     private EmployeeService employeeService;
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private EmailService emailService;
+
     @Autowired
     private AuthService authService;
 

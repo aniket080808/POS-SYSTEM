@@ -49,6 +49,9 @@ public class EmployeeControllerLiveAuditTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private com.aniket.service.EmailService emailService;
+
     private static final String TEST_EMAIL = "live_audit_emp_99@branch1.com";
     private String branchAdminJwt;
     private String branchManagerJwt;
