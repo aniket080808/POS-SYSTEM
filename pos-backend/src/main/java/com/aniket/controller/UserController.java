@@ -66,16 +66,16 @@ public class UserController {
 		return new ResponseEntity<>(userDTO,HttpStatus.OK);
 	}
 
-	@GetMapping({"/api/users/list", "/users/list"})
+	@GetMapping("/api/users/list")
 	@PreAuthorize("hasRole('ADMIN')")
-	public ResponseEntity<List<User>> getUsersListHandler(
+	public ResponseEntity<List<UserDTO>> getUsersListHandler(
 			@RequestHeader("Authorization") String jwt) throws UserException {
 		List<User> users = userService.getUsers();
-
-		return new ResponseEntity<>(users,HttpStatus.OK);
+		List<UserDTO> userDTOs = users.stream().map(UserMapper::toDTO).collect(java.util.stream.Collectors.toList());
+		return new ResponseEntity<>(userDTOs, HttpStatus.OK);
 	}
 
-	@GetMapping({"/api/users/{userId}", "/users/{userId}"})
+	@GetMapping("/api/users/{userId}")
 	@PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER', 'BRANCH_ADMIN', 'BRANCH_MANAGER', 'ADMIN')")
 	public ResponseEntity<UserDTO> getUserByIdHandler(
 			@PathVariable Long userId

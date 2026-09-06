@@ -28,12 +28,40 @@ public class ContactInquiryController {
     private final NotificationService notificationService;
     private final UserRepository userRepository;
 
+    // Per-IP Rate limit: 5 contact inquiries per minute (spam/abuse protection)
+    private final java.util.Map<String, io.github.bucket4j.Bucket> contactIpBuckets = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private io.github.bucket4j.Bucket resolveContactBucket(jakarta.servlet.http.HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        String clientIp;
+        if (xff != null && !xff.isBlank()) {
+            String[] ips = xff.split(",");
+            clientIp = ips[ips.length - 1].trim();
+        } else {
+            clientIp = request.getRemoteAddr();
+        }
+        if (clientIp == null || clientIp.isBlank()) clientIp = "UNKNOWN";
+        final String ip = clientIp;
+        return contactIpBuckets.computeIfAbsent(ip, k -> io.github.bucket4j.Bucket.builder()
+                .addLimit(io.github.bucket4j.Bandwidth.classic(5,
+                        io.github.bucket4j.Refill.greedy(5, java.time.Duration.ofMinutes(1))))
+                .build());
+    }
+
     /**
      * 🔓 Public endpoint to submit contact inquiries from landing page
      */
     @PostMapping("/api/public/contact-inquiries")
-    public ResponseEntity<ApiResponse<ContactInquiry>> submitInquiry(@RequestBody ContactInquiry inquiry) {
+    public ResponseEntity<ApiResponse<ContactInquiry>> submitInquiry(
+            jakarta.servlet.http.HttpServletRequest httpRequest,
+            @RequestBody ContactInquiry inquiry) {
         try {
+            // 🔒 Rate limit check
+            if (!resolveContactBucket(httpRequest).tryConsume(1)) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS)
+                        .body(new ApiResponse<>(false, "Too many requests. Please try again later.", null));
+            }
+
             if (inquiry.getName() == null || inquiry.getName().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(new ApiResponse<>(false, "Name is required", null));
             }

@@ -10,7 +10,6 @@ export const signup = createAsyncThunk(
       localStorage.setItem("jwt", res.data.data.jwt);
       return res.data.data;
     } catch (err) {
-      console.error("Signup error:", err);
       return rejectWithValue(err.response?.data?.message || "Signup failed");
     }
   }
@@ -30,7 +29,6 @@ export const login = createAsyncThunk(
 
       return data;
     } catch (err) {
-      console.error("Login error:", err);
       return rejectWithValue(err.response?.data?.message || "Login failed");
     }
   }
@@ -44,7 +42,6 @@ export const forgotPassword = createAsyncThunk(
       const res = await api.post("/auth/forgot-password", { email });
       return res.data;
     } catch (err) {
-      console.error("Forgot password error:", err);
       return rejectWithValue(err.response?.data?.message || "Failed to send reset email");
     }
   }
@@ -58,7 +55,6 @@ export const resetPassword = createAsyncThunk(
       const res = await api.post("/auth/reset-password", { token, password });
       return res.data;
     } catch (err) {
-      console.error("Reset password error:", err);
       return rejectWithValue(err.response?.data?.message || "Failed to reset password");
     }
   }

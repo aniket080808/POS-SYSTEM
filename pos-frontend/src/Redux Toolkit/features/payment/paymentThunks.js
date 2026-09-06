@@ -15,10 +15,8 @@ export const createPaymentLinkThunk = createAsyncThunk(
       );
 
       window.open(response.data.payment_link_url, "_blank");
-      console.log("Payment link created:", response.data);
       return response.data;
     } catch (error) {
-      console.log("Error creating payment link:", error);
       return rejectWithValue(error.response?.data || error.message);
     }
   }

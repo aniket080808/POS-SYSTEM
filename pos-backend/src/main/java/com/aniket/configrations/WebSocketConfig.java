@@ -41,10 +41,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // Better compatibility for frontend
+                .setAllowedOriginPatterns(
+                        "http://localhost:*",
+                        "https://pos-system-97v.pages.dev",
+                        "https://aniket-pos.vercel.app",
+                        "https://pos-sytem-bcs6.vercel.app"
+                )
                 .withSockJS();
         registry.addEndpoint("/ws/websocket")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(
+                        "http://localhost:*",
+                        "https://pos-system-97v.pages.dev",
+                        "https://aniket-pos.vercel.app",
+                        "https://pos-sytem-bcs6.vercel.app"
+                );
     }
 
     @Override

@@ -24,7 +24,6 @@ const saveCartToStorage = (items) => {
   try {
     localStorage.setItem("pos_cart_items", JSON.stringify(items));
   } catch (e) {
-    console.error("Failed to save cart to localStorage", e);
   }
 };
 
@@ -32,7 +31,6 @@ const saveHeldOrdersToStorage = (heldOrders) => {
   try {
     localStorage.setItem("pos_held_orders", JSON.stringify(heldOrders));
   } catch (e) {
-    console.error("Failed to save held orders to localStorage", e);
   }
 };
 
@@ -179,7 +177,6 @@ const cartSlice = createSlice({
         localStorage.removeItem("pos_cart_items");
         localStorage.removeItem("pos_held_orders");
       } catch (e) {
-        console.error("Failed to clear cart storage", e);
       }
       return {
         items: [],

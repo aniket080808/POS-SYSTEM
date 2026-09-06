@@ -24,8 +24,6 @@ export const createStore = createAsyncThunk(
   "store/create",
   async (storeData, { rejectWithValue }) => {
     try {
-      console.log('🔄 Creating store...', { storeData });
-      
       const headers = getAuthHeaders();
       const res = await api.post("/api/stores", storeData, { headers });
       
@@ -57,8 +55,6 @@ export const getStoreById = createAsyncThunk(
   "store/getById",
   async (id, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching store by ID...', { storeId: id });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/stores/${id}`, { headers });
       
@@ -90,8 +86,6 @@ export const getAllStores = createAsyncThunk(
   "store/getAll",
   async (status, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching all stores...');
-      
       const headers = getAuthHeaders();
       const res = await api.get("/api/stores", { headers,
         params: status ? { status } : undefined,
@@ -122,8 +116,6 @@ export const searchStores = createAsyncThunk(
   "store/search",
   async ({ status, search, page = 0, size = 10 }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Searching stores...', { status, search, page, size });
-      
       const headers = getAuthHeaders();
       const params = {};
       if (status) params.status = status;
@@ -161,8 +153,6 @@ export const updateStore = createAsyncThunk(
   "store/update",
   async ({ id, storeData }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Updating store...', { storeId: id, storeData });
-      
       const headers = getAuthHeaders();
       const res = await api.put(`/api/stores/${id}`, storeData, { headers });
       
@@ -195,8 +185,6 @@ export const updateStoreAsSuperAdmin = createAsyncThunk(
   "store/updateAsSuperAdmin",
   async ({ id, storeData }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Super admin updating store...', { storeId: id, storeData });
-      
       const headers = getAuthHeaders();
       const res = await api.put(`/api/stores/super-admin/${id}`, storeData, { headers });
       
@@ -228,14 +216,9 @@ export const deleteStore = createAsyncThunk(
   "store/delete",
   async (id, { rejectWithValue }) => {
     try {
-      console.log('🔄 Deleting store...', { storeId: id });
-      
       const headers = getAuthHeaders();
       const url = id ? `/api/stores/${id}` : "/api/stores";
       const res = await api.delete(url, { headers });
-      
-      console.log('✅ Store deleted successfully:', { response: res.data });
-      
       return res.data;
     } catch (err) {
       console.error('❌ Failed to delete store:', {
@@ -257,8 +240,6 @@ export const getStoreByAdmin = createAsyncThunk(
   "store/getByAdmin",
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching store by admin...');
-      
       const headers = getAuthHeaders();
       const res = await api.get("/api/stores/admin", { headers });
       
@@ -289,8 +270,6 @@ export const getStoreByEmployee = createAsyncThunk(
   "store/getByEmployee",
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching store by employee...');
-      
       const headers = getAuthHeaders();
       const res = await api.get("/api/stores/employee", { headers });
       
@@ -321,8 +300,6 @@ export const getStoreEmployees = createAsyncThunk(
   "store/getEmployees",
   async (storeId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching store employees...', { storeId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/stores/${storeId}/employee/list`, { headers });
       
@@ -357,8 +334,6 @@ export const addEmployee = createAsyncThunk(
   "store/addEmployee",
   async (employeeData, { rejectWithValue }) => {
     try {
-      console.log('🔄 Adding employee to store...', { employeeData });
-      
       const headers = getAuthHeaders();
       const res = await api.post("/api/stores/add/employee", employeeData, { headers });
       
@@ -390,8 +365,6 @@ export const getStoreSubscription = createAsyncThunk(
   "store/getSubscription",
   async (storeId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching store subscription...', { storeId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/stores/${storeId}/subscription`, { headers });
       
@@ -421,7 +394,6 @@ export const moderateStore = createAsyncThunk(
   "store/moderateStore",
   async ({ storeId, action }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Moderating store...', { storeId, action });
       const headers = getAuthHeaders();
       const res = await api.put(`/api/stores/${storeId}/moderate`, null, {
         headers,

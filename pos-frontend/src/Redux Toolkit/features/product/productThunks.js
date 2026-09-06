@@ -24,13 +24,8 @@ export const createProduct = createAsyncThunk(
   "product/create",
   async (dto, { rejectWithValue }) => {
     try {
-      console.log('🔄 Creating product...', { dto });
-      
       const headers = getAuthHeaders();
       const res = await api.post("/api/products", dto, { headers });
-      
-      console.log('✅ Product created successfully:', res.data);
-      
       return res.data;
     } catch (err) {
       console.error('❌ Failed to create product:', {
@@ -52,8 +47,6 @@ export const getProductById = createAsyncThunk(
   "product/getById",
   async (id, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching product by ID...', { productId: id });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/products/${id}`, { headers });
       
@@ -85,8 +78,6 @@ export const updateProduct = createAsyncThunk(
   "product/update",
   async ({ id, dto }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Updating product...', { productId: id, dto });
-      
       const headers = getAuthHeaders();
       const res = await api.patch(`/api/products/${id}`, dto, { headers });
       
@@ -120,17 +111,10 @@ export const deleteProduct = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       if (id === null || id === undefined || (typeof id !== 'number' && typeof id !== 'string')) {
-        console.error('❌ deleteProduct called with invalid id:', id);
         return rejectWithValue('Invalid product ID');
       }
-
-      console.log('🔄 Deleting product...', { productId: id });
-
       const headers = getAuthHeaders();
       await api.delete(`/api/products/${id}`, { headers });
-
-      console.log('✅ Product deleted successfully:', { productId: id });
-
       return id;
     } catch (err) {
       console.error('❌ Failed to delete product:', {
@@ -152,8 +136,6 @@ export const getProductsByStore = createAsyncThunk(
   "product/getByStore",
   async (storeId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching products by store...', { storeId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/products/store/${storeId}`, { headers });
       
@@ -189,8 +171,6 @@ export const searchProducts = createAsyncThunk(
   "product/search",
   async ({ query, storeId }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Searching products...', { query, storeId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/products/store/${storeId}/search?q=${query}`, { headers });
       
@@ -225,13 +205,8 @@ export const deleteAllProducts = createAsyncThunk(
   "product/deleteAllByStore",
   async (storeId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Deleting all products for store...', { storeId });
-
       const headers = getAuthHeaders();
       const res = await api.delete(`/api/products/store/${storeId}/all`, { headers });
-
-      console.log('✅ All products deleted successfully:', { storeId, deletedCount: res.data });
-
       return res.data;
     } catch (err) {
       console.error('❌ Failed to delete all products:', {
@@ -253,8 +228,6 @@ export const bulkCreateProducts = createAsyncThunk(
   "product/bulkCreate",
   async (dtos, { rejectWithValue }) => {
     try {
-      console.log('🔄 Bulk creating products...', { count: dtos?.length });
-      
       const headers = getAuthHeaders();
       const res = await api.post("/api/products/bulk", dtos, { headers });
       

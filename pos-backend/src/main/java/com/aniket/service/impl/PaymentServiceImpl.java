@@ -128,6 +128,17 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public PaymentDTO verifyPayment(PaymentVerifyRequest request) throws PaymentException
     {
+        // 🔒 Step 0: Verify Razorpay signature (HMAC-SHA256) to prevent forged callbacks
+        boolean signatureValid = razorpayService.verifySignature(
+                request.getRazorpayOrderId(),
+                request.getRazorpayPaymentId(),
+                request.getRazorpaySignature());
+
+        if (!signatureValid) {
+            log.error("Razorpay signature verification failed for orderId: {}, paymentId: {}",
+                    request.getRazorpayOrderId(), request.getRazorpayPaymentId());
+            throw new PaymentException("Payment verification failed: invalid signature");
+        }
 
         // gatway payment
         JSONObject paymentDetails = razorpayService

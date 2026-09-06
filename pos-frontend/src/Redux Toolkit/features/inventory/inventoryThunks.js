@@ -13,10 +13,8 @@ export const createInventory = createAsyncThunk(
     };
     try {
       const res = await api.post('/api/inventories', dto, config);
-      console.log('createInventory fulfilled:', res.data);
       return res.data;
     } catch (err) {
-      console.error('createInventory rejected:', err.response?.data?.message || err);
       return rejectWithValue(err.response?.data?.message || 'Failed to create inventory');
     }
   }
@@ -36,10 +34,8 @@ export const updateInventory = createAsyncThunk(
       const id = payload?.id;
       const body = payload?.dto ? payload.dto : payload;
       const res = await api.put(`/api/inventories/${id}`, body, config);
-      console.log('updateInventory fulfilled:', res.data);
       return res.data;
     } catch (err) {
-      console.error('updateInventory rejected:', err.response?.data?.message || err);
       return rejectWithValue(err.response?.data?.message || 'Failed to update inventory');
     }
   }
@@ -57,10 +53,8 @@ export const deleteInventory = createAsyncThunk(
      };
     try {
       await api.delete(`/api/inventories/${id}`, config);
-      console.log('deleteInventory fulfilled:', id);
       return id;
     } catch (err) {
-      console.error('deleteInventory rejected:', err.response?.data?.message || err);
       return rejectWithValue(err.response?.data?.message || 'Failed to delete inventory');
     }
   }
@@ -78,10 +72,8 @@ export const getInventoryById = createAsyncThunk(
     };
     try {
       const res = await api.get(`/api/inventories/${id}`, config);
-      console.log('getInventoryById fulfilled:', res.data);
       return res.data;
     } catch (err) {
-      console.error('getInventoryById rejected:', err.response?.data?.message || err);
       return rejectWithValue(err.response?.data?.message || 'Inventory not found');
     }
   }
@@ -99,10 +91,8 @@ export const getInventoryByBranch = createAsyncThunk(
     };
     try {
       const res = await api.get(`/api/inventories/branch/${branchId}`, config);
-      console.log('getInventoryByBranch fulfilled:', res.data);
       return res.data;
     } catch (err) {
-      console.error('getInventoryByBranch rejected:', err.response?.data?.message || err);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch branch inventory');
     }
   }
@@ -120,10 +110,8 @@ export const getInventoryByProduct = createAsyncThunk(
     };
     try {
       const res = await api.get(`/api/inventories/product/${productId}`, config);
-      console.log('getInventoryByProduct fulfilled:', res.data);
       return res.data;
     } catch (err) {
-      console.error('getInventoryByProduct rejected:', err.response?.data?.message || err);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch product inventory');
     }
   }

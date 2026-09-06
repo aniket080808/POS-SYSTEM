@@ -24,8 +24,6 @@ export const startShift = createAsyncThunk(
   'shiftReport/start',
   async (branchId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Starting shift...', { branchId });
-      
       const headers = getAuthHeaders();
       const res = await api.post(`/api/shift-reports/start?branchId=${branchId}`, {}, { headers });
       
@@ -56,8 +54,6 @@ export const endShift = createAsyncThunk(
   'shiftReport/end',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🔄 Ending shift...');
-      
       const headers = getAuthHeaders();
       const res = await api.patch('/api/shift-reports/end', {}, { headers });
       
@@ -87,8 +83,6 @@ export const getCurrentShiftProgress = createAsyncThunk(
   'shiftReport/getCurrent',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching current shift progress...');
-      
       const headers = getAuthHeaders();
       const res = await api.get('/api/shift-reports/current', { headers });
       
@@ -122,8 +116,6 @@ export const getShiftReportByDate = createAsyncThunk(
   'shiftReport/getByDate',
   async ({ cashierId, date }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching shift report by date...', { cashierId, date });
-      
       const headers = getAuthHeaders();
       const formattedDate = encodeURIComponent(date);
       const res = await api.get(`/api/shift-reports/cashier/${cashierId}/by-date?date=${formattedDate}`, { headers });
@@ -155,8 +147,6 @@ export const getShiftsByCashier = createAsyncThunk(
   'shiftReport/getByCashier',
   async (cashierId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching shifts by cashier...', { cashierId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/shift-reports/cashier/${cashierId}`, { headers });
       
@@ -190,8 +180,6 @@ export const getShiftsByBranch = createAsyncThunk(
   'shiftReport/getByBranch',
   async (branchId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching shifts by branch...', { branchId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/shift-reports/branch/${branchId}`, { headers });
       
@@ -227,8 +215,6 @@ export const getAllShifts = createAsyncThunk(
   'shiftReport/getAll',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching all shifts...');
-      
       const headers = getAuthHeaders();
       const res = await api.get('/api/shift-reports', { headers });
       
@@ -263,8 +249,6 @@ export const getShiftById = createAsyncThunk(
   'shiftReport/getById',
   async (id, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching shift by ID...', { shiftId: id });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/shift-reports/${id}`, { headers });
       
@@ -297,13 +281,8 @@ export const deleteShift = createAsyncThunk(
   'shiftReport/delete',
   async (id, { rejectWithValue }) => {
     try {
-      console.log('🔄 Deleting shift...', { shiftId: id });
-      
       const headers = getAuthHeaders();
       await api.delete(`/api/shift-reports/${id}`, { headers });
-      
-      console.log('✅ Shift deleted successfully:', { shiftId: id });
-      
       return id;
     } catch (err) {
       console.error('❌ Failed to delete shift:', {

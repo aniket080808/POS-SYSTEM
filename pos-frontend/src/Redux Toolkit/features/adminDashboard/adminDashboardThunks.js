@@ -24,8 +24,6 @@ export const getDashboardSummary = createAsyncThunk(
   'adminDashboard/getSummary',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching dashboard summary...');
-      
       const headers = getAuthHeaders();
       const res = await api.get('/api/super-admin/dashboard/summary', { headers });
       
@@ -55,8 +53,6 @@ export const getStoreRegistrationStats = createAsyncThunk(
   'adminDashboard/getRegistrationStats',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching store registration stats...');
-      
       const headers = getAuthHeaders();
       const res = await api.get('/api/super-admin/dashboard/store-registrations', { headers });
       
@@ -87,8 +83,6 @@ export const getStoreStatusDistribution = createAsyncThunk(
   'adminDashboard/getStatusDistribution',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching store status distribution...');
-      
       const headers = getAuthHeaders();
       const res = await api.get('/api/super-admin/dashboard/store-status-distribution', { headers });
       
@@ -118,8 +112,6 @@ export const getRecentActivities = createAsyncThunk(
   'adminDashboard/getRecentActivities',
   async ({ page = 0, size = 10 } = {}, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching recent activities...');
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/super-admin/dashboard/recent-activities?page=${page}&size=${size}`, { headers });
       

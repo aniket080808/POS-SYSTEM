@@ -81,10 +81,8 @@ export const subscribeToPlan = createAsyncThunk(
         // Open Razorpay checkout modal with order data
         await openRazorpayCheckout(res.data);
       }
-      console.log('✅ Subscribed to plan:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to subscribe to plan:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to subscribe to plan');
     }
   }
@@ -104,10 +102,8 @@ export const upgradeSubscription = createAsyncThunk(
         // Open Razorpay checkout modal with order data
         await openRazorpayCheckout(res.data);
       }
-      console.log('✅ Upgraded subscription:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to upgrade subscription:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to upgrade subscription');
     }
   }
@@ -120,10 +116,8 @@ export const activateSubscription = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.put(`/api/subscriptions/${subscriptionId}/activate`, {}, { headers });
-      console.log('✅ Activated subscription:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to activate subscription:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to activate subscription');
     }
   }
@@ -136,10 +130,8 @@ export const cancelSubscription = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.put(`/api/subscriptions/${subscriptionId}/cancel`, {}, { headers });
-      console.log('✅ Cancelled subscription:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to cancel subscription:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to cancel subscription');
     }
   }
@@ -152,10 +144,8 @@ export const updatePaymentStatus = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.put(`/api/subscriptions/${subscriptionId}/payment-status?status=${status}`, {}, { headers });
-      console.log('✅ Updated payment status:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to update payment status:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to update payment status');
     }
   }
@@ -170,10 +160,8 @@ export const getStoreSubscriptions = createAsyncThunk(
       let url = `/api/subscriptions/store/${storeId}`;
       if (status) url += `?status=${status}`;
       const res = await api.get(url, { headers });
-      console.log('✅ fetch  Store subscriptions:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to fetch store subscriptions:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch store subscriptions');
     }
   }
@@ -188,10 +176,8 @@ export const getAllSubscriptions = createAsyncThunk(
       let url = '/api/subscriptions/admin';
       if (status) url += `?status=${status}`;
       const res = await api.get(url, { headers });
-      console.log('✅ All subscriptions:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to fetch all subscriptions:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch all subscriptions');
     }
   }
@@ -204,10 +190,8 @@ export const getExpiringSubscriptions = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.get(`/api/subscriptions/admin/expiring?days=${days}`, { headers });
-      console.log('✅ Expiring subscriptions:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to fetch expiring subscriptions:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch expiring subscriptions');
     }
   }
@@ -220,10 +204,8 @@ export const countSubscriptionsByStatus = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.get(`/api/subscriptions/admin/count?status=${status}`, { headers });
-      console.log('✅ Count by status:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to count subscriptions:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to count subscriptions');
     }
   }

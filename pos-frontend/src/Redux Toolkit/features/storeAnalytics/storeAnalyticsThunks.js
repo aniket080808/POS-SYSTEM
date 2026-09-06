@@ -31,8 +31,6 @@ export const getStoreOverview = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeAdminId = extractId(payload);
-      console.log('🔄 Fetching store overview...', { storeAdminId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/overview`, { headers });
       
@@ -64,8 +62,6 @@ export const getSalesTrends = createAsyncThunk(
     try {
       const storeAdminId = extractId(payload);
       const period = payload?.period || 'daily';
-      console.log('🔄 Fetching sales trends...', { storeAdminId, period });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/sales-trends?period=${period}`, { headers });
       
@@ -97,8 +93,6 @@ export const getMonthlySales = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeAdminId = extractId(payload);
-      console.log('🔄 Fetching monthly sales...', { storeAdminId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/monthly`, { headers });
       
@@ -130,8 +124,6 @@ export const getDailySales = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeAdminId = extractId(payload);
-      console.log('🔄 Fetching daily sales...', { storeAdminId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/daily`, { headers });
       
@@ -163,8 +155,6 @@ export const getSalesByCategory = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeAdminId = extractId(payload);
-      console.log('🔄 Fetching sales by category...', { storeAdminId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/category`, { headers });
       
@@ -196,8 +186,6 @@ export const getSalesByPaymentMethod = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeAdminId = extractId(payload);
-      console.log('🔄 Fetching sales by payment method...', { storeAdminId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/payment-method`, { headers });
       
@@ -229,8 +217,6 @@ export const getSalesByBranch = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeAdminId = extractId(payload);
-      console.log('🔄 Fetching sales by branch...', { storeAdminId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/branch`, { headers });
       
@@ -262,8 +248,6 @@ export const getPaymentBreakdown = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeAdminId = extractId(payload);
-      console.log('🔄 Fetching payment breakdown...', { storeAdminId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/payments`, { headers });
       
@@ -295,8 +279,6 @@ export const getBranchPerformance = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeAdminId = extractId(payload);
-      console.log('🔄 Fetching branch performance...', { storeAdminId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/branch-performance`, { headers });
       
@@ -344,8 +326,6 @@ export const getStoreAlerts = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeAdminId = extractId(payload);
-      console.log('🔄 Fetching store alerts...', { storeAdminId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/store/analytics/${storeAdminId}/alerts`, { headers });
       
@@ -398,8 +378,6 @@ export const getStoreUsageForAdmin = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const storeId = extractId(payload);
-      console.log('🔄 Fetching store usage for admin...', { storeId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/super-admin/stores/${storeId}/usage`, { headers });
       

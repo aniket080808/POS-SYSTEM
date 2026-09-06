@@ -9,10 +9,8 @@ export const createBranch = createAsyncThunk('branch/create', async (payload, { 
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     const res = await api.post('/api/branches', dto, { headers });
-    console.log('Create branch success:', res.data);
     return res.data;
   } catch (err) {
-    console.error('Create branch error:', err);
     return rejectWithValue(err.response?.data?.message || err.message || 'Create branch failed');
   }
 });
@@ -25,10 +23,8 @@ export const getBranchById = createAsyncThunk('branch/getById', async (payload, 
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     const res = await api.get(`/api/branches/${id}`, { headers });
-    console.log('Get branch by ID success:', res.data);
     return res.data;
   } catch (err) {
-    console.error('Get branch by ID error:', err);
     return rejectWithValue(err.response?.data?.message || err.message || 'Branch not found');
   }
 });
@@ -41,10 +37,8 @@ export const getAllBranchesByStore = createAsyncThunk('branch/getAllByStore', as
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     const res = await api.get(`/api/branches/store/${storeId}`, { headers });
-    console.log('Get all branches by store success:', res.data);
     return res.data;
   } catch (err) {
-    console.error('Get all branches by store error:', err);
     return rejectWithValue(err.response?.data?.message || err.message || 'Failed to fetch branches');
   }
 });
@@ -60,7 +54,6 @@ export const updateBranch = createAsyncThunk('branch/update', async (payload, { 
     const res = await api.put(`/api/branches/${id}`, dto, { headers });
     return res.data;
   } catch (err) {
-    console.error('Update branch error:', err);
     return rejectWithValue(err.response?.data?.message || err.message || 'Update failed');
   }
 });
@@ -75,7 +68,6 @@ export const deleteBranch = createAsyncThunk('branch/delete', async (payload, { 
     await api.delete(`/api/branches/${id}`, { headers });
     return id;
   } catch (err) {
-    console.error('Delete branch error:', err);
     return rejectWithValue(err.response?.data?.message || err.message || 'Delete failed');
   }
 });

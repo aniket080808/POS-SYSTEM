@@ -61,6 +61,9 @@ public class AuthServiceImpl implements AuthService {
             throw new UserException("Email id already registered ");
         }
 
+        // 🔒 Password strength validation
+        validatePasswordStrength(req.getPassword());
+
         if (req.getRole() != null && !req.getRole().equals(UserRole.ROLE_CUSTOMER)) {
             throw new UserException("Public registration is only available for customer accounts. Store administrators must register via Onboarding, and staff accounts must be created by their administrator.");
         }
@@ -141,13 +144,13 @@ public class AuthServiceImpl implements AuthService {
 
         UserDetails userDetails = customUserImplementation.loadUserByUsername(email);
         if(userDetails == null) {
-            throw new UserException("email id doesn't exist "+ email);
+            throw new UserException("Invalid email or password");
         }
         if(!userDetails.isEnabled()) {
             throw new UserException("Your account has been deactivated. Please contact your administrator.");
         }
         if(!passwordEncoder.matches(password, userDetails.getPassword())) {
-            throw new UserException("Wrong Password ");
+            throw new UserException("Invalid email or password");
         }
         return new UsernamePasswordAuthenticationToken(email, null, userDetails.getAuthorities());
     }
@@ -212,6 +215,10 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = resetToken.getUser();
+
+        // 🔒 Password strength validation
+        validatePasswordStrength(newPassword);
+
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setPasswordChangedAt(LocalDateTime.now());
         userRepository.save(user);
@@ -229,5 +236,26 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
+    /**
+     * 🔒 Validates password meets minimum security requirements.
+     * - At least 8 characters
+     * - At least one uppercase letter
+     * - At least one lowercase letter
+     * - At least one digit
+     */
+    private void validatePasswordStrength(String password) {
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters long");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new IllegalArgumentException("Password must contain at least one uppercase letter");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new IllegalArgumentException("Password must contain at least one lowercase letter");
+        }
+        if (!password.matches(".*\\d.*")) {
+            throw new IllegalArgumentException("Password must contain at least one digit");
+        }
+    }
 
 }

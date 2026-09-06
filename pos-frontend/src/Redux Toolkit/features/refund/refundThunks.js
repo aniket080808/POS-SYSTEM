@@ -24,8 +24,6 @@ export const createRefund = createAsyncThunk(
   'refund/create',
   async (refundDTO, { rejectWithValue }) => {
     try {
-      console.log('🔄 Creating refund...', { refundDTO });
-      
       const headers = getAuthHeaders();
       const res = await api.post('/api/refunds', refundDTO, { headers });
       
@@ -56,8 +54,6 @@ export const getAllRefunds = createAsyncThunk(
   'refund/getAll',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching all refunds...');
-      
       const headers = getAuthHeaders();
       const res = await api.get('/api/refunds', { headers });
       
@@ -91,8 +87,6 @@ export const getRefundsByCashier = createAsyncThunk(
   'refund/getByCashier',
   async (cashierId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching refunds by cashier...', { cashierId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/refunds/cashier/${cashierId}`, { headers });
       
@@ -129,8 +123,6 @@ export const getRefundsByBranch = createAsyncThunk(
   async (branchId, { rejectWithValue }) => {
     try {
       const targetId = typeof branchId === 'object' ? (branchId?.branchId || branchId?.id) : branchId;
-      console.log('🔄 Fetching refunds by branch...', { targetId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/refunds/branch/${targetId}`, { headers });
       
@@ -166,8 +158,6 @@ export const getRefundsByShift = createAsyncThunk(
   'refund/getByShift',
   async (shiftReportId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching refunds by shift...', { shiftReportId });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/refunds/shift/${shiftReportId}`, { headers });
       
@@ -203,8 +193,6 @@ export const getRefundsByCashierAndDateRange = createAsyncThunk(
   'refund/getByCashierAndDateRange',
   async ({ cashierId, from, to }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching refunds by cashier and date range...', { cashierId, from, to });
-      
       const headers = getAuthHeaders();
       const formattedFrom = encodeURIComponent(from);
       const formattedTo = encodeURIComponent(to);
@@ -246,8 +234,6 @@ export const getRefundById = createAsyncThunk(
   'refund/getById',
   async (id, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching refund by ID...', { refundId: id });
-      
       const headers = getAuthHeaders();
       const res = await api.get(`/api/refunds/${id}`, { headers });
       
@@ -279,13 +265,8 @@ export const deleteRefund = createAsyncThunk(
   'refund/delete',
   async (id, { rejectWithValue }) => {
     try {
-      console.log('🔄 Deleting refund...', { refundId: id });
-      
       const headers = getAuthHeaders();
       await api.delete(`/api/refunds/${id}`, { headers });
-      
-      console.log('✅ Refund deleted successfully:', { refundId: id });
-      
       return id;
     } catch (err) {
       console.error('❌ Failed to delete refund:', {

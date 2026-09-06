@@ -174,4 +174,57 @@ public class RazorpayService {
             return false;
         }
     }
+
+    /**
+     * Verify Razorpay payment callback signature using HMAC-SHA256.
+     * This prevents forged payment verification requests.
+     *
+     * @param razorpayOrderId   The order ID from Razorpay
+     * @param razorpayPaymentId The payment ID from Razorpay
+     * @param razorpaySignature The signature sent by Razorpay in the callback
+     * @return true if the signature is valid
+     * @throws PaymentException if verification fails
+     */
+    public boolean verifySignature(String razorpayOrderId, String razorpayPaymentId,
+                                    String razorpaySignature) throws PaymentException {
+        validateConfiguration();
+
+        if (razorpayOrderId == null || razorpayPaymentId == null || razorpaySignature == null) {
+            log.warn("Missing required fields for signature verification");
+            return false;
+        }
+
+        try {
+            String payload = razorpayOrderId + "|" + razorpayPaymentId;
+
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(
+                    razorpayKeySecret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(secretKey);
+
+            byte[] hash = mac.doFinal(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+            // Convert to hex string
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            String generatedSignature = hexString.toString();
+
+            boolean isValid = generatedSignature.equals(razorpaySignature);
+            if (!isValid) {
+                log.warn("Razorpay signature verification FAILED for orderId: {}, paymentId: {}",
+                        razorpayOrderId, razorpayPaymentId);
+            } else {
+                log.info("Razorpay signature verified successfully for orderId: {}", razorpayOrderId);
+            }
+            return isValid;
+
+        } catch (Exception e) {
+            log.error("Error during Razorpay signature verification: {}", e.getMessage(), e);
+            throw new PaymentException("Signature verification failed: " + e.getMessage());
+        }
+    }
 }

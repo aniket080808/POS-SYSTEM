@@ -26,10 +26,8 @@ export const getDailySalesChart = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.get(`/api/branch-analytics/daily-sales?branchId=${branchId}&days=${days}`, { headers });
-      console.log('✅ Daily sales chart response:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to fetch daily sales chart:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch daily sales chart');
     }
   }
@@ -42,10 +40,8 @@ export const getTopProductsByQuantity = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.get(`/api/branch-analytics/top-products?branchId=${branchId}`, { headers });
-      console.log('✅ Top products by quantity response:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to fetch top products:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch top products');
     }
   }
@@ -58,10 +54,8 @@ export const getTopCashiersByRevenue = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.get(`/api/branch-analytics/top-cashiers?branchId=${branchId}`, { headers });
-      console.log('✅ Top cashiers by revenue response:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to fetch top cashiers:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch top cashiers');
     }
   }
@@ -75,10 +69,8 @@ export const getCategoryWiseSalesBreakdown = createAsyncThunk(
       const headers = getAuthHeaders();
       const dateParam = date ? `&date=${date}` : '';
       const res = await api.get(`/api/branch-analytics/category-sales?branchId=${branchId}${dateParam}`, { headers });
-      console.log('✅ Category-wise sales breakdown response:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to fetch category-wise sales breakdown:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch category-wise sales breakdown');
     }
   }
@@ -91,10 +83,8 @@ export const getTodayOverview = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.get(`/api/branch-analytics/today-overview?branchId=${branchId}`, { headers });
-      console.log('✅ Today overview response:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to fetch today overview:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch today overview');
     }
   }
@@ -108,10 +98,8 @@ export const getPaymentBreakdown = createAsyncThunk(
       const headers = getAuthHeaders();
       const dateParam = date ? `&date=${date}` : '';
       const res = await api.get(`/api/branch-analytics/payment-breakdown?branchId=${branchId}${dateParam}`, { headers });
-      console.log('✅ Payment breakdown response:', res.data);
       return res.data;
     } catch (err) {
-      console.error('❌ Failed to fetch payment breakdown:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch payment breakdown');
     }
   }

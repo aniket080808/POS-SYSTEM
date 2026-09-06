@@ -7,10 +7,8 @@ export const createTransaction = createAsyncThunk('transaction/create', async ({
     const res = await api.post('/api/transactions', transactionData, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.log('Create transaction success:', res.data);
     return res.data;
   } catch (err) {
-    console.error('Create transaction error:', err);
     return rejectWithValue(err.response?.data?.message || 'Failed to create transaction');
   }
 });
@@ -21,10 +19,8 @@ export const getTransactionById = createAsyncThunk('transaction/getById', async 
     const res = await api.get(`/api/transactions/${transactionId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.log('Get transaction success:', res.data);
     return res.data;
   } catch (err) {
-    console.error('Get transaction error:', err);
     return rejectWithValue(err.response?.data?.message || 'Failed to get transaction');
   }
 });
@@ -35,10 +31,8 @@ export const getAllTransactions = createAsyncThunk('transaction/getAll', async (
     const res = await api.get(`/api/transactions?storeId=${storeId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.log('Get all transactions success:', res.data);
     return res.data;
   } catch (err) {
-    console.error('Get all transactions error:', err);
     return rejectWithValue(err.response?.data?.message || 'Failed to get transactions');
   }
 });
@@ -49,10 +43,8 @@ export const getTransactionsByDateRange = createAsyncThunk('transaction/getByDat
     const res = await api.get(`/api/transactions/date-range?storeId=${storeId}&startDate=${startDate}&endDate=${endDate}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.log('Get transactions by date range success:', res.data);
     return res.data;
   } catch (err) {
-    console.error('Get transactions by date range error:', err);
     return rejectWithValue(err.response?.data?.message || 'Failed to get transactions by date range');
   }
 });
@@ -63,10 +55,8 @@ export const getTransactionsByType = createAsyncThunk('transaction/getByType', a
     const res = await api.get(`/api/transactions/type?storeId=${storeId}&type=${type}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.log('Get transactions by type success:', res.data);
     return res.data;
   } catch (err) {
-    console.error('Get transactions by type error:', err);
     return rejectWithValue(err.response?.data?.message || 'Failed to get transactions by type');
   }
 });
@@ -77,10 +67,8 @@ export const getTransactionsByPaymentMethod = createAsyncThunk('transaction/getB
     const res = await api.get(`/api/transactions/payment-method?storeId=${storeId}&method=${paymentMethod}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.log('Get transactions by payment method success:', res.data);
     return res.data;
   } catch (err) {
-    console.error('Get transactions by payment method error:', err);
     return rejectWithValue(err.response?.data?.message || 'Failed to get transactions by payment method');
   }
 });

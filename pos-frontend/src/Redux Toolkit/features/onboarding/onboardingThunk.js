@@ -17,13 +17,10 @@ export const completeOnboarding = createAsyncThunk(
           await dispatch(getUserProfile(data.jwt)).unwrap();
           await dispatch(getStoreByAdmin(data.jwt)).unwrap();
         } catch (hydrationError) {
-          console.warn('Post-onboarding hydration warning:', hydrationError);
         }
       }
-      console.log('Onboarding complete success:', data);
       return data;
     } catch (err) {
-      console.error('Onboarding complete error:', err);
       return rejectWithValue(err.response?.data?.message || 'Onboarding failed');
     }
   }

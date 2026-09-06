@@ -46,7 +46,7 @@ public class SecurityConfig {
 	@Autowired
 	private LastActivityFilter lastActivityFilter;
 	
-	@org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000,https://aniket-pos.vercel.app,https://pos-sytem-bcs6.vercel.app}")
+	@org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000,https://pos-system-97v.pages.dev,https://aniket-pos.vercel.app,https://pos-sytem-bcs6.vercel.app}")
 	private String allowedOrigins;
 	
 	@Bean
@@ -111,11 +111,8 @@ public class SecurityConfig {
 						.toList();
 				cfg.setAllowedOrigins(origins);
 				cfg.setAllowedOriginPatterns(Arrays.asList(
-						"http://localhost:*",
-						"https://*.vercel.app",
-						"https://*.pages.dev",
-						"https://*.onrender.com"
-				));
+					"http://localhost:*"
+			));
 				cfg.setAllowedMethods(Collections.singletonList("*"));
 				cfg.setAllowCredentials(true);
 				cfg.setAllowedHeaders(Collections.singletonList("*"));

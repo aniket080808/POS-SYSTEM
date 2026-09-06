@@ -49,17 +49,29 @@ public class AuthController {
     // Per-IP Rate limit: 5 forgot-password requests per minute per client IP (abuse & email-bombing protection)
     private final java.util.Map<String, Bucket> forgotPasswordIpBuckets = new java.util.concurrent.ConcurrentHashMap<>();
 
+    // Per-IP Rate limit: 10 signup attempts per minute per client IP (mass account creation protection)
+    private final java.util.Map<String, Bucket> signupIpBuckets = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Extract the real client IP address.
+     * When behind a reverse proxy (e.g., Render, Cloudflare), the proxy appends the real
+     * client IP to X-Forwarded-For. We take the LAST entry before the proxy to get the
+     * actual client IP, rather than the first entry which is client-controlled and spoofable.
+     * If no proxy header, fall back to request.getRemoteAddr().
+     */
     private String extractClientIp(jakarta.servlet.http.HttpServletRequest request) {
-        String clientIp = request.getHeader("X-Forwarded-For");
-        if (clientIp == null || clientIp.isBlank()) {
-            clientIp = request.getRemoteAddr();
-        } else {
-            clientIp = clientIp.split(",")[0].trim();
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            // Take the LAST IP in the chain — this is the one appended by the trusted proxy
+            // and represents the actual connecting client IP
+            String[] ips = xff.split(",");
+            String clientIp = ips[ips.length - 1].trim();
+            if (!clientIp.isBlank()) {
+                return clientIp;
+            }
         }
-        if (clientIp == null || clientIp.isBlank()) {
-            clientIp = "UNKNOWN";
-        }
-        return clientIp;
+        String remoteAddr = request.getRemoteAddr();
+        return (remoteAddr != null && !remoteAddr.isBlank()) ? remoteAddr : "UNKNOWN";
     }
 
     private Bucket resolveBucket(jakarta.servlet.http.HttpServletRequest request) {
@@ -76,6 +88,13 @@ public class AuthController {
                 .build());
     }
 
+    private Bucket resolveSignupBucket(jakarta.servlet.http.HttpServletRequest request) {
+        String clientIp = extractClientIp(request);
+        return signupIpBuckets.computeIfAbsent(clientIp, k -> Bucket.builder()
+                .addLimit(Bandwidth.classic(10, Refill.greedy(10, Duration.ofMinutes(1))))
+                .build());
+    }
+
     @PostMapping("/onboarding")
     public ResponseEntity<ApiResponseBody<AuthResponse>> onboardingHandler(
             @RequestBody @Valid OnboardingRequestDTO req) throws UserException {
@@ -88,8 +107,15 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponseBody<AuthResponse>> signupHandler(
+            jakarta.servlet.http.HttpServletRequest request,
             @RequestBody @Valid UserDTO req) throws UserException {
 
+        Bucket clientBucket = resolveSignupBucket(request);
+        if (!clientBucket.tryConsume(1)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(new ApiResponseBody<>(false,
+                            "Too many signup attempts. Please try again later.", null));
+        }
 
         AuthResponse response=authService.signup(req);
 

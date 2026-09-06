@@ -28,7 +28,6 @@ export const createSubscriptionPlan = createAsyncThunk(
       const res = await api.post("/api/super-admin/subscription-plans", plan, {
         headers,
       });
-      console.log("create subscription plan - ",res.data);
       return res.data;
     } catch (err) {
       return rejectWithValue(
@@ -49,7 +48,6 @@ export const updateSubscriptionPlan = createAsyncThunk(
         plan,
         { headers }
       );
-      console.log("update subscription plan - ",res.data);
       return res.data;
     } catch (err) {
       return rejectWithValue(
@@ -68,7 +66,6 @@ export const getAllSubscriptionPlans = createAsyncThunk(
       const res = await api.get("/api/subscription-plans", {
         headers,
       });
-      console.log("get all subscription plans - ",res.data);
       return res.data;
     } catch (err) {
       return rejectWithValue(
@@ -87,7 +84,6 @@ export const getSubscriptionPlanById = createAsyncThunk(
       const res = await api.get(`/api/super-admin/subscription-plans/${id}`, {
         headers,
       });
-      console.log("get subscription plan by id - ",res.data);
       return res.data;
     } catch (err) {
       return rejectWithValue(
@@ -106,7 +102,6 @@ export const deleteSubscriptionPlan = createAsyncThunk(
       await api.delete(`/api/super-admin/subscription-plans/${id}`, {
         headers,
       });
-      console.log("delete subscription plan - ",id);
       return id;
     } catch (err) {
       return rejectWithValue(
