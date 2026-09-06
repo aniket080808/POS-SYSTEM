@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import {
   LayoutDashboard,
   Store,
   Building2,
   CreditCard,
-  ShieldCheck,
   Zap,
   Printer,
   ArrowRight,
@@ -14,10 +13,7 @@ import {
   ScanLine,
   Sparkles,
   QrCode,
-  DollarSign,
   BadgeCheck,
-  RefreshCw,
-  AlertTriangle,
   Lock,
   Clock,
   Coins,
@@ -26,24 +22,18 @@ import {
   Minus,
   Trash2,
   Search,
-  Check,
-  X,
-  Sliders,
   TrendingUp,
   Boxes,
   Users,
   Sun,
   Moon,
   Receipt,
-  FileCheck2,
-  Layers,
   Tag,
   BarChart2,
   FileText,
   Settings,
   Bell,
-  CheckCircle,
-  Package,
+  AlertTriangle,
   RotateCcw,
 } from "lucide-react";
 import NexPOSLogo from "@/components/common/NexPOSLogo";
@@ -51,7 +41,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
 
 // =========================================================================
-// REAL PLATFORM DATA PRELOADS
+// REAL PLATFORM PRELOADED DATA
 // =========================================================================
 const REAL_BRANCHES = [
   { id: "all", name: "All Outlets (Consolidated)", city: "National Network", revenue: "₹1,84,650", orders: 342, topProduct: "Cold Brew Coffee", activeCashiers: 8 },
@@ -71,36 +61,37 @@ const REAL_PRODUCTS = [
 
 export default function PlatformGuide() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
 
-  // Active Role in simulated workstation
-  const [activeRole, setActiveRole] = useState("cashier"); // 'store_owner' | 'branch_manager' | 'cashier' | 'super_admin'
+  // Active Role in simulated workstation (Store Owner, Branch Manager, Cashier)
+  const [activeRole, setActiveRole] = useState(
+    location.state?.initialRole && ["store_owner", "branch_manager", "cashier"].includes(location.state.initialRole)
+      ? location.state.initialRole
+      : "store_owner"
+  );
 
   // -------------------------------------------------------------
   // STORE OWNER SIMULATOR STATE
+  // Accessible: 'dashboard' (analytics) | 'products' (catalog) | 'upgrade' (plan)
   // -------------------------------------------------------------
+  const [ownerTab, setOwnerTab] = useState("dashboard");
   const [selectedBranchId, setSelectedBranchId] = useState("all");
   const [storeCatalog, setStoreCatalog] = useState(REAL_PRODUCTS);
   const [newProdName, setNewProdName] = useState("");
   const [newProdCategory, setNewProdCategory] = useState("Beverages");
   const [newProdPrice, setNewProdPrice] = useState("");
   const [quotaBranches, setQuotaBranches] = useState(3);
-  const [ownerTab, setOwnerTab] = useState("analytics"); // 'analytics' | 'catalog' | 'plan'
 
   // -------------------------------------------------------------
-  // BRANCH MANAGER SIMULATOR STATE
+  // BRANCH MANAGER SIMULATOR STATE (ONLY INVENTORY ACCESSIBLE)
   // -------------------------------------------------------------
   const [managerStock, setManagerStock] = useState(REAL_PRODUCTS);
   const [stockSearch, setStockSearch] = useState("");
-  const [stockFilterCategory, setStockFilterCategory] = useState("ALL");
-  const [refundItems, setRefundItems] = useState([
-    { id: "REF-801", billNo: "INV-9812", item: "Cold Brew Coffee", amount: 180, customer: "Vikram Mehta", reason: "Damaged bottle seal", status: "PENDING" },
-    { id: "REF-802", billNo: "INV-9824", item: "Farm Fresh Whole Milk 1L", amount: 65, customer: "Ananya Roy", reason: "Expired carton", status: "PENDING" },
-  ]);
-  const [tillAudited, setTillAudited] = useState(false);
+  const [stockCategoryFilter, setStockCategoryFilter] = useState("ALL");
 
   // -------------------------------------------------------------
-  // CASHIER POS TERMINAL STATE
+  // CASHIER POS TERMINAL STATE (ONLY POS TERMINAL ACCESSIBLE)
   // -------------------------------------------------------------
   const [posCategory, setPosCategory] = useState("ALL");
   const [posSearchTerm, setPosSearchTerm] = useState("");
@@ -108,26 +99,16 @@ export default function PlatformGuide() {
     { ...REAL_PRODUCTS[0], qty: 1 },
     { ...REAL_PRODUCTS[1], qty: 2 },
   ]);
-  const [customerAttached, setCustomerAttached] = useState({ name: "Priya Sharma", phone: "+91 98765 43210" });
-  const [paymentMode, setPaymentMode] = useState("upi"); // 'upi' | 'cash' | 'card'
+  const [paymentMode, setPaymentMode] = useState("upi");
   const [cashTendered, setCashTendered] = useState(500);
   const [discountPct, setDiscountPct] = useState(0);
   const [receiptOpen, setReceiptOpen] = useState(false);
-  const [parkedBillsCount, setParkedBillsCount] = useState(2);
   const [lastScannedFeedback, setLastScannedFeedback] = useState(null);
-
-  // -------------------------------------------------------------
-  // SUPER ADMIN STATE
-  // -------------------------------------------------------------
-  const [pendingStores, setPendingStores] = useState([
-    { id: "STR-001", name: "Sharma Retail Hypermarket", owner: "Ramesh Sharma", city: "Delhi", gstin: "07AAAAA1234A1Z5", date: "Today", status: "PENDING" },
-    { id: "STR-002", name: "South Organic Fresh Co.", owner: "Lakshmi Narayanan", city: "Chennai", gstin: "33BBBBB5678B1Z9", date: "Yesterday", status: "PENDING" },
-  ]);
-  const [starterPrice, setStarterPrice] = useState(999);
 
   // -------------------------------------------------------------
   // HANDLERS
   // -------------------------------------------------------------
+  // Store Owner: Add Master SKU
   const handleAddProduct = (e) => {
     e.preventDefault();
     if (!newProdName.trim() || !newProdPrice) return;
@@ -147,18 +128,14 @@ export default function PlatformGuide() {
     setNewProdPrice("");
   };
 
+  // Branch Manager: Restock Units
   const handleRestock = (id, amount = 50) => {
     setManagerStock((prev) =>
       prev.map((p) => (p.id === id ? { ...p, stock: p.stock + amount } : p))
     );
   };
 
-  const handleApproveRefund = (refId) => {
-    setRefundItems((prev) =>
-      prev.map((r) => (r.id === refId ? { ...r, status: "APPROVED" } : r))
-    );
-  };
-
+  // Cashier: Cart Operations
   const handleAddToCart = (product) => {
     setReceiptOpen(false);
     setLastScannedFeedback(product.name);
@@ -184,19 +161,6 @@ export default function PlatformGuide() {
           return item;
         })
         .filter(Boolean)
-    );
-  };
-
-  const handleParkOrder = () => {
-    if (cart.length === 0) return;
-    setParkedBillsCount((c) => c + 1);
-    setCart([]);
-    setReceiptOpen(false);
-  };
-
-  const handleApproveStore = (id) => {
-    setPendingStores((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: "APPROVED" } : s))
     );
   };
 
@@ -236,7 +200,7 @@ export default function PlatformGuide() {
               className="p-2 rounded-xl border border-border bg-card hover:bg-secondary text-foreground transition-all cursor-pointer"
               aria-label="Toggle theme"
             >
-              {theme === "dark" ? <Sun className="w-4 h-4 text-[#F5A623]" /> : <Moon className="w-4 h-4" />}
+              {theme === "dark" ? <Sun className="w-4 h-4 text-[#F5A623]" /> : <Moon className="w-4 h-4 text-slate-700" />}
             </button>
             <Button
               variant="outline"
@@ -257,22 +221,22 @@ export default function PlatformGuide() {
         </div>
       </header>
 
-      {/* 2. SUB-BAR: FIDELITY GUARANTEE + ROLE SELECTOR */}
+      {/* 2. SUB-BAR: FIDELITY GUARANTEE + ROLE SELECTOR (STORE OWNER, BRANCH MANAGER, CASHIER ONLY) */}
       <section className="bg-card border-b border-border py-4 px-4 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <BadgeCheck className="w-4 h-4 text-emerald-500 shrink-0" />
               <h1 className="text-sm sm:text-base font-extrabold text-foreground">
-                100% Exact Platform Mirror — What You See Is What You Get
+                Exact Production Workstations — Interactive Role Simulator
               </h1>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Every sidebar, button, layout, and table below is an exact pixel-for-pixel replica of our live production dashboards.
+              Select a role below. Every layout, sidebar, button, and table is an exact replica of what you receive inside NexPOS.
             </p>
           </div>
 
-          {/* Role Switcher Pills */}
+          {/* 3 Focused Role Switcher Pills */}
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-secondary/80 border border-border shrink-0">
             <button
               onClick={() => setActiveRole("store_owner")}
@@ -306,17 +270,6 @@ export default function PlatformGuide() {
             >
               <CreditCard className="w-3.5 h-3.5" /> Cashier POS
             </button>
-
-            <button
-              onClick={() => setActiveRole("super_admin")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeRole === "super_admin"
-                  ? "bg-purple-600 text-white shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" /> Super Admin
-            </button>
           </div>
         </div>
       </section>
@@ -326,54 +279,67 @@ export default function PlatformGuide() {
         <div className="rounded-2xl border border-border bg-card shadow-lg overflow-hidden flex flex-col min-h-[720px]">
 
           {/* ========================================================================= */}
-          {/* A. STORE OWNER WORKSPACE (Exact replica of StoreDashboard & StoreSidebar) */}
+          {/* A. STORE OWNER WORKSPACE                                                  */}
+          {/* ONLY ACCESSIBLE: Dashboard, Products, Upgrade Plan                         */}
           {/* ========================================================================= */}
           {activeRole === "store_owner" && (
             <div className="flex flex-1 min-h-[700px]">
               {/* REAL STORE SIDEBAR */}
               <aside className="w-56 bg-[#181614] text-[#FAF8F3] border-r border-[#2B2724] p-4 flex flex-col justify-between shrink-0 hidden md:flex">
-                <div className="space-y-6">
-                  {/* Brand Header */}
-                  <div className="flex items-center gap-2 px-2">
+                <div className="space-y-5">
+                  <div className="px-2">
                     <NexPOSLogo size="sm" />
                   </div>
 
-                  {/* Navigation Links (Exact from StoreSidebar.jsx) */}
+                  {/* Navigation Links */}
                   <nav className="space-y-1">
                     {[
-                      { name: "Dashboard", icon: LayoutDashboard, active: ownerTab === "analytics", onClick: () => setOwnerTab("analytics") },
-                      { name: "Branches", icon: Store, active: false, badge: "3" },
-                      { name: "Products", icon: ShoppingCart, active: ownerTab === "catalog", onClick: () => setOwnerTab("catalog") },
-                      { name: "Categories", icon: Tag, active: false },
-                      { name: "Employees", icon: Users, active: false, badge: "18" },
-                      { name: "Alerts", icon: AlertTriangle, active: false },
-                      { name: "Sales", icon: BarChart2, active: false },
-                      { name: "Reports", icon: FileText, active: false },
-                      { name: "Settings", icon: Settings, active: false },
-                      { name: "Upgrade Plan", icon: Zap, active: ownerTab === "plan", onClick: () => setOwnerTab("plan"), highlight: true },
+                      { name: "Dashboard", icon: LayoutDashboard, accessible: true, active: ownerTab === "dashboard", onClick: () => setOwnerTab("dashboard") },
+                      { name: "Branches", icon: Store, accessible: false, badge: "3" },
+                      { name: "Products", icon: ShoppingCart, accessible: true, active: ownerTab === "products", onClick: () => setOwnerTab("products") },
+                      { name: "Categories", icon: Tag, accessible: false },
+                      { name: "Employees", icon: Users, accessible: false, badge: "18" },
+                      { name: "Alerts", icon: AlertTriangle, accessible: false },
+                      { name: "Sales", icon: BarChart2, accessible: false },
+                      { name: "Reports", icon: FileText, accessible: false },
+                      { name: "Settings", icon: Settings, accessible: false },
+                      { name: "Upgrade Plan", icon: Zap, accessible: true, active: ownerTab === "upgrade", onClick: () => setOwnerTab("upgrade"), highlight: true },
                     ].map((link) => {
                       const Icon = link.icon;
+                      if (link.accessible) {
+                        return (
+                          <button
+                            key={link.name}
+                            onClick={link.onClick}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                              link.active
+                                ? "bg-[#B8860B] text-white font-bold shadow-xs"
+                                : link.highlight
+                                ? "bg-[#B8860B]/10 text-[#F5A623] hover:bg-[#B8860B]/20"
+                                : "text-[#FAF8F3]/70 hover:bg-[#2B2724] hover:text-[#FAF8F3]"
+                            }`}
+                          >
+                            <span className="flex items-center gap-2.5">
+                              <Icon className="w-4 h-4 shrink-0" /> {link.name}
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold">
+                              LIVE
+                            </span>
+                          </button>
+                        );
+                      }
+                      // Locked/Disabled items
                       return (
-                        <button
+                        <div
                           key={link.name}
-                          onClick={link.onClick || (() => {})}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                            link.active
-                              ? "bg-[#B8860B] text-white font-bold shadow-xs"
-                              : link.highlight
-                              ? "bg-[#B8860B]/10 text-[#F5A623] hover:bg-[#B8860B]/20"
-                              : "text-[#FAF8F3]/70 hover:bg-[#2B2724] hover:text-[#FAF8F3]"
-                          }`}
+                          title="Accessible in full registered store version"
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-[#FAF8F3]/30 cursor-not-allowed select-none"
                         >
                           <span className="flex items-center gap-2.5">
-                            <Icon className="w-4 h-4 shrink-0" /> {link.name}
+                            <Icon className="w-4 h-4 shrink-0 opacity-40" /> {link.name}
                           </span>
-                          {link.badge && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-black/40 text-muted-foreground font-mono">
-                              {link.badge}
-                            </span>
-                          )}
-                        </button>
+                          <Lock className="w-3 h-3 opacity-40" />
+                        </div>
                       );
                     })}
                   </nav>
@@ -391,7 +357,7 @@ export default function PlatformGuide() {
                 </div>
               </aside>
 
-              {/* MAIN CONTENT AREA */}
+              {/* STORE OWNER CONTENT AREA */}
               <div className="flex-1 flex flex-col min-w-0 bg-background">
                 {/* REAL STORE TOPBAR */}
                 <header className="h-14 border-b border-border px-6 flex items-center justify-between bg-card shrink-0">
@@ -401,7 +367,6 @@ export default function PlatformGuide() {
                       Apex Retail Store Console
                     </div>
                     <div className="h-4 w-px bg-border" />
-                    {/* Branch Switcher Dropdown */}
                     <div className="flex items-center gap-1.5 text-xs">
                       <span className="text-muted-foreground">Filter Branch:</span>
                       <select
@@ -416,7 +381,7 @@ export default function PlatformGuide() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <span className="text-xs px-2.5 py-1 rounded-full bg-[#B8860B]/10 text-[#B8860B] border border-[#B8860B]/20 font-bold">
                       Enterprise Tier • Razorpay Active
                     </span>
@@ -426,8 +391,42 @@ export default function PlatformGuide() {
                   </div>
                 </header>
 
-                {/* TAB 1: ANALYTICS & STATS (Exact from Dashboard.jsx) */}
-                {ownerTab === "analytics" && (
+                {/* Mobile Accessible Tab Bar for Store Owner */}
+                <div className="md:hidden flex items-center gap-2 p-2.5 bg-secondary/50 border-b border-border overflow-x-auto">
+                  <button
+                    onClick={() => setOwnerTab("dashboard")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-colors cursor-pointer ${
+                      ownerTab === "dashboard"
+                        ? "bg-[#B8860B] text-white shadow-xs"
+                        : "bg-card text-muted-foreground border border-border"
+                    }`}
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5 inline mr-1" /> Dashboard
+                  </button>
+                  <button
+                    onClick={() => setOwnerTab("products")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-colors cursor-pointer ${
+                      ownerTab === "products"
+                        ? "bg-[#B8860B] text-white shadow-xs"
+                        : "bg-card text-muted-foreground border border-border"
+                    }`}
+                  >
+                    <ShoppingCart className="w-3.5 h-3.5 inline mr-1" /> Products
+                  </button>
+                  <button
+                    onClick={() => setOwnerTab("upgrade")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-colors cursor-pointer ${
+                      ownerTab === "upgrade"
+                        ? "bg-[#B8860B] text-white shadow-xs"
+                        : "bg-card text-muted-foreground border border-border"
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5 inline mr-1" /> Upgrade Plan
+                  </button>
+                </div>
+
+                {/* TAB 1: DASHBOARD (ANALYTICS) */}
+                {ownerTab === "dashboard" && (
                   <div className="p-6 space-y-6 overflow-y-auto">
                     {/* Subscription Quota Bar */}
                     <div className="p-4 rounded-xl border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -441,14 +440,14 @@ export default function PlatformGuide() {
                         </div>
                       </div>
                       <button
-                        onClick={() => setOwnerTab("plan")}
+                        onClick={() => setOwnerTab("upgrade")}
                         className="px-3 py-1.5 rounded-lg bg-[#B8860B] hover:bg-[#996e08] text-white text-xs font-bold transition-all cursor-pointer shrink-0"
                       >
                         Upgrade via Razorpay
                       </button>
                     </div>
 
-                    {/* 4 Exact Dashboard Metric Cards */}
+                    {/* 4 Dashboard Metric Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="p-4 rounded-xl border border-border bg-card">
                         <div className="text-xs text-muted-foreground mb-1">Today's Revenue</div>
@@ -477,17 +476,17 @@ export default function PlatformGuide() {
                       </div>
                     </div>
 
-                    {/* Branches Comparison Table */}
+                    {/* Multi-Branch Comparison Table */}
                     <div className="rounded-xl border border-border bg-card overflow-hidden">
                       <div className="p-4 border-b border-border flex items-center justify-between">
                         <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
                           <Building2 className="w-4 h-4 text-[#B8860B]" /> Multi-Branch Live Performance Breakdown
                         </h3>
                         <button
-                          onClick={() => setOwnerTab("catalog")}
-                          className="text-xs font-bold text-[#B8860B] hover:underline"
+                          onClick={() => setOwnerTab("products")}
+                          className="text-xs font-bold text-[#B8860B] hover:underline cursor-pointer"
                         >
-                          View Master Catalog →
+                          Go to Master Products →
                         </button>
                       </div>
                       <table className="w-full text-left text-xs">
@@ -520,19 +519,19 @@ export default function PlatformGuide() {
                   </div>
                 )}
 
-                {/* TAB 2: MASTER PRODUCT CATALOG (Exact from Products.jsx) */}
-                {ownerTab === "catalog" && (
+                {/* TAB 2: PRODUCTS (CATALOG) */}
+                {ownerTab === "products" && (
                   <div className="p-6 space-y-6 overflow-y-auto">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-bold text-foreground">Global Master Product Catalog</h3>
+                        <h3 className="text-sm font-bold text-foreground">Global Master Products Catalog</h3>
                         <p className="text-xs text-muted-foreground">Add products here — all branch counters immediately receive the barcode.</p>
                       </div>
                       <button
-                        onClick={() => setOwnerTab("analytics")}
-                        className="text-xs font-bold text-muted-foreground hover:text-foreground"
+                        onClick={() => setOwnerTab("dashboard")}
+                        className="text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer"
                       >
-                        ← Back to Analytics
+                        ← Back to Dashboard
                       </button>
                     </div>
 
@@ -590,13 +589,13 @@ export default function PlatformGuide() {
                   </div>
                 )}
 
-                {/* TAB 3: SUBSCRIPTION UPGRADE SLIDER (Razorpay Quotas) */}
-                {ownerTab === "plan" && (
+                {/* TAB 3: UPGRADE PLAN */}
+                {ownerTab === "upgrade" && (
                   <div className="p-6 space-y-6 overflow-y-auto max-w-2xl">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-foreground">Razorpay Subscription & Outlets Expansion</h3>
-                      <button onClick={() => setOwnerTab("analytics")} className="text-xs font-bold text-muted-foreground hover:text-foreground">
-                        ← Back to Analytics
+                      <button onClick={() => setOwnerTab("dashboard")} className="text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer">
+                        ← Back to Dashboard
                       </button>
                     </div>
 
@@ -637,7 +636,7 @@ export default function PlatformGuide() {
 
                       <Button
                         onClick={() => navigate("/auth/onboarding")}
-                        className="w-full bg-[#B8860B] hover:bg-[#996e08] text-white text-xs font-bold h-10"
+                        className="w-full bg-[#B8860B] hover:bg-[#996e08] text-white text-xs font-bold h-10 cursor-pointer"
                       >
                         Subscribe Plan with Razorpay (Cards / UPI / Netbanking)
                       </Button>
@@ -649,7 +648,148 @@ export default function PlatformGuide() {
           )}
 
           {/* ========================================================================= */}
-          {/* B. CASHIER WORKSTATION (Exact replica of CreateOrderPage & POSHeader)    */}
+          {/* B. BRANCH MANAGER (ONLY INVENTORY ACCESSIBLE)                              */}
+          {/* ========================================================================= */}
+          {activeRole === "branch_manager" && (
+            <div className="flex flex-1 min-h-[700px]">
+              {/* REAL BRANCH MANAGER SIDEBAR */}
+              <aside className="w-52 bg-[#181614] text-[#FAF8F3] border-r border-[#2B2724] p-4 flex flex-col justify-between shrink-0 hidden md:flex">
+                <div className="space-y-6">
+                  <div className="px-2">
+                    <NexPOSLogo size="sm" />
+                  </div>
+                  <nav className="space-y-1">
+                    {[
+                      { name: "Dashboard", icon: LayoutDashboard, accessible: false },
+                      { name: "Inventory", icon: Boxes, accessible: true, active: true },
+                      { name: "Orders", icon: Clock, accessible: false },
+                      { name: "Refunds", icon: RotateCcw, accessible: false },
+                      { name: "Employees", icon: Users, accessible: false },
+                      { name: "Reports", icon: FileText, accessible: false },
+                      { name: "Settings", icon: Settings, accessible: false },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      if (item.accessible) {
+                        return (
+                          <div
+                            key={item.name}
+                            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-xs select-none"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Icon className="w-4 h-4" /> {item.name}
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/20 text-white font-mono font-bold">LIVE</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div
+                          key={item.name}
+                          title="Locked in Demo mode"
+                          className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-[#FAF8F3]/30 cursor-not-allowed select-none"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Icon className="w-4 h-4 opacity-40" /> {item.name}
+                          </span>
+                          <Lock className="w-3 h-3 opacity-40" />
+                        </div>
+                      );
+                    })}
+                  </nav>
+                </div>
+
+                <div className="p-3 rounded-xl bg-[#221F1C] border border-[#332E2A] text-xs">
+                  <div className="font-bold text-[#FAF8F3]">Pooja S. (Manager)</div>
+                  <div className="text-[10px] text-blue-400 font-mono">Delhi Outlet Supervisor</div>
+                </div>
+              </aside>
+
+              {/* BRANCH MANAGER BODY (ONLY INVENTORY) */}
+              <div className="flex-1 flex flex-col min-w-0 bg-background">
+                <header className="h-14 border-b border-border px-6 flex items-center justify-between bg-card shrink-0">
+                  <div className="text-xs font-bold text-foreground flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-500" />
+                    Delhi Flagship Branch — Shelf Stock Inventory Management
+                  </div>
+                  <span className="text-xs font-bold text-blue-600 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
+                    Active Stock Workstation
+                  </span>
+                </header>
+
+                <div className="p-6 space-y-6 overflow-y-auto">
+                  {/* Real Inventory Table */}
+                  <div className="rounded-xl border border-border bg-card overflow-hidden">
+                    <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">Branch Shelf Inventory & Restock Station</h3>
+                        <p className="text-xs text-muted-foreground">Click "+50 Restock" to simulate replenishment from central warehouse.</p>
+                      </div>
+
+                      {/* Search Bar */}
+                      <div className="relative w-48">
+                        <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-2.5" />
+                        <input
+                          type="text"
+                          placeholder="Filter shelf stock..."
+                          value={stockSearch}
+                          onChange={(e) => setStockSearch(e.target.value)}
+                          className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-border bg-background text-foreground"
+                        />
+                      </div>
+                    </div>
+
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-secondary/60 text-muted-foreground border-b border-border">
+                        <tr>
+                          <th className="py-2.5 px-4">SKU / Item Name</th>
+                          <th className="py-2.5 px-3">Category</th>
+                          <th className="py-2.5 px-3 text-center">Shelf Status</th>
+                          <th className="py-2.5 px-3 text-right">Units in Stock</th>
+                          <th className="py-2.5 px-4 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {managerStock
+                          .filter((p) => p.name.toLowerCase().includes(stockSearch.toLowerCase()))
+                          .map((item) => (
+                            <tr key={item.id} className="hover:bg-secondary/20">
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-foreground">{item.name}</div>
+                                <div className="text-[10px] font-mono text-muted-foreground">{item.sku}</div>
+                              </td>
+                              <td className="py-3 px-3 text-muted-foreground">{item.category}</td>
+                              <td className="py-3 px-3 text-center">
+                                {item.stock <= 5 ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20">
+                                    Low Stock
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                    In Stock
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-right font-black text-sm">{item.stock}</td>
+                              <td className="py-3 px-4 text-right">
+                                <button
+                                  onClick={() => handleRestock(item.id, 50)}
+                                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
+                                >
+                                  +50 Restock
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* C. CASHIER POS WORKSTATION (ONLY POS TERMINAL ACCESSIBLE)                 */}
           {/* ========================================================================= */}
           {activeRole === "cashier" && (
             <div className="flex flex-1 min-h-[700px]">
@@ -661,23 +801,36 @@ export default function PlatformGuide() {
                   </div>
                   <nav className="space-y-1">
                     {[
-                      { name: "POS Terminal", icon: ShoppingCart, active: true },
-                      { name: "Order History", icon: Clock, active: false },
-                      { name: "Returns/Refunds", icon: RotateCcw, active: false },
-                      { name: "Customers", icon: Users, active: false },
-                      { name: "Shift Summary", icon: Receipt, active: false },
+                      { name: "POS Terminal", icon: ShoppingCart, accessible: true, active: true },
+                      { name: "Order History", icon: Clock, accessible: false },
+                      { name: "Returns/Refunds", icon: RotateCcw, accessible: false },
+                      { name: "Customers", icon: Users, accessible: false },
+                      { name: "Shift Summary", icon: Receipt, accessible: false },
                     ].map((item) => {
                       const Icon = item.icon;
+                      if (item.accessible) {
+                        return (
+                          <div
+                            key={item.name}
+                            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs select-none"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Icon className="w-4 h-4 shrink-0" /> {item.name}
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/20 text-white font-mono font-bold">LIVE</span>
+                          </div>
+                        );
+                      }
                       return (
                         <div
                           key={item.name}
-                          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold select-none cursor-pointer ${
-                            item.active
-                              ? "bg-emerald-600 text-white font-bold shadow-xs"
-                              : "text-[#FAF8F3]/70 hover:bg-[#2B2724]"
-                          }`}
+                          title="Locked in Demo mode"
+                          className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-[#FAF8F3]/30 cursor-not-allowed select-none"
                         >
-                          <Icon className="w-4 h-4 shrink-0" /> {item.name}
+                          <span className="flex items-center gap-2">
+                            <Icon className="w-4 h-4 shrink-0 opacity-40" /> {item.name}
+                          </span>
+                          <Lock className="w-3 h-3 opacity-40" />
                         </div>
                       );
                     })}
@@ -692,7 +845,7 @@ export default function PlatformGuide() {
 
               {/* CASHIER MAIN: POSHeader + 2-Pane POS Billing Layout */}
               <div className="flex-1 flex flex-col min-w-0 bg-background">
-                {/* REAL POS HEADER (POSHeader.jsx) */}
+                {/* REAL POS HEADER */}
                 <header className="bg-card border-b border-border/70 px-4 py-2 flex items-center justify-between shrink-0 h-12">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -703,19 +856,11 @@ export default function PlatformGuide() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleParkOrder}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 cursor-pointer flex items-center gap-1"
-                    >
-                      <Clock className="w-3 h-3" /> Park Current Bill ({parkedBillsCount})
-                    </button>
-                    {lastScannedFeedback && (
-                      <span className="text-xs font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 animate-pulse">
-                        ⚡ Scanned: {lastScannedFeedback}
-                      </span>
-                    )}
-                  </div>
+                  {lastScannedFeedback && (
+                    <span className="text-xs font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 animate-pulse">
+                      ⚡ Scanned: {lastScannedFeedback}
+                    </span>
+                  )}
                 </header>
 
                 {/* 2-PANE POS BODY (ProductSection + CartSection) */}
@@ -742,7 +887,7 @@ export default function PlatformGuide() {
                       </button>
                     </div>
 
-                    {/* Category Filter Pills (Exact from ProductSection.jsx) */}
+                    {/* Category Filter Pills */}
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                       {["ALL", "Beverages", "Bakery", "Snacks", "Dairy", "Grocery"].map((cat) => (
                         <button
@@ -759,7 +904,7 @@ export default function PlatformGuide() {
                       ))}
                     </div>
 
-                    {/* Product Cards Grid (ProductCard.jsx replica) */}
+                    {/* Product Cards Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                       {REAL_PRODUCTS
                         .filter((p) => (posCategory === "ALL" ? true : p.category === posCategory))
@@ -790,7 +935,7 @@ export default function PlatformGuide() {
                     </div>
                   </div>
 
-                  {/* RIGHT PANE: CART & PAYMENT PANEL (5 cols) (CartSection.jsx replica) */}
+                  {/* RIGHT PANE: CART & PAYMENT PANEL (5 cols) */}
                   <div className="lg:col-span-5 p-4 flex flex-col justify-between bg-card space-y-3 overflow-y-auto">
                     <div>
                       {/* Customer Attach Bar */}
@@ -798,8 +943,8 @@ export default function PlatformGuide() {
                         <div className="flex items-center gap-2">
                           <Users className="w-3.5 h-3.5 text-muted-foreground" />
                           <div>
-                            <span className="font-bold text-foreground">{customerAttached.name}</span>
-                            <span className="text-[10px] text-muted-foreground ml-1.5">{customerAttached.phone}</span>
+                            <span className="font-bold text-foreground">Priya Sharma</span>
+                            <span className="text-[10px] text-muted-foreground ml-1.5">+91 98765 43210</span>
                           </div>
                         </div>
                         <span className="text-[10px] text-emerald-600 font-bold">LOYALTY ATTACHED</span>
@@ -956,276 +1101,13 @@ export default function PlatformGuide() {
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* C. BRANCH MANAGER (Exact replica of Branch Manager layout & Inventory)    */}
-          {/* ========================================================================= */}
-          {activeRole === "branch_manager" && (
-            <div className="flex flex-1 min-h-[700px]">
-              {/* REAL BRANCH MANAGER SIDEBAR */}
-              <aside className="w-52 bg-[#181614] text-[#FAF8F3] border-r border-[#2B2724] p-4 flex flex-col justify-between shrink-0 hidden md:flex">
-                <div className="space-y-6">
-                  <div className="px-2">
-                    <NexPOSLogo size="sm" />
-                  </div>
-                  <nav className="space-y-1">
-                    {[
-                      { name: "Dashboard", icon: LayoutDashboard, active: false },
-                      { name: "Inventory", icon: Boxes, active: true },
-                      { name: "Orders", icon: Clock, active: false },
-                      { name: "Refunds", icon: RotateCcw, active: false, badge: "2" },
-                      { name: "Staff", icon: Users, active: false },
-                      { name: "Reports", icon: FileText, active: false },
-                    ].map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <div
-                          key={item.name}
-                          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
-                            item.active ? "bg-blue-600 text-white font-bold" : "text-[#FAF8F3]/70 hover:bg-[#2B2724]"
-                          }`}
-                        >
-                          <span className="flex items-center gap-2">
-                            <Icon className="w-4 h-4" /> {item.name}
-                          </span>
-                          {item.badge && <span className="text-[10px] px-1 rounded bg-red-500 text-white font-mono">{item.badge}</span>}
-                        </div>
-                      );
-                    })}
-                  </nav>
-                </div>
-
-                <div className="p-3 rounded-xl bg-[#221F1C] border border-[#332E2A] text-xs">
-                  <div className="font-bold text-[#FAF8F3]">Pooja S. (Manager)</div>
-                  <div className="text-[10px] text-blue-400 font-mono">Delhi Outlet Supervisor</div>
-                </div>
-              </aside>
-
-              {/* BRANCH MANAGER BODY */}
-              <div className="flex-1 flex flex-col min-w-0 bg-background">
-                <header className="h-14 border-b border-border px-6 flex items-center justify-between bg-card shrink-0">
-                  <div className="text-xs font-bold text-foreground flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-blue-500" />
-                    Delhi Flagship Branch — Shelf Stock & Shift Control
-                  </div>
-                  <button
-                    onClick={() => setTillAudited(true)}
-                    className="px-3 py-1.5 rounded-lg border border-border bg-secondary hover:bg-card text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <FileCheck2 className="w-3.5 h-3.5 text-blue-500" />
-                    {tillAudited ? "✓ Shift Float Audited" : "Audit Cashier Till Drawer"}
-                  </button>
-                </header>
-
-                <div className="p-6 space-y-6 overflow-y-auto">
-                  {/* Real Inventory Table */}
-                  <div className="rounded-xl border border-border bg-card overflow-hidden">
-                    <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-bold text-foreground">Branch Shelf Inventory</h3>
-                        <p className="text-xs text-muted-foreground">Click "+50 Restock" to simulate replenishment from warehouse.</p>
-                      </div>
-                      <div className="relative w-48">
-                        <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-2.5" />
-                        <input
-                          type="text"
-                          placeholder="Filter shelf stock..."
-                          value={stockSearch}
-                          onChange={(e) => setStockSearch(e.target.value)}
-                          className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-border bg-background text-foreground"
-                        />
-                      </div>
-                    </div>
-
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-secondary/60 text-muted-foreground border-b border-border">
-                        <tr>
-                          <th className="py-2.5 px-4">SKU / Item</th>
-                          <th className="py-2.5 px-3">Category</th>
-                          <th className="py-2.5 px-3 text-center">Shelf Status</th>
-                          <th className="py-2.5 px-3 text-right">In Stock</th>
-                          <th className="py-2.5 px-4 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/60">
-                        {managerStock
-                          .filter((p) => p.name.toLowerCase().includes(stockSearch.toLowerCase()))
-                          .map((item) => (
-                            <tr key={item.id} className="hover:bg-secondary/20">
-                              <td className="py-3 px-4">
-                                <div className="font-bold text-foreground">{item.name}</div>
-                                <div className="text-[10px] font-mono text-muted-foreground">{item.sku}</div>
-                              </td>
-                              <td className="py-3 px-3 text-muted-foreground">{item.category}</td>
-                              <td className="py-3 px-3 text-center">
-                                {item.stock <= 5 ? (
-                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20">
-                                    Low Stock
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                                    In Stock
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3 px-3 text-right font-black text-sm">{item.stock}</td>
-                              <td className="py-3 px-4 text-right">
-                                <button
-                                  onClick={() => handleRestock(item.id, 50)}
-                                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
-                                >
-                                  +50 Restock
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Customer Returns Queue */}
-                  <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                    <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
-                      <RotateCcw className="w-4 h-4 text-blue-500" /> Pending Cashier Return Claims
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {refundItems.map((ref) => (
-                        <div key={ref.id} className="p-3 rounded-lg border border-border bg-secondary/30 space-y-2 text-xs">
-                          <div className="flex justify-between">
-                            <span className="font-mono text-[10px] text-muted-foreground">{ref.id} • {ref.billNo}</span>
-                            <span className="font-bold text-foreground">₹{ref.amount}</span>
-                          </div>
-                          <div className="font-bold text-foreground">{ref.item}</div>
-                          <div className="text-muted-foreground text-[11px]">Reason: "{ref.reason}"</div>
-                          <div className="pt-2 border-t border-border">
-                            {ref.status === "APPROVED" ? (
-                              <span className="text-emerald-600 font-bold flex items-center gap-1">
-                                <CheckCircle className="w-3.5 h-3.5" /> Approved & Restocked ✓
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => handleApproveRefund(ref.id)}
-                                className="w-full py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
-                              >
-                                Approve Refund (₹{ref.amount})
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* D. SUPER ADMIN (Exact replica of SuperAdminDashboard)                     */}
-          {/* ========================================================================= */}
-          {activeRole === "super_admin" && (
-            <div className="flex flex-1 min-h-[700px]">
-              <aside className="w-52 bg-[#181614] text-[#FAF8F3] border-r border-[#2B2724] p-4 flex flex-col justify-between shrink-0 hidden md:flex">
-                <div className="space-y-6">
-                  <div className="px-2">
-                    <NexPOSLogo size="sm" />
-                  </div>
-                  <nav className="space-y-1">
-                    {[
-                      { name: "Platform Overview", icon: LayoutDashboard, active: false },
-                      { name: "Stores", icon: Store, active: false },
-                      { name: "Store Requests", icon: FileCheck2, active: true, badge: "2" },
-                      { name: "Subscriptions", icon: Zap, active: false },
-                      { name: "Audit Logs", icon: ShieldCheck, active: false },
-                    ].map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <div
-                          key={item.name}
-                          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
-                            item.active ? "bg-purple-600 text-white font-bold" : "text-[#FAF8F3]/70 hover:bg-[#2B2724]"
-                          }`}
-                        >
-                          <span className="flex items-center gap-2">
-                            <Icon className="w-4 h-4" /> {item.name}
-                          </span>
-                          {item.badge && <span className="text-[10px] px-1 rounded bg-purple-500 text-white font-mono">{item.badge}</span>}
-                        </div>
-                      );
-                    })}
-                  </nav>
-                </div>
-
-                <div className="p-3 rounded-xl bg-[#221F1C] border border-[#332E2A] text-xs">
-                  <div className="font-bold text-[#FAF8F3]">Master Controller</div>
-                  <div className="text-[10px] text-purple-400 font-mono">ROLE_ADMIN</div>
-                </div>
-              </aside>
-
-              <div className="flex-1 flex flex-col min-w-0 bg-background">
-                <header className="h-14 border-b border-border px-6 flex items-center justify-between bg-card shrink-0">
-                  <div className="text-xs font-bold text-foreground flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-purple-500" />
-                    NexPOS SaaS Multi-Tenant Controller
-                  </div>
-                  <span className="text-xs font-bold text-purple-600 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
-                    148 Active Merchant Stores
-                  </span>
-                </header>
-
-                <div className="p-6 space-y-6 overflow-y-auto">
-                  <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                    <h3 className="text-sm font-bold text-foreground">New Store Verification Queue</h3>
-                    <div className="space-y-3">
-                      {pendingStores.map((s) => (
-                        <div key={s.id} className="p-4 rounded-xl border border-border bg-secondary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                          <div>
-                            <div className="font-bold text-sm text-foreground">{s.name}</div>
-                            <div className="text-muted-foreground mt-0.5">Owner: {s.owner} • {s.city} • GST: {s.gstin}</div>
-                          </div>
-                          {s.status === "APPROVED" ? (
-                            <span className="text-emerald-600 font-bold flex items-center gap-1">
-                              <CheckCircle className="w-3.5 h-3.5" /> Merchant Verified & Active ✓
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleApproveStore(s.id)}
-                              className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold cursor-pointer"
-                            >
-                              Approve Store Registration
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="p-5 rounded-xl border border-border bg-card space-y-3 text-xs">
-                    <div className="flex justify-between font-bold">
-                      <span>Starter Tier Subscription Pricing:</span>
-                      <span className="text-purple-600 font-black text-sm">₹{starterPrice} / month</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={499}
-                      max={2499}
-                      step={100}
-                      value={starterPrice}
-                      onChange={(e) => setStarterPrice(Number(e.target.value))}
-                      className="w-full accent-purple-600 cursor-pointer"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
         </div>
       </main>
 
       {/* 4. FOOTER */}
       <footer className="py-8 border-t border-border bg-card text-center text-xs text-muted-foreground">
         <p className="font-semibold text-foreground">NexPOS High-Velocity Multi-Branch Retail Architecture</p>
-        <p className="mt-1">All rights reserved. Designed for sub-second retail checkout and full multi-tenant governance.</p>
+        <p className="mt-1">Designed for sub-second retail billing, live inventory sync, and multi-branch control.</p>
       </footer>
     </div>
   );

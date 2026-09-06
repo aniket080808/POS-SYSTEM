@@ -28,7 +28,7 @@ const ROLES = [
     accentColor: "text-amber-600 dark:text-amber-400",
     borderHover: "hover:border-amber-500/50",
     bgBadge: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
-    description: "The business command center. Controls store subscription plans, physical branch locations, centralized inventory catalog, and multi-branch revenue analytics.",
+    description: "The business command center. Controls store subscription plans, centralized inventory catalog, and multi-branch revenue analytics.",
     points: [
       "Branch network expansion & Razorpay billing",
       "Unified SKU product catalog with GST slabs",
@@ -46,12 +46,12 @@ const ROLES = [
     accentColor: "text-blue-600 dark:text-blue-400",
     borderHover: "hover:border-blue-500/50",
     bgBadge: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
-    description: "The on-ground operations lead. Manages branch shelf stock, audits cashier shifts, verifies customer returns, and ensures drawer cash matches bills.",
+    description: "The on-ground operations lead. Manages branch shelf stock, audits inventory replenishment, and tracks low-stock alerts.",
     points: [
-      "Branch stock receiving & low-stock alerts",
-      "Live order feed & invoice search",
-      "Customer refund inspection & item restock",
-      "Cash drawer variance & discrepancy auditing",
+      "Branch stock receiving & replenishment",
+      "Low-stock threshold alerts & audit trails",
+      "Shelf inventory tracking across categories",
+      "Consolidated branch stock synchronization",
     ],
   },
   {
@@ -70,24 +70,6 @@ const ROLES = [
       "Dynamic GST tax breakdown & change helper",
       "Multi-tender: UPI QR, Cash, and Card payments",
       "80mm/58mm thermal receipt printing",
-    ],
-  },
-  {
-    id: "super_admin",
-    title: "Super Admin",
-    subtitle: "Platform Owner",
-    icon: ShieldCheck,
-    badge: "ROLE_ADMIN",
-    tag: "SaaS Ecosystem",
-    accentColor: "text-purple-600 dark:text-purple-400",
-    borderHover: "hover:border-purple-500/50",
-    bgBadge: "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20",
-    description: "The SaaS platform controller. Evaluates new merchant onboarding requests, engineers subscription plan tiers, and audits platform compliance.",
-    points: [
-      "Merchant onboarding verification queue",
-      "Dynamic subscription tier quotas & limits",
-      "Platform security logs & compliance trails",
-      "Public inquiry & lead CRM resolution",
     ],
   },
 ];
@@ -118,10 +100,10 @@ const LiveDemoSection = () => {
           </p>
         </div>
 
-        {/* 4 Role Showcase Cards */}
+        {/* 3 Core Roles Showcase Cards */}
         <div
           ref={cardsRef}
-          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 transition-all duration-700 ${
+          className={`grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 transition-all duration-700 ${
             cardsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
@@ -169,10 +151,10 @@ const LiveDemoSection = () => {
 
                 {/* Card Footer Button */}
                 <button
-                  onClick={() => navigate("/guide")}
+                  onClick={() => navigate("/guide", { state: { initialRole: role.id } })}
                   className="w-full py-2 px-3 rounded-lg border border-border bg-secondary/60 hover:bg-secondary text-foreground text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer group-hover:border-border/80"
                 >
-                  <span>Explore Workflow</span>
+                  <span>Launch {role.title} Simulator</span>
                   <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
