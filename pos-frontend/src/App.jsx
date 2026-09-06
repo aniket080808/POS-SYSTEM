@@ -14,6 +14,7 @@ import Onboarding from "./pages/onboarding/Onboarding";
 import { getStoreByAdmin } from "./Redux Toolkit/features/store/storeThunks";
 import SuperAdminRoutes from "./routes/SuperAdminRoutes";
 import PageNotFound from "./pages/common/PageNotFound";
+import PlatformGuide from "./pages/common/Guide/PlatformGuide";
 
 const App = () => {
   const dispatch = useDispatch();
@@ -68,6 +69,7 @@ const App = () => {
           <Route path="/store/*" element={<StoreRoutes />} />
           <Route path="/branch/*" element={<BranchManagerRoutes />} />
           <Route path="/cashier/*" element={<CashierRoutes />} />
+          <Route path="/guide" element={<PlatformGuide />} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       );
@@ -76,6 +78,7 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Navigate to="/cashier" replace />} />
           <Route path="/cashier/*" element={<CashierRoutes />} />
+          <Route path="/guide" element={<PlatformGuide />} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       );
@@ -100,6 +103,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Navigate to="/auth/onboarding" replace />} />
             <Route path="/auth/onboarding" element={<Onboarding />} />
+            <Route path="/guide" element={<PlatformGuide />} />
             <Route path="*" element={<Navigate to="/auth/onboarding" replace />} />
           </Routes>
         );
@@ -111,6 +115,7 @@ const App = () => {
             <Route path="/store/*" element={<StoreRoutes />} />
             <Route path="/branch/*" element={<BranchManagerRoutes />} />
             <Route path="/cashier/*" element={<CashierRoutes />} />
+            <Route path="/guide" element={<PlatformGuide />} />
             <Route path="*" element={<PageNotFound />} />
           </Routes>
         );
@@ -124,6 +129,7 @@ const App = () => {
           <Route path="/" element={<Navigate to="/branch" replace />} />
           <Route path="/branch/*" element={<BranchManagerRoutes />} />
           <Route path="/cashier/*" element={<CashierRoutes />} />
+          <Route path="/guide" element={<PlatformGuide />} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       );
@@ -132,6 +138,7 @@ const App = () => {
       content = (
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/guide" element={<PlatformGuide />} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       );
@@ -141,6 +148,7 @@ const App = () => {
     content = (
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/guide" element={<PlatformGuide />} />
         <Route path="/auth/*" element={<AuthRoutes />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>

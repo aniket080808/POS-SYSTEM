@@ -1,5 +1,6 @@
 import React from "react";
-import { UserPlus, Package, ShoppingCart, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router";
+import { UserPlus, Package, ShoppingCart, ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useAnimations";
 
 const steps = [
@@ -64,6 +65,7 @@ const StepCard = ({ step, index }) => {
 
 const HowItWorksSection = () => {
   const { ref, isVisible } = useScrollReveal();
+  const navigate = useNavigate();
 
   return (
     <section className="py-20 bg-background border-t border-border">
@@ -86,7 +88,7 @@ const HowItWorksSection = () => {
         </div>
 
         {/* Steps Grid with connecting line */}
-        <div className="relative max-w-4xl mx-auto">
+        <div className="relative max-w-4xl mx-auto mb-14">
           {/* Horizontal connecting line (desktop) */}
           <div className="hidden md:block absolute top-[52px] left-[16.67%] right-[16.67%] h-0.5 bg-border" />
 
@@ -95,6 +97,24 @@ const HowItWorksSection = () => {
               <StepCard key={s.step} step={s} index={i} />
             ))}
           </div>
+        </div>
+
+        {/* Deep Dive Role Architecture Prompt Banner */}
+        <div className="max-w-3xl mx-auto p-6 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-transparent flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400 mb-1">
+              <Sparkles className="w-4 h-4" /> Want to see what each role can do?
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Explore our step-by-step interactive guide for <strong>Store Owners</strong>, <strong>Branch Managers</strong>, and <strong>Cashiers</strong>, including a live POS billing terminal simulator.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/guide")}
+            className="shrink-0 px-4 py-2.5 rounded-xl bg-[#B8860B] hover:bg-[#996e08] text-white font-bold text-xs inline-flex items-center gap-2 shadow-xs cursor-pointer transition-all"
+          >
+            Explore Role Guide <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </section>

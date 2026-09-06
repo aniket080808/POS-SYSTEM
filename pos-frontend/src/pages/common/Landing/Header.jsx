@@ -66,7 +66,14 @@ const Header = () => {
           <NexPOSLogo onClick={() => navigate("/")} size="md" />
 
           {/* Desktop Navigation with Active Scrollspy */}
-          <nav className="hidden md:flex items-center space-x-7">
+          <nav className="hidden md:flex items-center space-x-6">
+            <button
+              onClick={() => navigate("/guide")}
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Role Guide
+            </button>
             {navItems.map((item) => {
               const isActive = activeSection === item.id;
               return (
@@ -151,6 +158,16 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-border bg-card rounded-b-2xl shadow-xl px-4 space-y-3">
             <nav className="flex flex-col space-y-2">
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  navigate("/guide");
+                }}
+                className="w-full text-left py-2 px-3 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold text-sm flex items-center justify-between border border-amber-500/20"
+              >
+                <span>Role & Architecture Guide</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-white font-bold">New</span>
+              </button>
               {navItems.map((item) => (
                 <a
                   key={item.id}
