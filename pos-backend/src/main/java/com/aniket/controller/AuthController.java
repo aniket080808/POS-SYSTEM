@@ -180,14 +180,25 @@ public class AuthController {
     public ResponseEntity<java.util.Map<String, Object>> diagnosticEmail(
             @org.springframework.web.bind.annotation.RequestParam(defaultValue = "aniketmeshram445@gmail.com") String to) {
         java.util.Map<String, Object> result = new java.util.HashMap<>();
-        result.put("version", "v4-sync-diagnostic");
+        result.put("version", "v5-multi-strategy-email");
         result.put("timestamp", java.time.LocalDateTime.now().toString());
         result.put("recipient", to);
+
+        String brevoKey = System.getenv("BREVO_API_KEY");
+        String resendKey = System.getenv("RESEND_API_KEY");
+        String activeStrategy = "Standard JavaMail SMTP (Port 587 - blocked on Render Free Tier)";
+        if (brevoKey != null && !brevoKey.isBlank()) {
+            activeStrategy = "Brevo HTTP API (Port 443 - Cloud Compatible)";
+        } else if (resendKey != null && !resendKey.isBlank()) {
+            activeStrategy = "Resend HTTP API (Port 443 - Cloud Compatible)";
+        }
+        result.put("activeStrategy", activeStrategy);
+
         try {
             String testBody = emailTemplateService.buildPasswordResetEmail("Diagnostic Test User", "https://pos-system-97v.pages.dev/auth/reset-password?token=diag-token-12345", 5);
             emailService.sendEmailSync(to, "NexPOS Diagnostic Test", testBody);
             result.put("status", "SUCCESS");
-            result.put("message", "Email successfully delivered via Google SMTP to " + to);
+            result.put("message", "Email successfully delivered via " + activeStrategy + " to " + to);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             result.put("status", "ERROR");
