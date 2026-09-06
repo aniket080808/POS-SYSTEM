@@ -68,7 +68,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
     }
 
-    @ExceptionHandler({ResourceNotFoundException.class, jakarta.persistence.EntityNotFoundException.class, NoSuchElementException.class})
+    @ExceptionHandler({ResourceNotFoundException.class, jakarta.persistence.EntityNotFoundException.class, NoSuchElementException.class, org.springframework.web.servlet.resource.NoResourceFoundException.class})
     public ResponseEntity<ExceptionResponse> handleNotFoundException(Exception ex, WebRequest req) {
         ExceptionResponse response = new ExceptionResponse(
                 ex.getMessage(),
