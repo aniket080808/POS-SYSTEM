@@ -33,27 +33,13 @@ public class DataMigrationRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         // 🔔 1. Ensure enum check constraints on orders and refunds are updated
         try {
-            jdbcTemplate.execute("""
-                DO $$
-                BEGIN
-                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
-                        ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_type_check;
-                        ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
-                    END IF;
-                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'refunds') THEN
-                        ALTER TABLE refunds DROP CONSTRAINT IF EXISTS refunds_payment_type_check;
-                        ALTER TABLE refunds DROP CONSTRAINT IF EXISTS refunds_status_check;
-                    END IF;
-                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventories') THEN
-                        CREATE SEQUENCE IF NOT EXISTS inventories_id_seq;
-                        ALTER TABLE inventories ALTER COLUMN id SET DEFAULT nextval('inventories_id_seq');
-                        PERFORM setval('inventories_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM inventories), 0) + 1, 1), false);
-                    END IF;
-                END $$;
-            """);
-            log.info("✅ Database constraints for orders, refunds, and inventories verified.");
+            jdbcTemplate.execute("ALTER TABLE IF EXISTS orders DROP CONSTRAINT IF EXISTS orders_payment_type_check");
+            jdbcTemplate.execute("ALTER TABLE IF EXISTS orders DROP CONSTRAINT IF EXISTS orders_status_check");
+            jdbcTemplate.execute("ALTER TABLE IF EXISTS refunds DROP CONSTRAINT IF EXISTS refunds_payment_type_check");
+            jdbcTemplate.execute("ALTER TABLE IF EXISTS refunds DROP CONSTRAINT IF EXISTS refunds_status_check");
+            log.info("✅ Database constraints for orders and refunds verified.");
         } catch (Exception e) {
-            log.warn("⚠️ Could not synchronize orders/refunds constraints: {}", e.getMessage());
+            log.debug("Database constraint sync note: {}", e.getMessage());
         }
 
         // 🔔 1b. Ensure notifications_type_check constraint supports all NotificationType values

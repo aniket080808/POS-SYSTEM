@@ -60,7 +60,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/super-admin/**").hasRole("ADMIN")
 						.requestMatchers("/auth/**").permitAll()
 						.requestMatchers("/ws/**").permitAll()
-						.requestMatchers("/error").permitAll()
+						.requestMatchers("/", "/error").permitAll()
 						// Allow unauthenticated visitors to read active subscription plans and submit contact inquiries
 						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/subscription-plans", "/api/subscription-plans/**").permitAll()
 						.requestMatchers("/api/public/**").permitAll()

@@ -28,11 +28,14 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender javaMailSender;
 
-    @Value("${spring.mail.username:aniketmeshram445@gmail.com}")
+    @Value("${spring.mail.username:pravinmeshram0205@gmail.com}")
     private String fromEmail;
 
     @Value("${mail.brevo.api-key:${BREVO_API_KEY:}}")
     private String brevoApiKey;
+
+    @Value("${mail.brevo.sender-email:${BREVO_SENDER_EMAIL:pravinmeshram0205@gmail.com}}")
+    private String brevoSenderEmail;
 
     @Value("${mail.resend.api-key:${RESEND_API_KEY:}}")
     private String resendApiKey;
@@ -49,7 +52,7 @@ public class EmailServiceImpl implements EmailService {
         }
 
         String recipient = to.trim();
-        String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail.trim() : "aniketmeshram445@gmail.com";
+        String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail.trim() : "pravinmeshram0205@gmail.com";
 
         // Strategy 1: Brevo HTTP API (Port 443 - Bypasses Render Cloud SMTP Firewall)
         if (brevoApiKey != null && !brevoApiKey.isBlank()) {
@@ -70,8 +73,12 @@ public class EmailServiceImpl implements EmailService {
     private void sendViaBrevo(String recipient, String sender, String subject, String body) throws Exception {
         log.info("[EmailService] Dispatching email via Brevo HTTPS API (Port 443) to {}", recipient);
 
+        String senderEmail = (brevoSenderEmail != null && !brevoSenderEmail.isBlank())
+                ? brevoSenderEmail.trim()
+                : sender;
+
         Map<String, Object> payload = new HashMap<>();
-        payload.put("sender", Map.of("name", "NexPOS Platform", "email", sender));
+        payload.put("sender", Map.of("name", "NexPOS Platform", "email", senderEmail));
         payload.put("to", List.of(Map.of("email", recipient)));
         payload.put("subject", subject);
         payload.put("htmlContent", body);
